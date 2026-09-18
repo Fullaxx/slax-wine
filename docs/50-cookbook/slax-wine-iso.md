@@ -97,7 +97,7 @@ version — `genisoimage` stamps PVD timestamps it cannot pin, so a rebuild of t
 the same bytes everywhere except those fields. See [sizing.md](../sizing.md):
 
 ```
-<this build's sha256>  slax-wine-1.0.0.iso
+<this build's sha256>  slax-wine-bios-1.0.0.iso
 ```
 
 ## What `kitchen probe` says, and why that is right

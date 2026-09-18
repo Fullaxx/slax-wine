@@ -8,12 +8,12 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 
 ## The shape of the thing
 
-slax-wine owns no engine code. It is four recipes, a profile, a build script and eleven gates, laid
-over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
+slax-wine owns no engine code. It is four recipes, three profiles, a build script and eleven gates,
+laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
 
 ```
 build.env          version + base identity -- the single source of truth
-profiles/          the authoritative ordered recipe list
+profiles/          three: -bios and -uefi ship, -test is built to be asserted against
 recipes/available/ four recipes
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
 ci/                eleven gates; six copied verbatim, four adapted, one ours
@@ -21,8 +21,29 @@ vendor/            the engine, pinned by commit
 ```
 
 `kitchen apply --profile` takes the recipe list *and* any per-recipe var overrides from the profile,
-so there is exactly one place that says what this image is. A recipe absent from the profile is never
+so there is exactly one place that says what each image is. A recipe named by no profile is never
 built — `ci/checks/96-release-consistency.sh` fails on an orphan for that reason.
+
+### Two shipped images, one system
+
+`slax-wine-bios` and `slax-wine-uefi` run **the same four recipes in the same order**. The uefi
+profile adds one more, upstream's `uefi-bootable`, which builds no bundle and writes a single
+6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB. So both images carry an identical nine bundles and
+share `build.sh`'s `WANT_MODULES` assertion unchanged.
+
+Two consequences worth holding onto:
+
+- **The uefi image is a superset.** `pack.sh` adds its EFI entry with `-eltorito-alt-boot`, leaving
+  the BIOS entry in place. `xorriso -report_el_torito` on the two artifacts shows `isolinux.bin` in
+  both and `/boot/efi.img` only in the second. It boots anywhere the bios image does.
+- **GRUB reads ext4; `syslinux.efi` does not.** That is the only reason the distinction earns two
+  images rather than one flag: with the stock loader, UEFI forces a FAT32 stick and its 16 GB
+  persistence container. With GRUB, UEFI and unlimited ext4 persistence can coexist. See
+  [INSTALL.md](../INSTALL.md).
+
+Ordering is load-bearing: `uefi-bootable` generates its GRUB menu by *parsing* `isolinux.cfg`, so it
+must run after `slax-wine-iso`, which edits that file. Its pack hint (`uefi`) is a different key from
+`slax-wine-iso`'s (`volid`, `appid`, `checksums`), so the two cannot overwrite one another.
 
 ## The layer model
 
@@ -56,7 +77,9 @@ slax-kitchen's canonical table — `vendor/slax-kitchen/docs/10-anatomy/bundles-
 | `98` / `99` | generated database / `savechanges` — **refused at apply time** |
 
 Inside the fork band this project uses **`20`–`29` for its platform and `30`–`89` for
-applications**. `10`–`12` are left to slax-kitchen's example app recipes.
+applications**, starting at `20` rather than `10`. The bottom of the fork band is left
+to slax-kitchen's example recipes, which **grow**: `10`–`12` when this project started,
+`10`–`16` today. Ceding the low end costs nothing and makes a collision impossible.
 
 `98` and `99` are refused by every bundle verb, and the refusal is at apply time rather than in the
 schema so there is one implementation rather than two that can drift.
@@ -197,10 +220,17 @@ wrapper, the **Notepad++ installer runs under Wine** and the installed editor la
 Mono/Gecko prompt**, and the **browser is absent** from the launcher. Three of the four recipes claim
 this rung; `slax-wine-iso` does not, because the *effect* of removing `automount` was never checked.
 
-**Still unverified, and the gap worth remembering:** every persistence claim in this document and in
-[INSTALL.md](../INSTALL.md). That boot was non-persistent, so the Wine prefix surviving a reboot —
-the whole argument for a USB install over a CD — rests on reading `livekitlib`, not on having seen
-it. UEFI likewise.
+**Persistence, ext4 native perch: observed.** Two boots of `slax-wine-test` on one ext4 perch disk
+under `kitchen test --persistence` — boot 1 wrote a marker into the union and `sync`ed it, boot 2
+found it (`perch-marker: present`), both reaching `Live Kit done`. The same run also boot-asserted
+that all seven of our launcher files reached the assembled union with the right sizes, which is one
+rung below "the tile appears" and is the half a machine can check.
+
+**Still unverified:** the **FAT32** persistence route entirely — dynfilefs container, XFS inside it,
+`perchsize=`, `xfs_growfs` — plus `bootinst`, any bootloader-driven boot, and real hardware. The
+harness deliberately uses raw ext4 on a bare file. UEFI on a slax-wine image likewise. So roughly
+half of what [INSTALL.md](../INSTALL.md) promises is now measured and half is still read from
+`livekitlib`, and the document says which is which.
 
 The ladder is in the [cookbook index](50-cookbook/README.md), and the distinction is the one thing
 this project treats as a real error.

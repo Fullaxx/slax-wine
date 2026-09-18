@@ -8,7 +8,14 @@ See [docs/base-versions.md](docs/base-versions.md).
 ## [1.0.0] — unreleased
 
 Built on `slax-32bit-debian-12.2.0.iso`
-(`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`).
+(`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`), with slax-kitchen pinned at
+`bcd4f00`.
+
+**Two images, same system.** `slax-wine-bios-1.0.0.iso` (507.3 MiB) uses the stock Slax bootloader.
+`slax-wine-uefi-1.0.0.iso` (513.5 MiB) adds upstream's `uefi-bootable` recipe — a GRUB EFI loader in
+an El Torito ESP — and is a **superset**: it keeps the BIOS entry, so it boots everywhere the first
+does, and UEFI additionally works from an **ext4** stick because GRUB reads ext4 where
+`syslinux.efi` does not. Both carry the same nine bundles.
 
 ### Added
 - `wine` — Wine 8.0~repack-4 from Debian bookworm main as `20-wine.sb` (166.6 MiB), with
@@ -19,13 +26,19 @@ Built on `slax-32bit-debian-12.2.0.iso`
   the swappable application layer.
 - `slax-wine-iso` — `automount` removed from the boot line, ISO identity, sha256 beside the image.
 - `build.sh`, eleven commit gates, and the engineering documentation set.
+- `uefi-bootable` — **upstream's** recipe, applied only by `profiles/slax-wine-uefi.yaml`. Builds no
+  bundle; adds one 6.2 MiB `boot/efi.img`.
 
 ### Known limitations
-- **Persistence is unverified.** The image is `runtime-verified` on a full desktop boot — the Wine
-  tile opens, the Notepad++ installer runs under Wine, no Mono/Gecko prompt, no browser — but that
-  was a **non-persistent** boot. Nothing has yet been shown to survive a reboot, so the persistent
-  Wine `C:` drive on a USB stick, which is the point of [INSTALL.md](INSTALL.md), is still untested
-  on hardware. Neither is `automount` removal, nor UEFI.
+- **Persistence: half observed, half still not.** The **ext4 native perch** path now survives a
+  reboot in a VM — two boots on one disk, marker written and `sync`ed on the first, found on the
+  second. The **FAT32 route is untested**: no dynfilefs container, no XFS, no `perchsize=`, no
+  `xfs_growfs`, and nothing has run `bootinst` or booted from a real stick. So the Wine `C:` drive
+  surviving on the kind of stick most people will use is still read from source, not measured.
+- **UEFI is untested on a slax-wine image.** The `slax-wine-uefi` variant carries a loader upstream
+  boot-tests on our exact target, but we have not run it; and the `slax-wine-bios` route from a stick
+  uses a different loader (`syslinux.efi`) that nothing has exercised.
+- `automount` removal is still unverified — see the `slax-wine-iso` cookbook page.
 - No Wine Mono or Wine Gecko, so .NET and embedded-HTML applications do not run. Debian packages
   neither; the first-run prompt is suppressed rather than satisfied.
 - No GPU firmware, because stock Slax ships none — 3D under Wine falls back to software rendering.

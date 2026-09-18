@@ -9,9 +9,12 @@ One page per recipe. Each states what it does, what it measured, and what it can
 | [`notepadpp`](notepadpp.md) | the swappable application layer — a Windows installer to run under Wine |
 | [`slax-wine-iso`](slax-wine-iso.md) | boot defaults, ISO identity, and a checksum beside the image |
 
-All four are applied in order by [`profiles/slax-wine.yaml`](../../profiles/slax-wine.yaml), which
-is authoritative: `build.sh` drives it with `kitchen apply --profile`, and a recipe absent from it is
-never built.
+All four are applied, in that order, by **both** shipped profiles:
+[`slax-wine-bios`](../../profiles/slax-wine-bios.yaml) and
+[`slax-wine-uefi`](../../profiles/slax-wine-uefi.yaml), which adds upstream's `uefi-bootable` after
+them. The profiles are authoritative — `build.sh` drives them with `kitchen apply --profile`, and a
+recipe named by no profile is never built. `ci/checks/96-release-consistency.sh` fails both on an
+unbuilt recipe and on the two profiles disagreeing about the core four.
 
 ## The verification ladder
 

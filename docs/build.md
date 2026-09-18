@@ -59,12 +59,19 @@ and no amount of `qemu-user` configuration is tested here.
 ```sh
 git clone --recurse-submodules https://github.com/Fullaxx/slax-wine
 cd slax-wine
-./build.sh                  # -> out/slax-wine-1.0.0.iso
+./build.sh                  # -> out/slax-wine-bios-1.0.0.iso
+                            #    out/slax-wine-uefi-1.0.0.iso
 ```
+
+Each variant is a full unpack + apply into its own `work/<variant>/`, because recipes are not
+idempotent — `apply` consults its journal and refuses a second application. So `--both` costs
+roughly twice the wall clock; use `--bios` while iterating.
 
 | flag | effect |
 |---|---|
-| `--keep-work` | leave `work/` in place for inspection |
+| `--bios` / `--uefi` / `--both` | which image(s). **`--both` is the default** — they are the release pair |
+| `--test` | build `slax-wine-test-<ver>.iso` instead: the BIOS image plus `testkit`. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against |
+| `--keep-work` | leave `work/<variant>/` in place for inspection |
 | `--no-fetch` | skip *downloading* the base ISO (it is still verified). The application payload is fetched regardless if it is missing or its hash does not match |
 | `ISO_DIR=…` | reuse base ISOs you already have |
 
@@ -129,5 +136,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`9776a90`](https://github.com/Fullaxx/slax-kitchen/tree/9776a90). Bumping the
+The engine is pinned at [`bcd4f00`](https://github.com/Fullaxx/slax-kitchen/tree/bcd4f00). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

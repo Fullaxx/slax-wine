@@ -5,7 +5,8 @@ Slax with Wine on it: a 32-bit Debian live system that runs Windows programs, wi
 
 ```sh
 git clone --recurse-submodules https://github.com/Fullaxx/slax-wine
-cd slax-wine && ./build.sh          # -> out/slax-wine-1.0.0.iso
+cd slax-wine && ./build.sh          # -> out/slax-wine-bios-1.0.0.iso
+                                    #    out/slax-wine-uefi-1.0.0.iso
 ```
 
 Needs `squashfs-tools`, `xorriso`, `curl` and a `python3` with `yaml` — and root (or `sudo`) for one
@@ -19,7 +20,22 @@ is not obvious.
 | Wine | **8.0~repack-4**, Debian bookworm main, 32-bit |
 | a test application | Notepad++ 8.9.8 — the Windows installer, run under Wine |
 | no browser | `05-chromium.sb` is removed to pay for Wine's size |
-| ISO | **507.3 MiB** — 91.4 MiB over stock Slax |
+| two images | **bios** 507.3 MiB · **uefi** 513.5 MiB — same system, different boot routes |
+
+## Which image
+
+| | boots on | why you would pick it |
+|---|---|---|
+| `slax-wine-bios-<ver>.iso` | BIOS | stock Slax bootloader, no GRUB, 6.2 MiB smaller |
+| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | adds a GRUB ESP. UEFI works from an **ext4** stick, so you are not forced onto FAT32 |
+
+**The UEFI image is a superset, not an alternative** — it keeps the BIOS El Torito entry and adds an
+EFI one, so it boots anywhere the BIOS image does. Verified on the artifacts: `xorriso
+-report_el_torito` shows `isolinux.bin` in both, and `/boot/efi.img` only in the second. If in doubt,
+take the UEFI one.
+
+Neither boots on **32-bit UEFI firmware** — no `bootia32.efi` exists anywhere upstream. That is rare
+(some older Atom tablets) and it is a fact about the firmware, not about this 32-bit system.
 
 Installing it to a USB stick so the Wine prefix survives a reboot is **[INSTALL.md](INSTALL.md)**.
 What works and what does not is **[docs/using-wine.md](docs/using-wine.md)**.
@@ -36,6 +52,12 @@ change, never *how*.
 | `21-wine-desktop.sb` | [`wine-desktop`](docs/50-cookbook/wine-desktop.md) — launcher, environment, menu cleanup |
 | `30-notepadpp.sb` | [`notepadpp`](docs/50-cookbook/notepadpp.md) — the swappable application layer |
 | — | [`slax-wine-iso`](docs/50-cookbook/slax-wine-iso.md) — boot defaults, ISO identity, checksum |
+| — | `uefi-bootable` — **upstream's**, applied only by the uefi profile. Adds a GRUB ESP; builds no bundle |
+
+Both images run the same four recipes in the same order; the uefi one adds `uefi-bootable` after
+them, which is why they carry an identical nine bundles.
+[`ci/checks/96-release-consistency.sh`](ci/checks/96-release-consistency.sh) fails if the two
+profiles ever disagree about that core list.
 
 `30-notepadpp.sb` is meant to be replaced. Delete that one file from `/slax/modules/` on a stick and
 drop another in — no rebuild, no remaster. That is the whole point of the layering.

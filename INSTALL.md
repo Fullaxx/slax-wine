@@ -1,10 +1,26 @@
 # Installing slax-wine
 
-Three ways to run the ISO. Only one of them keeps your Wine `C:` drive.
+## First: which of the two images
+
+| | boots on | pick it when |
+|---|---|---|
+| `slax-wine-bios-<ver>.iso` | BIOS | you know the machine boots BIOS/legacy and you want the stock loader |
+| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | anything else — **including if you want UEFI *and* unlimited persistence** |
+
+The uefi image is a **superset**: it keeps the BIOS boot entry and adds an EFI one, so it boots
+everywhere the bios image does, for 6.2 MiB more. It carries a GRUB EFI loader in an El Torito ESP,
+and **GRUB reads ext4** — which is the whole reason it matters here, because the stock loader does
+not, and that is what forces the FAT32 decision below.
+
+**If unsure, take the uefi image.**
+
+---
+
+Three ways to run it. Only one of them keeps your Wine `C:` drive.
 
 | | boots | persistence | Wine `C:` survives a reboot |
 |---|---|---|---|
-| **Copy to USB or disk + `bootinst`** | BIOS, and UEFI on FAT32 | yes | **yes** |
+| **Copy to USB or disk + `bootinst`** | BIOS, and UEFI (see the table below) | yes | **yes** |
 | Burn to CD/DVD | BIOS | no | no |
 | `dd` the ISO to a stick | nothing — see [below](#why-dd-does-not-work) | no | no |
 
@@ -18,9 +34,10 @@ later. Everything else follows from it.
 
 | | **FAT32** | **ext4** |
 |---|---|---|
-| BIOS boot | yes | yes |
-| **UEFI boot** (64-bit firmware) | **yes** | **no** — UEFI firmware and `syslinux.efi` read FAT only |
-| **UEFI boot** (32-bit firmware) | **no** — see below | **no** |
+| BIOS boot — either image | yes | yes |
+| **UEFI**, `slax-wine-bios` image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only |
+| **UEFI**, `slax-wine-uefi` image | yes | **yes** — GRUB reads ext4 |
+| **UEFI**, 32-bit firmware — either image | **no** — see below | **no** |
 | Persistence | a sparse container file, **16 GB minimum** | a plain directory, **no limit** |
 | Readable from Windows | yes | no |
 | Your `C:` drive ends up in | `slax/changes/1/changes.dat` | `slax/changes/1/root/.wine` |
@@ -29,15 +46,36 @@ later. Everything else follows from it.
 > x86-64 EFI application — and no `bootia32.efi`, on every one of its images including the 32-bit
 > ones. A handful of older Atom tablets and netbooks have 32-bit UEFI with no legacy/CSM option, and
 > those machines have no supported route: not FAT32, not ext4, not `dd`. Upstream documents this in
-> [uefi-usb-hdd](https://github.com/Fullaxx/slax-kitchen/blob/9776a90/docs/20-boot-sequence/uefi-usb-hdd.md).
+> [uefi-usb-hdd](https://github.com/Fullaxx/slax-kitchen/blob/bcd4f00/docs/20-boot-sequence/uefi-usb-hdd.md).
 > Everything below about "UEFI" means 64-bit UEFI firmware, which is what almost everything has.
+
+> **Persistence on ext4 has now been observed.** Two boots of a slax-wine image on one ext4 perch
+> disk: boot 1 wrote a marker into the union and `sync`ed it, boot 2 found it still there
+> (`perch-marker: present, written 2026-09-18T11:12:00Z`), both reaching `Live Kit done`. That is the
+> **native perch** path — the bind-mount into `slax/changes/N/` that the ext4 column describes.
+>
+> Its limits, stated so the row is not read as more than it is: a VM, a direct kernel boot, and a raw
+> ext4 filesystem on a bare disk image. It did **not** exercise a partition table, `bootinst`, a
+> bootloader, or **any** of the FAT32 route — no dynfilefs container, no XFS inside it, no
+> `perchsize=`, no `xfs_growfs`. Everything in the FAT32 column is still read from `livekitlib`
+> rather than measured.
+>
+> **What has actually been booted, and by whom.** slax-kitchen boot-tests a 32-bit Slax image through
+> **GRUB under x86-64 OVMF** and records it passing — that is the loader the `slax-wine-uefi` image
+> carries, so the mechanism is proven upstream on our exact target. It is **not** proof of the rows
+> in the table above, for two reasons: their test boots the ISO, not a `bootinst`-prepared stick, and
+> the `slax-wine-bios` row describes `syslinux.efi`, a different loader entirely. **Nobody has UEFI
+> booted a slax-wine image from a stick.** The rows are read from the loaders' documented behaviour;
+> treat them as well-founded expectations, not measurements.
 
 Pick by the machine you are booting, not by the stick:
 
-- **UEFI-only machine** (most laptops made after ~2012 with legacy/CSM disabled) → **FAT32**. You do
-  not have a choice.
+- **UEFI-only machine** (most laptops made after ~2012 with legacy/CSM disabled) → use the
+  **`slax-wine-uefi` image**, and then the filesystem is a free choice: **ext4** for unlimited
+  persistence, FAT32 if you also want the stick readable from Windows. With the `slax-wine-bios`
+  image you would be forced onto FAT32 and its 16 GB container.
 - **Machine that can boot BIOS/legacy** → **ext4**. Unlimited persistence, faster, and you can read
-  the prefix directly from any Linux box.
+  the prefix directly from any Linux box. Either image works.
 - **8 GB stick** → ext4 if the machine boots BIOS. On FAT32 the container's 16 GB minimum cannot be
   lowered, so it is always larger than the stick; you will hit the physical end of the stick rather
   than a clean "disk full".
@@ -68,7 +106,7 @@ sudo mkfs.ext4  -L SLAXWINE /dev/sdX1         # BIOS only, unlimited prefix
 
 # 3. copy the slax/ directory across
 sudo mkdir -p /mnt/iso /mnt/usb
-sudo mount -o loop,ro slax-wine-1.0.0.iso /mnt/iso
+sudo mount -o loop,ro slax-wine-uefi-1.0.0.iso /mnt/iso   # or -bios-, whichever you built
 sudo mount /dev/sdX1 /mnt/usb
 sudo cp -a /mnt/iso/slax /mnt/usb/
 sudo sync
@@ -156,7 +194,7 @@ container is created and can only ever be raised, never lowered.
 ## Why `dd` does not work
 
 A stock Slax ISO has no master boot record at all — bytes 0–511 are zero — so
-`dd if=slax-wine-1.0.0.iso of=/dev/sdX` produces a stick that boots on nothing. slax-wine does not
+`dd if=slax-wine-uefi-1.0.0.iso of=/dev/sdX` produces a stick that boots on nothing. slax-wine does not
 ship the `isohybrid` fix, deliberately: even when it works, a `dd`'d image is a read-only ISO9660
 filesystem, so there is nowhere for changes to be written and **persistence is impossible**. Ventoy
 and Rufus carry the same limitation.
@@ -179,8 +217,8 @@ there in your clone.
 
 | you want | read |
 |---|---|
-| every persistence option, session handling, container internals | [persistence-perch](https://github.com/Fullaxx/slax-kitchen/blob/9776a90/docs/05-using-slax/persistence-perch.md) |
-| all three USB routes and what `bootinst` does | [install-to-usb](https://github.com/Fullaxx/slax-kitchen/blob/9776a90/docs/05-using-slax/install-to-usb.md) |
-| disk installs, chainloading, booting an ISO file directly | [install-to-harddisk](https://github.com/Fullaxx/slax-kitchen/blob/9776a90/docs/05-using-slax/install-to-harddisk.md) |
-| boot parameters you can type at the menu | [boot-parameters](https://github.com/Fullaxx/slax-kitchen/blob/9776a90/docs/20-boot-sequence/boot-parameters.md) |
+| every persistence option, session handling, container internals | [persistence-perch](https://github.com/Fullaxx/slax-kitchen/blob/bcd4f00/docs/05-using-slax/persistence-perch.md) |
+| all three USB routes and what `bootinst` does | [install-to-usb](https://github.com/Fullaxx/slax-kitchen/blob/bcd4f00/docs/05-using-slax/install-to-usb.md) |
+| disk installs, chainloading, booting an ISO file directly | [install-to-harddisk](https://github.com/Fullaxx/slax-kitchen/blob/bcd4f00/docs/05-using-slax/install-to-harddisk.md) |
+| boot parameters you can type at the menu | [boot-parameters](https://github.com/Fullaxx/slax-kitchen/blob/bcd4f00/docs/20-boot-sequence/boot-parameters.md) |
 | what is in this image, and Wine's first run | [using-wine](docs/using-wine.md) |

@@ -120,6 +120,16 @@ missing outright, in the document that exists to be the accurate register.
 | [12](https://github.com/Fullaxx/slax-kitchen/issues/12) | the two merge functions disagreed | `9776a90` |
 | [13](https://github.com/Fullaxx/slax-kitchen/issues/13) | staging chown stripped setuid/setgid, disabling `chromium-current`'s sandbox helper | `a034f6b` |
 
+### Open upstream, and what each means here
+
+Neither is ours. Both were assessed against this image at the `bcd4f00` bump rather than taken on
+trust, because "open upstream" is not the same as "affects us".
+
+| # | Issue | Impact on slax-wine |
+|---|---|---|
+| [14](https://github.com/Fullaxx/slax-kitchen/issues/14) | `bundle.packages` tracks additions and never looks at what left | **None on this build, measured.** `20-wine.sb` is a `bundle.packages` bundle, so this is our exposure: a package apt removes to resolve a conflict is recorded as gone while its files stay visible from the lower bundle. Counted `install ok installed` in `04-apps.sb` (567) against `98-dpkg-db.sb` (626) — **nothing present before is missing after**. +59 is the `libgnutls30`-upgrade arithmetic. Re-measure after any recipe change; it is a property of the build, not of the recipe. |
+| [15](https://github.com/Fullaxx/slax-kitchen/issues/15) | persistence boot 2 wedges on both Slackware targets, passes on both Debian | **None — we are Debian.** Worth reading the other way round: it is the bug their new persistence harness found on its first four-target sweep, which is the reason to trust the harness on *our* target. |
+
 | Advisory | Status |
 |---|---|
 | [GHSA-p2w2-qh4r-jr53](https://github.com/Fullaxx/slax-kitchen/security/advisories/GHSA-p2w2-qh4r-jr53) | published, patched `3ad66f6` |
@@ -223,16 +233,38 @@ what we filed as issue 6, and what a self-review then found in three assertions 
 Revisit this the moment a cookbook page starts quoting recipe YAML inline. Until then the absence is
 deliberate, and this paragraph exists so it is not mistaken for an oversight at the next pin bump.
 
-## Open candidates, not yet filed
+**`ci/checks/97-tier-c-ledger.sh`** (added in `e7f2bea`) and **`ci/checks/80-unit.sh`** — same
+reasoning, both measured with `REPO_ROOT` pointed at this tree:
 
-Both are in files marked *"do not edit here -- re-copy on a submodule bump"*, so neither can be fixed
-locally. Both were found by self-review of this repo rather than of theirs, which is the right way
-round.
+| gate | run against slax-wine | verdict |
+|---|---|---|
+| `97-tier-c-ledger.sh` | `exit 0` — *"tests/boot/tier-c.json not present"* | no `tests/boot/`, no ledger, no `ci/release-notes.sh`. It would note-and-skip forever |
+| `80-unit.sh` | `exit 0`, **no output at all** | its loop is `for t in "$REPO_ROOT"/tests/unit/test_*.py; do [ -f "$t" ] || continue`. With no `tests/`, the body never runs and it does not even announce the skip — strictly worse than the other two |
 
-| | |
-|---|---|
-| **`00-no-binaries.sh` forbids no Windows extensions** | The extension list covers ISO and Linux artifacts (`.iso .sb .deb .so .ko` …) and has no `.exe`, `.dll` or `.msi`. Committing this project's 6.8 MB installer *is* caught — but only by the 2 MiB size rule, so a smaller Windows binary walks straight through, and `KITCHEN_MAX_FILE_BYTES` is an env var. For a downstream whose whole premise is "fetch Windows binaries, never commit them", that is the list to extend. |
-| **`lib.sh`'s `file_size` fails open** | `stat -c%s "$f" 2>/dev/null \|\| echo 0`. Where GNU `stat` is absent (BSD, busybox), every file measures 0, `[ 0 -gt 2097152 ]` is false, and `00-no-binaries` — which its own header calls the most important gate in the repo — reports `ok` while checking nothing. Failing closed, or refusing to run without a usable `stat`, would both be safer. |
+What we **did** take from this range is upstream's **gate-count check**, folded into our adapted
+`90-doc-coverage.sh` with a wider anchor. Four files here state that number in prose and nothing else
+checked them; upstream's own anchor missed two of the four (`ci/` alone, and the noun `checks`).
+
+## Filed at the `bcd4f00` bump — round three
+
+Three issues, all found by self-review of **this** repo rather than of theirs, which is the right way
+round. Each was read in code and demonstrated before filing; none blocks the bump.
+
+| # | Issue | Why it is theirs |
+|---|---|---|
+| [17](https://github.com/Fullaxx/slax-kitchen/issues/17) | a `.desktop` whose `Icon=` does not resolve is silently deleted from the launcher | Slax's behaviour, but absent from `known-upstream-bugs.md`, and `remove-chromium.md` teaches a stub that works only because it omits `Icon=` |
+| [18](https://github.com/Fullaxx/slax-kitchen/issues/18) | `tier-c.sh`: `--allow-dirty` accepts `--ledger` alone, so a dirty run can write a committed golden | `ci/tier-c.sh:45-46` clears the guard on *either* flag; the doc and the `die` message both say both |
+| [19](https://github.com/Fullaxx/slax-kitchen/issues/19) | `00-no-binaries` can be walked past two ways | `file_size` fails open (`lib.sh:87`), and the extension list has no `.exe`/`.dll`/`.msi` |
+
+**17 is the one that cost us something.** It deleted both of this image's launchers — the entire
+point of `21-wine-desktop.sb` — and eleven green gates never noticed, because no gate can see a
+runtime resolution failure. It was caught by a manual self-review and fixed with an absolute `Icon=`
+path. `docs/ARCHITECTURE.md`'s register now carries the converse rule alongside the `NoDisplay` one.
+
+**19 was two of our own long-standing candidates**, filed together because they share a blast radius
+and because `9b1b797` finally supplied the argument: that commit fixed a fail-open in
+`check_files_nl` and left the identical pattern in `file_size` forty lines below. The principle is
+now accepted in that very file.
 
 ## Two findings were dropped before filing, in round one
 
