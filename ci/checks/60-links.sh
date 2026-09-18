@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 9776a9042394deac25638847269154eb5cebc9ca (ci/checks/60-links.sh).
+# Copied verbatim from slax-kitchen @ bcd4f00b03b028a13369de9d17a980c112b7ca82 (ci/checks/60-links.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Internal markdown links must resolve (offline; external URLs are not fetched).

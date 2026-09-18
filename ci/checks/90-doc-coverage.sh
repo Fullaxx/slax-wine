@@ -2,14 +2,27 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ 9776a9042394deac25638847269154eb5cebc9ca (ci/checks/90-doc-coverage.sh). Upstream's version
-# also checks that prose spelling out the recipe count ("thirty recipes ship today")
-# matches reality; with four recipes here that lookup table would be more machinery
-# than the drift it prevents, so it is left out deliberately rather than forgotten.
+# Adapted from slax-kitchen @ bcd4f00b03b028a13369de9d17a980c112b7ca82 (ci/checks/90-doc-coverage.sh).
+#
+# NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
+# recipes here that lookup table is more machinery than the drift it prevents -- left
+# out deliberately rather than forgotten. Nor the UPSTREAM-ISSUE count, which anchors on
+# a link to docs/30-inventory/known-upstream-bugs.md; we have no such page, so the rule
+# would skip forever and be a gate that cannot fail.
+#
+# TAKEN: the GATE-count check, because four files here state that number in prose and
+# nothing else checks them. The anchor is WIDER than upstream's, measured against this
+# tree rather than copied: upstream's `ci/checks|commit gates|run-checks` misses
+# docs/ARCHITECTURE.md's "ci/   eleven gates" (bare `ci/`) and docs/build.md's "Eleven
+# checks live in" (the noun is `checks`, not `gates`). Both are now covered.
 #
 # Whole-tree by design: a rename touches two directories, and checking only staged
 # files would pass a commit that moves one half.
 . "$(dirname "$0")/../lib.sh"
+
+# Collect-then-loop: fail() on the right of a pipe runs in a subshell and is lost.
+TMPD=$(mktemp -d) || { fail "cannot create a temp dir"; check_result; exit; }
+trap 'rm -rf "$TMPD"' EXIT INT TERM
 
 RECIPES="$REPO_ROOT/recipes/available"
 COOKBOOK="$REPO_ROOT/docs/50-cookbook"
@@ -36,5 +49,43 @@ for d in "$COOKBOOK"/*.md; do
     [ -f "$RECIPES/$n.yaml" ] || \
         fail "cookbook page has no recipe: docs/50-cookbook/$n.md -> recipes/available/$n.yaml"
 done
+
+# ---- the gate count stated in prose --------------------------------------------------
+# A number spelled out in words is exactly the fact nobody re-checks. Adding or removing
+# one gate silently falsifies every sentence that counts them, and here that is four
+# files. Upstream hit this at twelve-to-thirteen and had six wrong files at once.
+#
+# The lookup table returns "" for an unknown count and the caller SKIPS rather than
+# fails -- a gate that blocks on its own table being short teaches people to disable it.
+numword() {
+    case "$1" in
+        1) echo one ;;      2) echo two ;;       3) echo three ;;    4) echo four ;;
+        5) echo five ;;     6) echo six ;;       7) echo seven ;;    8) echo eight ;;
+        9) echo nine ;;    10) echo ten ;;      11) echo eleven ;;  12) echo twelve ;;
+       13) echo thirteen ;;14) echo fourteen ;; 15) echo fifteen ;; 16) echo sixteen ;;
+       17) echo seventeen ;; 18) echo eighteen ;; 19) echo nineteen ;; 20) echo twenty ;;
+        *)  echo ;;
+    esac
+}
+
+n=$(find "$REPO_ROOT/ci/checks" -maxdepth 1 -name '*.sh' | wc -l | tr -d ' ')
+want=$(numword "$n")
+[ -n "$want" ] || note "90-doc-coverage: no word for $n gates; count check skipped"
+if [ -n "$want" ]; then
+    words='one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty'
+    # ANCHORED, and the anchor is load-bearing in both directions. "gates" is an ordinary
+    # word, and this repo has lines that legitimately count a SUBSET -- docs/build.md's
+    # "Six gates are copied verbatim from slax-kitchen, four are adapted" is true and must
+    # not fail. A line claims the TOTAL only if it also names the thing that runs them.
+    anchor='commit gates|selftest|ci/checks|ci/|run-checks|doctor --strict|checks live in|build script'
+    check_files_nl | grep -E '\.md$' | grep -v '^vendor/' > "$TMPD/md" || true
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        [ -f "$REPO_ROOT/$f" ] || continue
+        hit=$(grep -niE "\b($words)\b[[:space:]*_]+(commit[[:space:]]+)?(gates|checks)\b" \
+              "$REPO_ROOT/$f" | grep -iE "$anchor" | grep -ivE "\b$want\b") || true
+        [ -n "$hit" ] && fail "${f}: $(echo "$hit" | head -1) -- there are $n gates (want '$want')"
+    done < "$TMPD/md"
+fi
 
 check_result

@@ -118,7 +118,7 @@ fi
 # ---- 4. the image cannot lie about itself ------------------------------------------
 # wine-desktop.yaml writes /etc/slax-wine-release inline. An ISO that misreports its own
 # version is worse than one that reports nothing, because it is believed.
-# The file is named in profiles/slax-wine.yaml, so its absence is a broken build, not a
+# The file is named in both shipped profiles, so its absence is a broken build, not a
 # reason to skip three assertions quietly.
 WD="$REPO_ROOT/recipes/available/wine-desktop.yaml"
 if [ ! -f "$WD" ]; then
@@ -132,20 +132,58 @@ else
         || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_SHA256 does not match build.env"
 fi
 
-# ---- 5. no orphan recipes ----------------------------------------------------------
-# The profile is authoritative (kitchen apply --profile), so a recipe absent from it is
-# never built and never tested -- it just looks like it ships.
-PROFILE="$REPO_ROOT/profiles/slax-wine.yaml"
-if [ -d "$REPO_ROOT/recipes/available" ] && [ -f "$PROFILE" ]; then
+# ---- 5. no orphan recipes, and the two shipped profiles must not drift --------------
+# The profiles are authoritative (build.sh drives `kitchen apply --profile`), so a recipe
+# in NO profile is never built and never tested -- it just looks like it ships.
+#
+# There are two shipped profiles now, bios and uefi, and they are meant to build the same
+# system by two boot routes. That makes them exactly the kind of pair that drifts: add a
+# recipe to one, forget the other, and half the release quietly stops containing it. So
+# this section asserts both halves -- coverage, and agreement.
+PROFDIR="$REPO_ROOT/profiles"
+CORE_A="$PROFDIR/slax-wine-bios.yaml"
+CORE_B="$PROFDIR/slax-wine-uefi.yaml"
+
+if [ ! -d "$REPO_ROOT/recipes/available" ]; then
+    note "recipes/available not present yet - orphan check skipped"
+elif [ ! -d "$PROFDIR" ]; then
+    fail "profiles/ is missing, so no recipe is built by anything"
+else
+    find "$PROFDIR" -maxdepth 1 -name '*.yaml' > "$TMP/prof"
+    [ -s "$TMP/prof" ] || fail "profiles/ contains no profile"
+
+    # (a) every recipe is named by at least one profile.
     find "$REPO_ROOT/recipes/available" -maxdepth 1 -name '*.yaml' > "$TMP/rec"
     while IFS= read -r r; do
+        [ -n "$r" ] || continue
         n=$(basename "$r" .yaml)
-        # The LIST ENTRY, not the name anywhere in the file. Every recipe name also
-        # appears in this profile's comments and in `name: slax-wine`, so the old
-        # substring grep passed for a recipe the profile never built.
-        line_present "$PROFILE" "- recipes/available/$n.yaml" \
-            || fail "recipe is in no profile, so it is never built: $n"
+        seen=0
+        while IFS= read -r prof; do
+            [ -n "$prof" ] || continue
+            # The LIST ENTRY, not the name anywhere in the file. Every recipe name also
+            # appears in profile comments, so a substring grep here passed for a recipe
+            # no profile built -- this gate carried that bug once already.
+            if line_present "$prof" "- recipes/available/$n.yaml"; then seen=1; break; fi
+        done < "$TMP/prof"
+        [ "$seen" = 1 ] || fail "recipe is in no profile, so it is never built: $n"
     done < "$TMP/rec"
+
+    # (b) the two shipped profiles carry an IDENTICAL core list, in the same order.
+    # uefi adds `- uefi-bootable`, a bare name resolved from the engine, so comparing
+    # only the recipes/available/ entries is the right comparison.
+    if [ ! -f "$CORE_A" ] || [ ! -f "$CORE_B" ]; then
+        fail "expected both profiles/slax-wine-bios.yaml and -uefi.yaml; the release is a pair"
+    else
+        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$CORE_A" \
+            | grep -E '^- recipes/available/' > "$TMP/core-a" || true
+        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$CORE_B" \
+            | grep -E '^- recipes/available/' > "$TMP/core-b" || true
+        [ -s "$TMP/core-a" ] || fail "slax-wine-bios.yaml lists no recipes"
+        if ! cmp -s "$TMP/core-a" "$TMP/core-b"; then
+            fail "the bios and uefi profiles disagree on the core recipe list:$(
+                  diff "$TMP/core-a" "$TMP/core-b" | tr '\n' ' ')"
+        fi
+    fi
 fi
 
 # ---- 6. a tagged HEAD must be honest ------------------------------------------------

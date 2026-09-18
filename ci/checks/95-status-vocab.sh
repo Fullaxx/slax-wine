@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 9776a9042394deac25638847269154eb5cebc9ca (ci/checks/95-status-vocab.sh): skips cleanly when
+# Adapted from slax-kitchen @ bcd4f00b03b028a13369de9d17a980c112b7ca82 (ci/checks/95-status-vocab.sh): skips cleanly when
 # docs/50-cookbook does not exist yet, so the gates pass on a scaffolding-only tree.
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
