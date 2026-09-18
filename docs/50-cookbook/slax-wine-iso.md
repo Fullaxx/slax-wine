@@ -93,6 +93,23 @@ unmounts the medium and has nowhere to write.
 
 It belongs at the boot prompt, per stick. [INSTALL.md](../../INSTALL.md) has the table.
 
+**The same substring rule bites the person typing at that prompt**, and it cost a real session here
+before it was written down. `perch` is matched anywhere in the command line, so `perch=` — or any
+other near-miss containing those letters — enables persistence, finds no `perchdir=` naming a device,
+falls back to the boot medium's own `slax/changes`, discovers that a CD is read-only, prints
+`* Persistent changes not writable or not used`, and runs in RAM. One line, gone the moment X starts.
+
+Worth holding onto because this recipe is the reason the boot line is hand-edited at all: it keeps
+the menu minimal and per-machine rather than baking in a `perchsize=` or a `perchdir=`. That is still
+the right call, but it means the person at the prompt carries the risk, so
+[INSTALL.md](../../INSTALL.md#the-near-miss-that-costs-you-the-session) now names the three lines a
+good persistent boot prints and the one line a near-miss prints.
+
+Note also that the parameter is needed on **every** boot when booting the ISO with a disk attached:
+the menu's *Restore previous session* entry is `MENU DISABLED` on optical media. A `bootinst` stick
+has that entry live and needs no typing — which is the real argument for the stick route over
+booting an ISO with a scratch disk.
+
 ## The version is not in any YAML
 
 `iso.metadata` sets a version-free `appid`; `build.sh` passes the real one with

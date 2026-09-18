@@ -171,7 +171,19 @@ The CD menu greys the session entries out, because optical media cannot be writt
 
 ## Check that persistence is actually on
 
-After booting, before you install anything into Wine:
+**Do this before you install anything into Wine.** Persistence failing is quiet — there is no error
+dialog, nothing is marked read-only, and the desktop looks identical. You find out at the next boot.
+
+During early boot, a working persistent start prints these three lines:
+
+```
+* Waiting for persistent changes on /dev/sda ...
+* Testing persistent changes for posix compatibility
+* Activating native persistent changes for session #1
+```
+
+They scroll past before the desktop appears, so the reliable check is from a terminal once you are
+up:
 
 ```sh
 mount | grep memory
@@ -184,6 +196,34 @@ misread as "the command did not work": on a non-persistent boot Slax simply crea
 `/memory/changes` as an ordinary directory inside the ramfs root and never mounts anything there, so
 there is no line to find. Everything you do will be lost at shutdown. (Grep for `memory`, not
 `memory/changes` — the latter misses the `/memory/data/...` line the FAT32 route produces.)
+
+### The near-miss that costs you the session
+
+`perch` is matched as a **substring** of the whole kernel command line, not as a whole word. So
+`perch=`, `perchh=`, `perchdirr=` — any typo that still contains the letters `perch` — **switches
+persistence on**, and then, having no `perchdir=` to name a device, falls back to the boot medium's
+own `slax/changes`. On a CD that is read-only, so `livekitlib` gives up with one line:
+
+```
+* Persistent changes not writable or not used
+```
+
+…and carries on in RAM. That line is the only warning, and X covers it within seconds. *(Quoted from
+`persistent_changes` in `livekitlib`, not from a boot we captured — the three success lines above
+are from a real serial log, this one is read from the source.)*
+
+The parameter that works is spelled exactly:
+
+```
+perchdir=/dev/sda/slax/changes
+```
+
+`livekitlib` splits that at the fourth `/`: device `/dev/sda`, subdirectory `slax/changes`.
+
+**You must type it on every boot** when booting the ISO this way. The menu's *Restore previous
+session* entry is `MENU DISABLED` on optical media, so nothing remembers it for you — which is
+exactly the difference between booting an ISO with a disk attached and a proper `bootinst` stick,
+where that entry is live and you type nothing at all.
 
 ## Where your Wine C: drive lives
 
@@ -212,6 +252,7 @@ and Rufus carry the same limitation.
 | symptom | cause |
 |---|---|
 | "My changes disappeared" | booted from CD, or picked **Run Slax from RAM**, or `dd`'d the ISO, or no `perchdir=` on the command line |
+| Changes disappeared *and* you did type a perch parameter | Check the spelling. `perch` is a **substring** match, so a near-miss like `perch=` enables persistence with nowhere to store it and silently runs in RAM — see [the near-miss above](#the-near-miss-that-costs-you-the-session). It is spelled `perchdir=/dev/sda/slax/changes` |
 | Prefix fills up at 16 GB | FAT32 container at its default size. **Reboot once with a larger `perchsize=`** — Slax runs `xfs_growfs` for you and your prefix is kept. Only if you want to start clean: delete `changes.dat*` in the session directory, or reformat ext4 |
 | Stick boots on one machine, not another | UEFI-only firmware and an ext4 stick. Reformat FAT32 |
 | `bootinst.sh` cannot execute `extlinux` | the stick is mounted `noexec`; the script tries to remount and then falls back to `extlinux.exe` |
