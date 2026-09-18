@@ -1,0 +1,66 @@
+apiVersion: slax-kitchen/v1
+kind: Recipe
+metadata:
+  name: slax-wine-iso
+  summary: Boot defaults, ISO identity and a checksum beside the image
+  tags: [boot, iso, release]
+compat:
+  flavours: [debian]
+  arch: [32bit]
+  slax: ">=12.2.0 <13.0.0"
+  privilege: none
+steps:
+  # Remove `automount` rather than passing `noautomount`, because negating it cannot
+  # work: fstab_create tests `grep -vq automount /proc/cmdline`, and the string
+  # noautomount CONTAINS automount, so the test never short-circuits (known-upstream-bugs
+  # issue 12). The flag has to be absent. Stock entries include it, hence this step.
+  #
+  # Worth having deliberately on a machine that will see game files and foreign sticks:
+  # with automount, every other disk gets a /media/<dev> line in /etc/fstab at boot.
+  #
+  # NOTHING ELSE IS TOUCHED HERE, and in particular there is no `perchsize=`. That is a
+  # per-stick decision made at the boot prompt, not an ISO constant: the FAT32 perch
+  # container has a 16 GB floor that cannot be lowered, its size is fixed at creation,
+  # and the right value depends on a stick this ISO knows nothing about. INSTALL.md has
+  # the table. Note also that persistence is enabled by a bare SUBSTRING match on
+  # "perch", so an unscoped `perchsize=` would switch persistence on for the `toram`
+  # entry -- which unmounts the medium and has nowhere to write.
+  - verb: boot.cmdline
+    remove:
+      - automount
+
+  # Volume descriptor fields. Recorded as pack hints rather than written into the tree,
+  # because there is nowhere in the tree they could live -- the mastering tool writes
+  # them into the PVD.
+  #
+  # None of these carries the slax-wine version, ON PURPOSE. The version lives in exactly
+  # one file (build.env) and build.sh passes it to `kitchen pack --appid`, where a
+  # command-line flag beats a recipe hint. So no version string exists in any YAML that
+  # could drift from the git tag -- and someone running `kitchen apply` + `kitchen pack`
+  # by hand still gets an image that identifies itself honestly.
+  #
+  # volid is the one people see: it becomes the filesystem label when the image is
+  # mounted or written to a stick. It is also what tests/structure/iso_assert.py must be
+  # told with --volid, because assertion #1 otherwise hardcodes 'slax' -- which is
+  # exactly why this project does not use `kitchen build`.
+  - verb: iso.metadata
+    volid: SLAX-WINE
+    appid: "slax-wine (github.com/Fullaxx/slax-wine)"
+    publisher: "Brett Kuskie -- github.com/Fullaxx/slax-wine"
+    preparer: "slax-kitchen; Slax by Tomas Matejicek, see NOTICE.md"
+
+  # Necessarily after mastering: an image cannot contain its own checksum. `kitchen pack`
+  # writes <output>.sha256 beside the ISO, generated from the output directory so the
+  # filename inside is RELATIVE and `sha256sum -c` works wherever the pair is downloaded.
+  #
+  # No `sign:` -- a PROJECT CHOICE, not an upstream limitation. It was unusable when
+  # this recipe was written (the schema had closed the field to a boolean while it is a
+  # GPG key id), we reported that as issue #3, and it was fixed in 7971eb5: at the pinned
+  # commit the schema types it ["string","boolean"] and lib/pack.sh:192-206 quote-strips
+  # the key id and runs `gpg --detach-sign`. docs/UPSTREAM.md records it closed.
+  #
+  # It stays off because this project has no signing key. Turning it on means deciding
+  # whose key signs a release and how a downloader gets it -- a post-v1.0.0 want, and a
+  # bigger question than one YAML line.
+  - verb: iso.checksums
+    algorithm: sha256

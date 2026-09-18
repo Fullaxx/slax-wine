@@ -1,0 +1,214 @@
+apiVersion: slax-kitchen/v1
+kind: Recipe
+metadata:
+  name: wine-desktop
+  summary: Launcher entry, environment defaults and menu cleanup for the Wine bundle
+  tags: [bundle, desktop, wine]
+compat:
+  flavours: [debian]
+  arch: [32bit]
+  slax: ">=12.2.0 <13.0.0"
+  privilege: none
+  # This bundle masks the Chromium launcher that `wine` leaves behind when it removes
+  # 05-chromium.sb, and its Wine launcher is pointless without the Wine that recipe
+  # installs. Declared as a path, for the reason notepadpp.yaml spells out.
+  requires:
+    - recipes/available/wine.yaml
+vars:
+  bundle: 21-wine-desktop
+steps:
+  # bundle.files, NOT rootcopy.files. rootcopy is copied onto the union on EVERY boot and
+  # costs that much RAM every time, and cannot be switched off; a bundle is mounted
+  # read-only from the medium and `noload=21-wine-desktop.sb` gives back stock Slax's
+  # desktop. At a few KiB the RAM argument is small -- the noload argument is the real
+  # one, because this bundle is the only thing that makes the image LOOK different from
+  # stock.
+  #
+  # Know what noload actually costs before reaching for it: this bundle also carries
+  # /etc/profile.d/wine.sh, so dropping it drops WINEDLLOVERRIDES too, and the Gecko/Mono
+  # download prompt this bundle exists to suppress comes back -- on a machine that is
+  # usually offline. Use `noload=21-wine-desktop.sb` to debug the desktop integration,
+  # not as a supported way to run Wine.
+  #
+  # bundle.files builds a bundle containing ONLY these paths, so it carries no dpkg
+  # status fragment and shadows nothing. That is exactly why the desktop integration is
+  # a separate bundle from the packages.
+  #
+  # 21 so it sits above 20-wine (payload below, integration above) and above 03-desktop,
+  # whose /usr/share/applications it overrides.
+  - verb: bundle.files
+    bundle: "{{bundle}}"
+    files:
+      # -- the launcher ---------------------------------------------------------------
+      # xlunch (Super, or Alt+F2) has no static list: fbappselect regenerates it at
+      # launch time with `xlunch_genquick 64 --desktop`, straight from
+      # /usr/share/applications/*.desktop. Order is the glob's full lexical sort
+      # (xlunch_genquick:18 iterates "$1"/*.desktop), NOT the leading character alone --
+      # which matters here, because 5chromium and 5wine share one. Slax ships ten
+      # entries across two bundles: 03-desktop has 1terminal, 5chromium and feh;
+      # 04-apps has 2pcmanfm, 3calculator, 6connman, connman-gtk, texteditor, xarchiver
+      # and zlxtask.
+      #
+      # Icon= IS AN ABSOLUTE PATH, and that is load-bearing. xlunch_genquick:34-46
+      # searches only ICONSIZES="64 128 64 48 32" (all numeric) under
+      # ICONPATHS="/usr/share/icons/hicolor /usr/share/pixmaps /usr/share/icons/gnome",
+      # and only ever appends ".png". The sole wine icon in the whole union is
+      # /usr/share/icons/hicolor/scalable/apps/wine.svg -- "scalable" is not a size and
+      # ".svg" is never tried -- so a bare `Icon=wine` matches NONE of the 36 candidate
+      # paths, $Icon stays the literal string "wine", and :52's `if [ -e "$Icon" ]`
+      # DROPS THE ENTRY ENTIRELY. Measured against all 34,004 paths in the built stack.
+      #
+      # An absolute path survives because every constructed candidate is nonsense
+      # (/usr/share/icons/hicolor/64x64/apps//usr/share/...), so $Icon is never
+      # reassigned and reaches :52 intact, where [ -e ] is true. Verified with the
+      # generator's own loop: `Icon=wine` -> DROPPED, this value -> EMITTED, while
+      # stock `Icon=terminal` and `Icon=chromium.png` resolve normally.
+      #
+      # SVG is safe here: Slax ships imlib2's svg.so loader (03-desktop.sb,
+      # usr/lib/i386-linux-gnu/imlib2/loaders/svg.so), which is what xlunch renders
+      # through. If T-040 shows it does not render, the fallback is to ship a PNG under
+      # /usr/share/pixmaps/ -- the bare $ICONPATH/$Icon shape needs no size directory.
+      # This is the SAME [ -e "$Icon" ] guard documented under the chromium mask below.
+      # It was understood there and not applied here, and that cost both launchers.
+      #
+      # Terminal=false is LOAD-BEARING, and was verified against the shipped script.
+      # fbappselect:42 runs `ldd $whi | grep libX11` and :50 wraps the command in an
+      # xterm when that comes back empty. The binary it actually inspects is the Exec=
+      # target -- :37 reads Exec= and :41 runs `which slax-wine` -- and our wrapper is a
+      # /bin/sh script, so ldd reports no libX11 and the heuristic guesses "console
+      # program". :36 reads Terminal=false as the override.
+      #
+      # TryExec= is dead in Slax: xlunch_genquick:28 greps an anchored
+      # ^(Name|Icon|Exec|Hidden|Terminal)= and never reads it. Keep it for
+      # standards-conforming launchers, but do not rely on it -- and note that
+      # fbappselect:37 greps UNANCHORED `Exec\s*=` with `head -n 1`, so TryExec only
+      # loses because Exec= happens to come first in this file. Do not reorder them.
+      - dest: /usr/share/applications/5wine.desktop
+        mode: "0644"
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Wine
+          GenericName=Windows Program Loader
+          Comment=Run Windows programs
+          Exec=slax-wine
+          TryExec=wine
+          Icon=/usr/share/icons/hicolor/scalable/apps/wine.svg
+          Terminal=false
+          Categories=System;Emulator;
+
+      # -- mask the browser we removed -------------------------------------------------
+      # wine.yaml deletes 05-chromium.sb, but 5chromium.desktop lives in 03-desktop.sb
+      # and survives. A file at the same path in a higher bundle replaces it.
+      #
+      # Hidden=true is the key that xlunch actually reads: xlunch_genquick greps
+      # `^(Name|Icon|Exec|Hidden|Terminal)=` and tests `Hidden = true`. NoDisplay is not
+      # in that key set and is ignored there.
+      #
+      # That does NOT mean a NoDisplay-only stub leaves the tile visible -- slax-kitchen's
+      # remove-chromium page uses one and it works, because the generator also ends each
+      # entry with `if [ -e "$Icon" ]` and that stub ships no Icon= line, so the entry is
+      # never emitted. Worth knowing precisely, because the two mechanisms are easy to
+      # confuse and only one of them is stated anywhere.
+      #
+      # This stub sets Hidden explicitly AND omits Icon, so it is covered twice over, and
+      # keeps NoDisplay for anything else that honours the freedesktop standard.
+      #
+      # Upstream's fbliveapp offers to apt-install chromium when it is missing, which is
+      # a reasonable default for a networked live system and useless on a released image
+      # that is usually offline.
+      - dest: /usr/share/applications/5chromium.desktop
+        mode: "0644"
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Web Browser (not included)
+          Exec=/bin/true
+          Terminal=false
+          NoDisplay=true
+          Hidden=true
+
+      # -- environment ------------------------------------------------------------------
+      # WINEARCH=win32 because this image has no wine64 and never will. What naming it
+      # actually buys is a CLEAR error rather than a confusing one: handed a prefix
+      # created on a 64-bit machine, Wine refuses loudly -- "WINEARCH set to win32 but
+      # <prefix> is a 64-bit installation" -- instead of proceeding into an
+      # arch-mismatched prefix. (An earlier comment here claimed it prevents the prefix
+      # being "treated as win64 and failing oddly"; the setting is right, that mechanism
+      # was not.)
+      #
+      # WINEDLLOVERRIDES="mscoree,mshtml=" disables Wine Mono and Wine Gecko, which is
+      # what suppresses the first-run "download and install" dialog. Debian packages
+      # NEITHER -- there is no wine-mono or wine-gecko in bookworm main, contrib or
+      # non-free -- so that dialog could only ever be satisfied by fetching ~136 MiB from
+      # winehq at runtime, on an image that is usually offline.
+      #
+      # The documented consequence: .NET and embedded-HTML applications do not run.
+      # docs/using-wine.md says so and says what to do instead.
+      - dest: /etc/profile.d/wine.sh
+        mode: "0644"
+        content: |
+          # slax-wine defaults. See /etc/slax-wine-release.
+          export WINEARCH=win32
+          export WINEDLLOVERRIDES="mscoree,mshtml="
+
+      # The wrapper every .desktop Exec goes through.
+      #
+      # /etc/profile.d/wine.sh above is read by login shells, and the Slax session IS one
+      # -- 02-xorg's xorg.service runs `/bin/su --login -c "/usr/bin/Xdetect ..."` and
+      # 01-core's /etc/profile ends with the standard profile.d loop, so Fluxbox and
+      # everything launched from it inherit the variables. This wrapper sources the file
+      # anyway, because the failure mode of being wrong about that is a Gecko download
+      # prompt on an offline machine, invisible until someone boots the image.
+      #
+      # With no arguments it opens Wine's file manager, falling back to winecfg if this
+      # Wine build does not ship winefile. (Both are wineapploader symlinks from the same
+      # package, so in practice either both exist or neither does -- the fallback is
+      # cheap insurance against a Wine build that splits them, not a case we have seen.)
+      #
+      # The missing-wine check is not theoretical: the .desktop entry sets
+      # Terminal=false, so a bare `exec wine` on an image booted with
+      # `noload=20-wine.sb` would die with 127 and NOTHING would appear on screen.
+      # xmessage is in the base image (03-desktop.sb ships usr/bin/xmessage).
+      - dest: /usr/local/bin/slax-wine
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Run a Wine command with the slax-wine environment guaranteed.
+          [ -r /etc/profile.d/wine.sh ] && . /etc/profile.d/wine.sh
+
+          if ! command -v wine >/dev/null 2>&1; then
+              msg="Wine is not installed in this session.
+          If you booted with noload=20-wine.sb, reboot without it."
+              echo "slax-wine: $msg" >&2
+              if command -v xmessage >/dev/null 2>&1; then
+                  xmessage -center "$msg" 2>/dev/null || true
+              fi
+              exit 1
+          fi
+
+          if [ $# -gt 0 ]; then
+              exec wine "$@"
+          fi
+          if command -v winefile >/dev/null 2>&1; then
+              exec winefile
+          fi
+          exec winecfg
+
+      # -- provenance -------------------------------------------------------------------
+      # os-release-shaped so it can be sourced. Deliberately carries no build date and no
+      # git commit: every value here is a static fact about the recipe, so two builds of
+      # the same tag produce identical bytes. The build date and the slax-kitchen commit
+      # are changing facts and belong in the release notes.
+      #
+      # ci/checks/96-release-consistency.sh greps these three literals against build.env,
+      # so the image cannot claim a version it was not built as.
+      - dest: /etc/slax-wine-release
+        mode: "0644"
+        content: |
+          NAME="slax-wine"
+          VERSION="1.0.0"
+          BASE_ISO="slax-32bit-debian-12.2.0.iso"
+          BASE_SHA256="03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b"
+          WINE="8.0~repack-4 (Debian bookworm main)"
+          HOME_URL="https://github.com/Fullaxx/slax-wine"

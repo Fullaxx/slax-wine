@@ -1,0 +1,149 @@
+apiVersion: slax-kitchen/v1
+kind: Recipe
+metadata:
+  name: wine
+  summary: Install Wine 8.0 from bookworm main, and drop Chromium to pay for its size
+  tags: [bundle, packages, wine, size]
+compat:
+  # Debian and 32-bit only, and not a limit we intend to lift. The point of this image is
+  # running 32-bit Windows binaries, which is what Debian's i386 wine32 + wine32-preloader
+  # do. A 64-bit base would need wine64 plus i386 multiarch -- a larger image and a
+  # different project. See docs/DECISIONS.md.
+  flavours: [debian]
+  arch: [32bit]
+  slax: ">=12.2.0 <13.0.0"
+  privilege: chroot
+vars:
+  bundle: 20-wine
+steps:
+  # -- 1. remove the browser FIRST ---------------------------------------------------
+  #
+  # Order is load-bearing, and this step is first for a reason that has nothing to do
+  # with tidiness.
+  #
+  # `from:` below names its stack explicitly, but the ENGINE DEFAULT is now "every
+  # bundle that will sit below this one" -- which for a 20- bundle includes
+  # 05-chromium.sb. A recipe that took the default and removed the browser afterwards
+  # would build against libraries it then deletes. Measured on this exact base:
+  # libpulse0 is a hard Depends of libwine, it is ABSENT from 01-core..04-apps, and it
+  # is PRESENT in 05-chromium.sb. apt would see it installed, skip it, and the files
+  # would leave with the bundle -- a silent missing .so at runtime.
+  #
+  # Removing first makes the default come out right on its own, which is the idiom
+  # slax-kitchen's own chromium-current recipe uses. We do BOTH: remove first AND name
+  # the stack, so reordering these steps cannot reintroduce the bug.
+  #
+  # The engine refuses build-then-remove outright (check_plan_order, from issue #1), and
+  # at the pinned commit that rule is FULLY enforced -- the three bypasses we reported as
+  # issue #11 are closed by 997a9ab. It is seeded from the journal, so it holds across
+  # separate `kitchen apply` invocations (apply.py:254), and --skip-preflight no longer
+  # disables it: the call at apply.py:3063 sits BEFORE the `if not a.skip_preflight:`
+  # guard at :3074. Both issues are closed; see docs/UPSTREAM.md.
+  #
+  # The explicit `from:` therefore no longer compensates for anything. It stays as
+  # belt-and-braces -- it documents the stack, and it means reordering these two steps
+  # cannot silently reintroduce the libpulse0 bug even on an engine older than the pin.
+  # It is not free, though: naming bundles explicitly makes this recipe hard-fail if any
+  # of the five is renamed anywhere in the declared slax: range (apply.py:713 raises
+  # "no bundle matching"). Cheap insurance, not costless insurance.
+  #
+  # 05-chromium.sb is 81.7 MiB. That is NOT "almost exactly what Wine costs" -- Wine is
+  # 166.6 MiB, 2.04x as much -- and removing it does not keep the image within ~35 MiB of
+  # stock. Both figures were planning estimates, wrong by about 50 MiB, and docs/sizing.md
+  # retracts them with the measured ledger. The real numbers: the image is +91.4 MiB over
+  # stock at 507.3 MiB, and it would be 589 MiB if the browser stayed. Removing it is
+  # still the right call; it simply buys half of Wine, not all of it.
+  - verb: bundle.remove
+    match: "^05-chromium\\.sb$"
+
+  # -- 2. the Wine bundle ------------------------------------------------------------
+  #
+  # 20- because bundle numbering is slax-kitchen's convention, not upstream Slax's, and
+  # it allocates 00-09 to the platform (upstream's 01-06 plus slax-kitchen's own
+  # OS-adjusting recipes at 07-09), 10-89 to forks, 90-97 to headroom, and refuses 98
+  # (the generated package database) and 99 (savechanges). Within the fork band this
+  # project uses 20-29 for its platform and 30-89 for applications; 10-12 are left alone
+  # because slax-kitchen's example app recipes sit there.
+  # See vendor/slax-kitchen/docs/10-anatomy/bundles-squashfs.md.
+  #
+  # The build root is stacked from the ISO's own bundles, so there is no debootstrap and
+  # no external base image, and everything installed matches the shipped kernel's ABI.
+  #
+  # `from:` stops at 04-apps. That is the whole of the image once step 1 has run, so
+  # apt's idea of "already installed" matches the finished ISO exactly.
+  - verb: bundle.packages
+    bundle: "{{bundle}}"
+    from: [01-core, 01-firmware, 02-xorg, 03-desktop, 04-apps]
+    # Five packages are the payload; eleven are libwine Recommends named back by hand.
+    #
+    #   wine              arch-all wrapper; Depends: wine64 | wine32, and i386 picks wine32
+    #   wine32            the i386 loader
+    #   libwine           the payload: 91 MiB of .deb, 563 MiB installed
+    #   wine32-preloader  the prelinked low-address loader old 32-bit Windows programs
+    #                     need. NOTHING Depends on it -- it Depends on wine32, not the
+    #                     reverse -- so it arrives only if it is named here.
+    #   fonts-wine        Wine's core font replacements; only a Recommends, but Wine
+    #                     draws boxes without it.
+    #
+    # The eleven Recommends are dlopen()ed rather than linked, so a missing one does not
+    # fail the install -- it silently disables a feature. Measured against this base
+    # (docs/DECISIONS.md carries the table): NINE of them are already installed in the
+    # base -- eight in 02-xorg.sb and libgnutls30 in 01-core.sb -- so naming them mostly
+    # documents the dependency rather than costing bytes.
+    #
+    # "Mostly", because libgnutls30 is the exception and it is worth knowing why: the
+    # base carries 3.7.9-2 and apt UPGRADES it to 3.7.9-2+deb12u7, so it lands in this
+    # bundle's dpkg fragment and ships ~3.6 MB of libgnutls.so.30.34.3 plus locale files.
+    # Eight are free, three add bytes. It is also why 04-apps' 576 packages plus this
+    # fragment's 60 come to 635 and not 636: libgnutls30 is in both, so the fragment adds
+    # 59 NEW entries and upgrades one.
+    #
+    # libwine declares 24 Recommends. Twelve are named above. Of the twelve that are
+    # not, these eight are the ones worth knowing about -- each is one `apt install` away
+    # at runtime and docs/using-wine.md says what you lose: gstreamer1.0-plugins-good,
+    # libvulkan1, libosmesa6, libsdl2-2.0-0, libodbc2, libv4l-0 -- plus libcups2 and
+    # libgssapi-krb5-2, which are ALREADY in the base image and so need nothing.
+    #
+    # The remaining four -- libdbus-1-3, libgl1-mesa-dri, libkrb5-3, libxfixes3 -- are
+    # also already present, which is why nothing breaks without naming them. Counted
+    # here so this reads as the complete ledger it claims to be: 12 + 8 + 4 = 24.
+    #
+    # NEVER add ttf-mscorefonts-installer, which libwine Suggests: it is non-free and
+    # downloads from a third party during postinst, turning an offline, auditable bundle
+    # into a network-dependent one carrying a EULA.
+    packages:
+      - wine
+      - wine32
+      - libwine
+      - wine32-preloader
+      - fonts-wine
+      # present already -- free, and they document what Wine reaches for
+      - libgl1
+      - libgnutls30
+      - libxcomposite1
+      - libxcursor1
+      - libxi6
+      - libxinerama1
+      - libxrandr2
+      - libxrender1
+      - libxxf86vm1
+      # absent -- these are the two Recommends that cost bytes, and both are worth it:
+      # without fonts-liberation Windows apps fall back to bitmap fonts, and without
+      # libasound2-plugins Wine's ALSA output cannot reach PulseAudio.
+      - fonts-liberation
+      - libasound2-plugins
+    apt:
+      # Slax's own 01-core sources.list already points at bookworm main -- verified, it
+      # carries `main contrib non-free non-free-firmware` for bookworm, -security and
+      # -updates. No extra apt source, no third-party key, no suite mixing.
+      #
+      # update: true because the stacked root's package index is from October 2023 and
+      # covers only bookworm-security. (NOT because of BUNDLE_EXCLUDE: that rule --
+      # apply.py:2381, ^var/lib/(apt|slackpkg) -- governs bundles slax-kitchen BUILDS,
+      # and this stack is five upstream bundles it never built. 01-core.sb ships 15
+      # var/lib/apt/lists entries. The flag is right; the old reason was not.)
+      #
+      # Both keys below restate engine defaults (apply.py:2630, :2635). Kept explicit
+      # because an apt invocation that silently changed either would change what ships.
+      update: true
+      no_recommends: true
