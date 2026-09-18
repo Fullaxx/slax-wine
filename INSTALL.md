@@ -51,7 +51,7 @@ later. Everything else follows from it.
 > x86-64 EFI application — and no `bootia32.efi`, on every one of its images including the 32-bit
 > ones. A handful of older Atom tablets and netbooks have 32-bit UEFI with no legacy/CSM option, and
 > those machines have no supported route: not FAT32, not ext4, not `dd`. Upstream documents this in
-> [uefi-usb-hdd](https://github.com/Fullaxx/slax-kitchen/blob/8adfca6/docs/20-boot-sequence/uefi-usb-hdd.md).
+> [uefi-usb-hdd](https://github.com/Fullaxx/slax-kitchen/blob/337f7e7/docs/20-boot-sequence/uefi-usb-hdd.md).
 > Everything below about "UEFI" means 64-bit UEFI firmware, which is what almost everything has.
 
 > **Persistence on ext4 has now been observed.** Two boots of a slax-wine image on one ext4 perch
@@ -266,8 +266,8 @@ there in your clone.
 
 | you want | read |
 |---|---|
-| every persistence option, session handling, container internals | [persistence-perch](https://github.com/Fullaxx/slax-kitchen/blob/8adfca6/docs/05-using-slax/persistence-perch.md) |
-| all three USB routes and what `bootinst` does | [install-to-usb](https://github.com/Fullaxx/slax-kitchen/blob/8adfca6/docs/05-using-slax/install-to-usb.md) |
-| disk installs, chainloading, booting an ISO file directly | [install-to-harddisk](https://github.com/Fullaxx/slax-kitchen/blob/8adfca6/docs/05-using-slax/install-to-harddisk.md) |
-| boot parameters you can type at the menu | [boot-parameters](https://github.com/Fullaxx/slax-kitchen/blob/8adfca6/docs/20-boot-sequence/boot-parameters.md) |
+| every persistence option, session handling, container internals | [persistence-perch](https://github.com/Fullaxx/slax-kitchen/blob/337f7e7/docs/05-using-slax/persistence-perch.md) |
+| all three USB routes and what `bootinst` does | [install-to-usb](https://github.com/Fullaxx/slax-kitchen/blob/337f7e7/docs/05-using-slax/install-to-usb.md) |
+| disk installs, chainloading, booting an ISO file directly | [install-to-harddisk](https://github.com/Fullaxx/slax-kitchen/blob/337f7e7/docs/05-using-slax/install-to-harddisk.md) |
+| boot parameters you can type at the menu | [boot-parameters](https://github.com/Fullaxx/slax-kitchen/blob/337f7e7/docs/20-boot-sequence/boot-parameters.md) |
 | what is in this image, and Wine's first run | [using-wine](docs/using-wine.md) |

@@ -16,8 +16,9 @@ build.env          version + base identity -- the single source of truth
 profiles/          three: -bios and -uefi ship, -test is built to be asserted against
 recipes/available/ four recipes
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
-ci/                twelve gates; seven copied verbatim, four adapted, one ours
-tests/unit/        one test, adapted: the .desktop trap that once cost both launchers
+ci/                twelve gates; six copied verbatim, five adapted, one ours
+tests/unit/        two tests: the .desktop trap that once cost both launchers (adapted), and the
+                   gate library that let a .exe and then a submodule bump through (verbatim)
 vendor/            the engine, pinned by commit
 ```
 

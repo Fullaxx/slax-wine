@@ -70,7 +70,7 @@ roughly twice the wall clock; use `--bios` while iterating.
 | flag | effect |
 |---|---|
 | `--bios` / `--uefi` / `--both` | which image(s). **`--both` is the default** — they are the release pair |
-| `--test` | build `slax-wine-test-<ver>.iso` instead: the same recipes plus `serial-console`, `testkit` and `uefi-bootable`, so both firmware paths can be driven from one image. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against. **Cannot be built at the `8adfca6` pin** — see [UPSTREAM.md](UPSTREAM.md) |
+| `--test` | build `slax-wine-test-<ver>.iso` instead: the same recipes plus `serial-console`, `testkit` and `uefi-bootable`, so both firmware paths can be driven from one image. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against. |
 | `--keep-work` | leave `work/<variant>/` in place for inspection |
 | `--no-fetch` | skip *downloading* the base ISO (it is still verified). The application payload is fetched regardless if it is missing or its hash does not match |
 | `ISO_DIR=…` | reuse base ISOs you already have |
@@ -139,5 +139,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`8adfca6`](https://github.com/Fullaxx/slax-kitchen/tree/8adfca6). Bumping the
+The engine is pinned at [`337f7e7`](https://github.com/Fullaxx/slax-kitchen/tree/337f7e7). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

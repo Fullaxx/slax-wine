@@ -122,12 +122,14 @@ missing outright, in the document that exists to be the accurate register.
 
 ### Open upstream, and what each means here
 
-Neither is ours. Both were assessed against this image at the `bcd4f00` bump rather than taken on
-trust, because "open upstream" is not the same as "affects us".
+Neither was ours. Both were assessed against this image at the `bcd4f00` bump rather than taken on
+trust, because "open upstream" is not the same as "affects us". **14 has since closed** — by
+`5e7825f` (its own `Closes` trailer; the merge commit `c455733` carries none), taken at the
+`337f7e7` bump. Only 15 is still open.
 
 | # | Issue | Impact on slax-wine |
 |---|---|---|
-| [14](https://github.com/Fullaxx/slax-kitchen/issues/14) | `bundle.packages` tracks additions and never looks at what left | **None on this build, measured.** `20-wine.sb` is a `bundle.packages` bundle, so this is our exposure: a package apt removes to resolve a conflict is recorded as gone while its files stay visible from the lower bundle. Counted `install ok installed` in `04-apps.sb` (567) against `98-dpkg-db.sb` (626) — **nothing present before is missing after**. +59 is the `libgnutls30`-upgrade arithmetic. Re-measure after any recipe change; it is a property of the build, not of the recipe. |
+| [14](https://github.com/Fullaxx/slax-kitchen/issues/14) | `bundle.packages` tracks additions and never looks at what left | **Closed by `5e7825f`** — apt now runs with `--no-remove`, so the engine *refuses* the case this row used to measure by hand. Historical measurement, still the evidence we held before the fix: **none on this build.** `20-wine.sb` is a `bundle.packages` bundle, so this is our exposure: a package apt removes to resolve a conflict is recorded as gone while its files stay visible from the lower bundle. Counted `install ok installed` in `04-apps.sb` (567) against `98-dpkg-db.sb` (626) — **nothing present before is missing after**. +59 is the `libgnutls30`-upgrade arithmetic. Re-measure after any recipe change; it is a property of the build, not of the recipe. |
 | [15](https://github.com/Fullaxx/slax-kitchen/issues/15) | persistence boot 2 wedges on both Slackware targets, passes on both Debian | **None — we are Debian.** Worth reading the other way round: it is the bug their new persistence harness found on its first four-target sweep, which is the reason to trust the harness on *our* target. |
 
 | Advisory | Status |
@@ -217,7 +219,15 @@ The bar in this document is only worth having if it is checked, so:
    **2**, matching the stock row. It is **3** — stock `05-chromium` carries `libevent-2.1-7`, a
    current chromium does not, so Firefox owes a different closure. The bug was real; the number was
    not. Naming an expected value is still right; asserting it without deriving it is not.
-3. **`gh issue view` is broken on gh 2.45.0 against this repo** — it requests deprecated
+3. **Both fixes we suggested in #20 were worse than the bug**, and upstream said why before
+   rejecting them. Recording `vars` through `in_image()` strips the leading slash, and the
+   `/root/` alternative needs one — so `/root/code/x` becomes `root/code/x` and slips past: it
+   would have blinded the guard to the commonest leak. "Flag only paths that exist on the builder"
+   fails both ways: `/etc/hostname` exists on the builder *and* is a legitimate image path, while a
+   leak naming a path the builder lacks would pass. We had even written that it was worth attacking
+   before filing, and then filed the suggestions un-attacked. Their fix keeps every host-ish
+   *shape* except bare `^/`, plus the paths this build actually used; see the `337f7e7` section.
+4. **`gh issue view` is broken on gh 2.45.0 against this repo** — it requests deprecated
    `projectCards` and prints the deprecation notice where the body should be. We once reported
    "verifying rendering" from that output; only the `--json body` check was real. Use
    `gh api repos/OWNER/REPO/issues/N`.
@@ -370,7 +380,7 @@ source-attribution table is a licence-adjacent change and deserves its own pass,
 a correctness fix. Run it against both shipped ISOs and decide then. Recorded here so the deferral
 reads as a decision rather than an oversight.
 
-## Filed at the `8adfca6` bump — [#22](https://github.com/Fullaxx/slax-kitchen/issues/22), the #19 fix blocks every submodule bump
+## Filed at the `8adfca6` bump — [#22](https://github.com/Fullaxx/slax-kitchen/issues/22), the #19 fix blocks every submodule bump · **closed by `337f7e7`**
 
 Second finding, and this one is a consequence of a fix we ourselves asked for. `file_size` used to
 answer `|| echo 0` on both branches; closing that turned a fail-open into a fail-closed, which is
@@ -400,18 +410,22 @@ was checked before it reached the issue. What upstream *does* do is anticipate t
 `kitchen sources --fetch` looks for "the tree of the project that vendors it, found as the git
 superproject" (`docs/90-reference/cli.md:366`).)
 
-**Fixed locally rather than worked around**, and `ci/lib.sh` is now *Adapted from* rather than
-*Copied verbatim* with the one difference stated — the convention exists for this, and gate 96 §9
-would otherwise refuse the file. The mode is read from the index and only `160000` takes the branch;
-`0` is the honest answer for a gitlink, which is a pointer in a tree object and contributes no file
-content here. Proved narrow: the submodule measures `0`, a real staged file still measures its true
-size, an oversized file still trips `TOO_BIG`, and a planted `payload.exe` still trips
-`FORBIDDEN_EXT`.
+**We carried a local fix for one bump** — `ci/lib.sh` went *Adapted from* for the `8adfca6` pin,
+reading the mode from the index and exempting only `160000`, proved narrow against a real file, an
+oversized file and a planted `payload.exe`.
 
-The suggested upstream fix is the same shape: skip mode `160000` in `file_size`, with a unit test —
-there is currently none over `file_size` either.
+**Resolved at `337f7e7`, and the local fix is retired.** Upstream's gitlink branch is the same
+logic, placed the same way — the two copies' executable lines differed *only* in a second fix of
+theirs — so `ci/lib.sh` is back to *Copied verbatim* and gate 96 §9 enforces it again.
 
-## Filed at the `8adfca6` bump — [#20](https://github.com/Fullaxx/slax-kitchen/issues/20), the provenance guard refuses in-image paths
+That second fix is the more instructive half. Writing the first test ever over `file_size`
+(`tests/unit/test_ci_lib.py`) found that the `#19` probe `stat`ed `"$REPO_ROOT/ci/lib.sh"`, so
+sourcing the library anywhere that file is absent refused to run. **It was latent in our copy too**
+— our hook always runs from our own root, where the file exists — and the new test proved it: run
+against our 8adfca6-era copy it failed three checks, each with `stat -c%s does not work here`;
+against the re-copied library it passes. The probe now targets `/dev/null`.
+
+## Filed at the `8adfca6` bump — [#20](https://github.com/Fullaxx/slax-kitchen/issues/20), the provenance guard refuses in-image paths · **closed by `ba79ce0`**
 
 **This blocks our test image, and it blocks one of upstream's own profiles.** Both shipped images
 build clean; `profiles/slax-wine-test.yaml` cannot complete `kitchen apply` at this pin.
@@ -450,12 +464,32 @@ locations. Worth attacking before filing, per this document's own bar: the fix i
 `vars` subtree through `in_image()`, or flagging only paths that exist on the build machine outside
 the work tree, both look better — and either wants the unit test that is missing.
 
+**Both of those suggestions were wrong**, and we said "worth attacking before filing" and then did
+not attack them. See *What they corrected in our reports*, item 3.
+
+**Resolved at `ba79ce0`.** `vars` get their own rule, `HOSTISH_SHAPE`: every host-ish shape
+(`/home/`, `/root/`, `/Users/`, `~/`, `\\`) *except* bare `^/`, plus the paths this build actually
+used — its work tree, the kitchen checkout, and `$HOME` unless that is `/`, `/root`, `/home` or
+`/Users`.
+Those are facts about this build rather than guesses about somebody's filesystem. `HOSTISH` itself
+is untouched, because `ci/release-verify.py` and `ci/checks/97-tier-c-ledger.sh` rely on it, and an
+absolute `iso_name` really is a leak.
+Provenance is now written *before* the journal, so a refusal no longer leaves a recipe journaled but
+unrecorded. And the exemption is applied at **both** check sites: fixing only `append_recipe` left
+the sidecar failing at pack time, which only a real build showed.
+
+**Their stated gap does not reach us.** A builder under some unusual prefix — their example is
+`/opt/somebuilder/artifacts` — is caught by neither half unless it is this build's own tree. Ours
+build under `/root/…` in the container and would run under `/home/…` on `bacon`; both are shapes.
+Checked in memory against the new code before bumping: all five of our overrides pass (`drop` ×3,
+`marker`, `report`), while `/home/…`, `~/…` and a path under our work tree are still flagged.
+
 **What it costs us right now:** the shipped pair is unaffected and rebuilt clean at this pin, with
 the new explicit `drop:` var recorded in the sidecar without complaint. But every boot route we run
-drives `slax-wine-test-*.iso`, so re-running them has to wait on this — which is why the bump sits
-on `bump/slax-kitchen-8adfca6` rather than on `master`.
+drives `slax-wine-test-*.iso`, so re-running them has to wait on this — which is why the bump sat
+on a branch rather than on `master` until `ba79ce0` landed.
 
-## In flight upstream, noticed while filing at this bump
+## In flight upstream at the `8adfca6` bump · **merged, taken at `337f7e7`**
 
 **[PR #21](https://github.com/Fullaxx/slax-kitchen/pull/21) `Closes #14`** — *"apt may not remove a
 package, and what leaves is now counted"*, opened while this bump was being prepared. Issue 14 is in
@@ -466,6 +500,110 @@ Nothing here triggers it today — `wine` installs sixteen packages and the buil
 reports `3836 added, 105 modified` with no removals — but it is the kind of change that turns a
 silent accommodation into a hard failure, which is exactly what the `#19` fix did to our submodule
 (`#22` above). Worth re-reading before the next pin bump rather than discovering at build time.
+
+**That paragraph's conclusion was right and its evidence was not.** The delta line cannot show a
+removal — never counting what left was the whole of `#14` — so "the delta line reports no removals"
+proved nothing. The conclusion was held up by two other things: the register's own measurement
+(`install ok installed` 567 in `04-apps.sb`, 626 in the merged database, nothing present before
+missing after), and, re-checked before this bump, the `20-wine` dpkg fragment — all 60 stanzas
+`install ok installed`, no `deinstall`, which is the shape an apt-driven removal leaves.
+
+**Measured by the engine itself at `337f7e7`.** `5e7825f` (PR #21) landed, and our build now
+answers the question three independent ways, all in the `wine` step:
+
+- apt ran with `--no-remove` and did **not** refuse — no `apt wanted to REMOVE`
+- the delta line carries no `, N vanished` suffix. `v_bundle_packages` appends it only when files
+  present before are absent after (`apply.py:3204`), so **zero vanished**
+- the sidecar's `wine` step has no `uninstalled` key. The verb records it (`apply.py:3252`) and
+  `prov()` drops `None`, so an absent key is an **empty** before-to-after difference
+
+## Adopted at the `337f7e7` bump
+
+Four commits, `8adfca6..337f7e7`, carrying three `Closes` trailers: **#14** by `5e7825f` (merged as
+PR #21), **#20** by `ba79ce0`, **#22** by `337f7e7`. Upstream's own CI on `337f7e7` was green before
+we took it — including `build debian-32bit-12.2.0`, our exact base, and their TCG boot test.
+
+**What moved in our tree.** Of fourteen copied files only `ci/lib.sh` changed upstream, and it is
+back to *Copied verbatim* (see #22 above). The other thirteen were re-cited after checking each
+source had zero upstream commits in the range, so the new citations are true rather than
+refreshed. Gate 96 did the finding: §7 named all fourteen stale headers and §8 all eight prose and
+permalink pins — `CHANGELOG.md`, `docs/build.md` and five links in `INSTALL.md`. §8's own message
+printed those paths absolute, `/root/code/…`, which is a build-machine path in a gate about
+citations; it is repo-relative now.
+
+**Adopted: `tests/unit/test_ci_lib.py`**, verbatim, run by gate 80. It is the first test over the
+code that let a `.exe` through (#19) and then refused every submodule bump (#22), and before its
+header was written it had already found something: run against our 8adfca6-era `ci/lib.sh` it failed
+three checks on the latent `stat` probe, and against the re-copied library it passes. It came with a
+hazard of its own — see the next section — handled in our runner, not by editing the test.
+
+**Not adopted:** `test_provenance.py` and `test_apply.py` test engine code we do not copy. They were
+run instead, with the other changed test, inside the pinned submodule (`python3 -B`, so no bytecode
+lands in `vendor/`): all three pass.
+
+**The build, at `337f7e7`:**
+
+| image | steps | assertions | bytes | modules |
+|---|---|---|---|---|
+| bios | 7 | 21 / 21 | 531,935,232 | 9 |
+| uefi | 8 | 21 / 21 | 538,425,344 | 9 |
+| test | 10 | 21 / 21 | 538,437,632 | 9 |
+
+All three sizes match the pre-bump images to the byte. The test image is the one #20 had blocked:
+`uefi-bootable` now runs after `testkit`, where the guard used to kill the apply. Its sidecar is
+the one that exercises the host-ish guard in both directions, and it does: the only two absolute
+paths in it are `testkit`'s in-image vars, kept with their slash, and it contains no build-machine
+path. The shipped sidecars contain no absolute path of any kind — in-image paths go through
+`in_image()` — so for them "no leak" is true but proves little, and is recorded as such.
+
+**The boot routes, re-run on `bacon` under KVM** — whose own checkout had meanwhile moved to
+`337f7e7`, so the harness is the pinned engine's rather than an equivalent one. The ISO was checked
+by sha256 after transfer, since it is byte-for-byte the same size as the old one:
+
+| route | result |
+|---|---|
+| `--kernel` (control) | `Live Kit done`; the harness's cmdline carries `automount` — **the probe can fire** |
+| `--bios` | `Live Kit done` in 6 s via isolinux's serial entry; **no `automount`** |
+| `--uefi` | `Live Kit done` in 6 s via GRUB under OVMF; **no `automount`** |
+| `--persistence` | boot 1 `absent, creating` + `synced`; boot 2 `present, written 2026-09-18T18:07:47Z` — the timestamp boot 1 wrote. 5 s per boot |
+
+Evidence is in `out/boot-tests/`; the `bcd4f00`-era set was kept beside it as
+`out/boot-tests-bcd4f00/`, on `bacon` too.
+
+## Found at the `337f7e7` bump — a unit test that writes into the commit running it
+
+**Not yet filed.** Found while adopting `tests/unit/test_ci_lib.py`, the test that came with the
+`#22` fix, and it is a property of that test running inside a hook, not of the fix.
+
+`80-unit.sh` runs at `pre-commit`, and git exports its repository to hooks. `githooks(5)` is
+explicit about the consequence: *"if your hook needs to invoke Git commands in a foreign repository
+... it should clear these environment variables."* `test_ci_lib.py` builds throwaway repositories
+and runs `git add`, `git commit` and `git submodule add` in them, and clears nothing. Measured in a
+throwaway outer repository whose hook ran the test, then again through **our real gate 80**:
+
+| commit mode | what the hook receives | what happened |
+|---|---|---|
+| `git commit` | `GIT_INDEX_FILE=.git/index` — **relative** | harmless: it resolves inside each fixture. Test passes, commit lands |
+| `git commit -a`, `git commit -- <path>` | `GIT_INDEX_FILE=` the outer commit's `index.lock` / `next-index-*.lock` — **absolute** | the fixture's `git add -A` rewrote the outer commit's pending index — dropping the commit's own files, adding a 3 MiB `big.bin` and a `payload.exe` whose blobs exist only in the fixture. The commit died: `error: invalid object ... Error building trees`. **Gate 80 reported success** |
+| a linked worktree | `GIT_DIR=<repo>/.git/worktrees/<name>` | fixture commits (`one`, `seed`) landed **on the outer branch**, and each fired the outer pre-commit hook, which ran the test again: **unbounded recursion** — 62 test processes, then 158, and 2,956 fixture directories within a few minutes, before it was stopped |
+
+Our real repository was never in the environment chain — every run used a throwaway outer repo
+under `work/` — and was checked afterwards: same HEAD, same branches, same index.
+
+**It is not confined to this test.** Four of upstream's unit tests invoke git — `test_ci_lib.py`,
+`test_release.py`, `test_sources.py`, `test_tier_c_guard.py` — and none clears git's environment.
+Only `test_ci_lib.py` was run under a hook here; the other three are an inference from their
+source, stated as one.
+
+**Fixed locally, at the runner rather than in the test.** Our `80-unit.sh` now runs each test in a
+subshell with git's repository-local variables unset — the list comes from git itself, `git
+rev-parse --local-env-vars`, not a copy of it — and fails closed if git will not produce the list.
+One place covers every test, including ones not yet written, and keeps upstream's tests verbatim.
+The gate's own environment is untouched, because other gates legitimately need `GIT_INDEX_FILE` to
+see what a partial commit is about to record. Proved in all three modes: `commit -a`, a partial
+commit and a worktree commit each land with only the outer repo's own file in the tree, the hook
+fires exactly once, and no fixture commit reaches the outer branch. A deliberately broken test
+still fails the gate through the subshell.
 
 ## Two findings were dropped before filing, in round one
 

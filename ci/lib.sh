@@ -1,8 +1,6 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 8adfca617cecae8681b719fa7b3684b172726131 (ci/lib.sh). ONE difference, marked LOCAL below:
-# file_size answers 0 for a gitlink instead of MISSING. Upstream has no submodule, so its
-# copy cannot hit the case; this repo vendors the engine as one, which is what upstream's
-# own docs tell a fork to do. Re-adapt on a submodule bump; see docs/UPSTREAM.md.
+# Copied verbatim from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (ci/lib.sh).
+# MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # Shared helpers for slax-kitchen checks.
 # Sourced by ci/run-checks.sh and by every ci/checks/*.sh script.
 #
@@ -90,10 +88,15 @@ file_content() {
 # big, and the gate reported ok. A check which cannot fail is worse than no check -- so when
 # stat will not answer, refuse to run rather than measure zero. Issue #19.
 #
-# Probed ONCE, against this library itself, which always exists: a failure then means "stat
-# cannot do this" and never "that path is missing". Per-file probing would print a thousand
-# FATALs where one is readable.
-_sz=$(stat -c%s "$REPO_ROOT/ci/lib.sh" 2>/dev/null) || _sz=""
+# Probed ONCE, against /dev/null, which exists on every machine this can run on: a failure
+# then means "stat cannot do this" and never "that path is missing". Per-file probing would
+# print a thousand FATALs where one is readable.
+#
+# NOT against a file inside the repo, which is what this did first: it stat'ed
+# "$REPO_ROOT/ci/lib.sh" and so reported "stat does not work here" whenever the library was
+# sourced somewhere that file is not -- a fixture repo, a vendored copy. Found by the first
+# test ever written against this function.
+_sz=$(stat -c%s /dev/null 2>/dev/null) || _sz=""
 case "$_sz" in
     ''|*[!0-9]*)
         printf '%s  FATAL%s ci/lib.sh: stat -c%%s does not work here\n' "$C_RED" "$C_OFF" >&2
@@ -111,26 +114,27 @@ unset _sz
 # `-gt` gets a shell error rather than a silent false, so a new caller cannot repeat the
 # mistake by accident. Callers that legitimately tolerate an absent file test for it.
 file_size() {
+    # A SUBMODULE IS NOT A BLOB, and MISSING was the wrong answer for one. `git rev-parse`
+    # SUCCEEDS on a gitlink -- it returns the submodule's own commit -- and `git cat-file`
+    # then fails, because that object lives in the submodule's store and not in the
+    # superproject. So every commit staging a submodule pointer failed its own pre-commit
+    # hook, this repository's vendor/linux-live included, from the next pin bump onwards.
+    #
+    # 0 is honest here rather than a re-opened fail-open: a gitlink is a pointer in a tree
+    # object and contributes no file content to the superproject, so there is nothing for a
+    # size limit to be about. The mode is READ from the index rather than inferred from the
+    # rev-parse failure, which keeps the branch narrow -- a real unreadable blob still
+    # answers MISSING and is still refused. Issue #22, surfaced by the #19 fix: the old
+    # `|| echo 0` answered 0 here and the case was invisible.
     if [ "$KITCHEN_SCOPE" = "staged" ]; then
-        # LOCAL CHANGE. A SUBMODULE IS NOT A BLOB. `git rev-parse :vendor/slax-kitchen`
-        # happily returns an oid -- the submodule's own COMMIT -- and `git cat-file -s`
-        # then fails, because that object lives in the submodule's object store and not in
-        # this repository. The result was MISSING, which 00-no-binaries.sh now reports as
-        # UNMEASURED rather than swallowing, so EVERY submodule bump failed its own
-        # pre-commit hook. That is not the #19 fix misbehaving: before it, `|| echo 0`
-        # answered 0 here and the case was invisible. Turning a fail-open into a
-        # fail-closed is what exposed it.
-        #
-        # 0 is the honest answer, not a re-opened hole: a gitlink is a 20-byte pointer in
-        # the tree object and contributes no file content to this repository, so there is
-        # nothing for a size limit to be about. The mode is read from the index rather
-        # than assumed, and only mode 160000 takes this path.
         case "$(git ls-files -s -- "$1" 2>/dev/null | cut -d' ' -f1)" in
             160000) echo 0; return 0 ;;
         esac
         _oid=$(git rev-parse ":$1" 2>/dev/null) || { echo MISSING; return 0; }
         git cat-file -s "$_oid" 2>/dev/null || echo MISSING
     else
+        # In tree scope a submodule is an ordinary directory on disk; `stat -c%s` answers
+        # for it and the gate's is_forbidden_dir/ext rules never match a directory anyway.
         stat -c%s "$REPO_ROOT/$1" 2>/dev/null || echo MISSING
     fi
 }

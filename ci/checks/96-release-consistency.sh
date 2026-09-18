@@ -316,7 +316,10 @@ else
         got=${hit##*/}
         case "$PIN" in
             "$got"*) : ;;
-            *) fail "${hit%%:*}: permalink cites slax-kitchen @ $got but the pin is $short... (${hit#*:} -- point it at the engine this release ships)" ;;
+            # grep -r was handed "$REPO_ROOT", so ${hit%%:*} is an ABSOLUTE path; strip it
+            # to repo-relative like every other message in this gate. (The first version
+            # printed /root/code/... -- a build-machine path in a gate about citations.)
+            *) fail "$(printf '%s' "${hit%%:*}" | sed "s|^$REPO_ROOT/||"): permalink cites slax-kitchen @ $got but the pin is $short... (${hit#*:} -- point it at the engine this release ships)" ;;
         esac
     done < "$TMP/links"
 
