@@ -121,9 +121,9 @@ retired row stays, so the next reader can see what we once carried and why it we
 
 | Issue | File | What it does here | Status |
 |---|---|---|---|
-| [#23](https://github.com/Fullaxx/slax-kitchen/issues/23) | `ci/checks/80-unit.sh` | runs each unit test with git's repository-local variables cleared | active since `337f7e7` |
+| [#23](https://github.com/Fullaxx/slax-kitchen/issues/23) | `ci/checks/80-unit.sh` | ran each unit test with git's repository-local variables cleared | retired at `3a44e8a` |
 | [#1](https://github.com/Fullaxx/slax-kitchen/issues/1) | `recipes/available/wine.yaml` | names the `from:` stack instead of taking the default | kept after fix — belt-and-braces, [DECISIONS.md](DECISIONS.md) D-3 |
-| [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where the copy at `8adfca6` answered `MISSING` | retired at `337f7e7` |
+| [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where upstream's at `8adfca6` answered `MISSING` | retired at `337f7e7` |
 
 ---
 
@@ -600,7 +600,7 @@ by sha256 after transfer, since it is byte-for-byte the same size as the old one
 Evidence is in `out/boot-tests/`; the `bcd4f00`-era set was kept beside it as
 `out/boot-tests-bcd4f00/`, on `bacon` too.
 
-## Filed at the `337f7e7` bump — [#23](https://github.com/Fullaxx/slax-kitchen/issues/23), a unit test that writes into the commit running it
+## Filed at the `337f7e7` bump — [#23](https://github.com/Fullaxx/slax-kitchen/issues/23), a unit test that writes into the commit running it · **closed by `3a44e8a`**
 
 Found while adopting `tests/unit/test_ci_lib.py`, the test that came with the `#22` fix, and it is
 a property of that test running inside a hook, not of the fix. Filed as #23 after one more claim
@@ -641,6 +641,46 @@ see what a partial commit is about to record. Proved in all three modes: `commit
 commit and a worktree commit each land with only the outer repo's own file in the tree, the hook
 fires exactly once, and no fixture commit reaches the outer branch. A deliberately broken test
 still fails the gate through the subshell.
+
+**Closed by `3a44e8a`, with the same mechanism** — cleared in the gate rather than in the tests,
+names from `git rev-parse --local-env-vars`, refuse when git answers nothing — so our workaround
+went at the next bump. Their commit settles the inference above: all four tests do build throwaway
+repositories, and two of them had been measuring the wrong repository under a hook, and passing.
+
+## Adopted at the `3a44e8a` bump
+
+Two commits, `337f7e7..3a44e8a`, carrying one `Closes` trailer: **#23** by `3a44e8a`. The other,
+`d877143`, is a comment and a doc line — `lib/provenance.py` now says its path-shape guard is the
+belt and braces rather than the thing doing the work, and a machine's name left
+`docs/60-testing/qemu.md` — so the engine that builds our images did not change. Upstream's CI on
+`3a44e8a` was green before we took it, including `build debian-32bit-12.2.0` and their TCG boot
+test.
+
+**The ledger's first live test.** Staging the new pin made gate 96 fail in three sections at once:
+§7 on all fifteen copied-file headers, §8 on all eight prose and permalink pins, and the new §10 on
+the one row it exists for — *"ci/checks/80-unit.sh: works around slax-kitchen#23, which 3a44e8a
+closed and the pin (3a44e8a) contains"*. That is the bump noticing a fixed workaround by itself,
+which is the whole reason [Local workarounds](#local-workarounds) exists.
+
+**What moved in our tree.** Of fifteen copied files only `ci/checks/80-unit.sh` changed upstream.
+It is re-copied and still *Adapted*, now with one difference, the `# desc:` line. Our block went,
+and with it a `# shellcheck disable=SC2086` that was never needed: gate 30 runs `-S warning`, and
+SC2086 is only `info`. The other fourteen were re-cited after checking each source had zero upstream
+commits in the range.
+
+**Adopted: `tests/unit/test_unit_gate.py`**, verbatim, run by gate 80. It drives the gate against a
+throwaway repository poisoned the way a linked-worktree commit really is, and asserts on the victim
+— which is the regression test for the scrub we had meant to write ourselves. Tested before it was
+trusted: against our `337f7e7`-era gate it failed exactly one check, *"...and what it was
+protecting"*, because our refusal message lacked the words *"index in reach"*; against the re-copy
+it passes, and it passes inside the pinned submodule too (`python3 -B`, so no bytecode lands in
+`vendor/`).
+
+**One flaw in it, measured rather than read.** The probe it plants calls `mkdtemp(prefix="probe-")`
+and never removes the directory, so every run leaves two throwaway repositories of 184 KiB in
+`/tmp` — and gate 80 runs at every commit and every push. Thirty-two of exactly that shape were
+already in `/tmp` here before our first run, all dated 18:52–19:00 on 2026-09-18, the window in
+which `3a44e8a` was written. Not a reason to adapt the test; a small thing to report. Not filed.
 
 ## Two findings were dropped before filing, in round one
 

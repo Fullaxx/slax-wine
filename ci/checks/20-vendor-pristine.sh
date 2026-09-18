@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: vendor/slax-kitchen must stay byte-identical to its pinned commit.
 #
-# Adapted from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (ci/checks/20-vendor-pristine.sh), which guards
+# Adapted from slax-kitchen @ 3a44e8a852f750fc4cb7f7743c6544b63eb2b54e (ci/checks/20-vendor-pristine.sh), which guards
 # its own vendor/linux-live the same way.
 #
 # slax-kitchen is the engine this project is built on, pinned by commit. Only the

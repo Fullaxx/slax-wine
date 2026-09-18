@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (ci/checks/90-doc-coverage.sh).
+# Adapted from slax-kitchen @ 3a44e8a852f750fc4cb7f7743c6544b63eb2b54e (ci/checks/90-doc-coverage.sh).
 #
 # NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
 # recipes here that lookup table is more machinery than the drift it prevents -- left

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Adapted from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (tests/unit/test_desktop_entries.py).
+# Adapted from slax-kitchen @ 3a44e8a852f750fc4cb7f7743c6544b63eb2b54e (tests/unit/test_desktop_entries.py).
 # MIT, same author. ONE local change, marked LOCAL below: the fenced-block reader is
 # imported from the VENDORED copy rather than a copy of our own, because this repo has
 # no ci/doc-yaml.py. See docs/UPSTREAM.md. Re-adapt on a submodule bump.

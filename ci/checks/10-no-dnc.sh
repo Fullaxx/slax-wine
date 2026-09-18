@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (ci/checks/10-no-dnc.sh).
+# Copied verbatim from slax-kitchen @ 3a44e8a852f750fc4cb7f7743c6544b63eb2b54e (ci/checks/10-no-dnc.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Reject *.DNC.md working files.
