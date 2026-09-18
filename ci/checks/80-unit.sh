@@ -4,8 +4,8 @@
 #
 #   Upstream's reads "the recipe engine's pure logic", which this repo does not have: it owns
 #   no engine code (docs/ARCHITECTURE.md). tests/unit/ here holds the recipe-content check
-#   and two tests of the gates themselves, and the desc line is printed on every gate run, so
-#   it should say what it actually checks.
+#   and three tests of the gates themselves, and the desc line is printed on every gate run,
+#   so it should say what it actually checks.
 #
 #   There used to be a second difference: our workaround for slax-kitchen #23, which cleared
 #   git's repository-local variables around each test. Upstream fixed #23 the same way in

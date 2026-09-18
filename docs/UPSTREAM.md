@@ -732,6 +732,21 @@ else*. This page named the machine that runs our KVM boot routes three times; it
 host". The name told a reader nothing they could use, and the rest of this repository already
 describes what a host must have rather than which host it was.
 
+**The same class of bug as #23, in our own gate 96.** Found while writing §10, which reads the
+submodule's history with the same bare `git -C vendor/slax-kitchen` that §7 used for the pin. That
+call can answer for *this* repository. A commit from a linked worktree exports `GIT_DIR`, which
+beats `-C`: measured with a real worktree and the real hook, the commit was refused, with every
+citation "wrong" against a pin that was our own HEAD. An uninitialised submodule is an empty
+directory, so discovery walks up to us: the *not checked out* branch could never fire.
+
+The fix follows the shape of upstream's own for #23. The submodule's git runs with git's
+repository-local variables cleared, and only once the repository git finds is the submodule's own;
+it fails closed when git will not name the variables. `tests/unit/test_release_consistency.py`
+drives all three cases. It failed six checks against the unfixed gate and passes against the fixed
+one. Then the same worktree commit went through the real hook with all twelve gates green, and
+landed on its own branch with its full tree. That also shows upstream's #23 fix working end to end
+here, in the mode that did the most damage.
+
 ## Two findings were dropped before filing, in round one
 
 Recording them because disproved candidates are worth as much as findings.

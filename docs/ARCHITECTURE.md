@@ -17,9 +17,10 @@ profiles/          three: -bios and -uefi ship, -test is built to be asserted ag
 recipes/available/ four recipes
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
 ci/                twelve gates; seven copied verbatim, four adapted, one ours
-tests/unit/        three tests: the .desktop trap that once cost both launchers (adapted), the
-                   gate library that let a .exe and then a submodule bump through (verbatim), and
-                   gate 80 itself, which once let a test write into the commit running it (verbatim)
+tests/unit/        four tests: the .desktop trap that once cost both launchers (adapted), the
+                   gate library that let a .exe and then a submodule bump through (verbatim),
+                   gate 80 itself, which once let a test write into the commit running it
+                   (verbatim), and gate 96's pin read, which once answered for this repo (ours)
 vendor/            the engine, pinned by commit
 ```
 

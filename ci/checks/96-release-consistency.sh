@@ -265,12 +265,38 @@ fi
 # when it was written is how the rot it prevents gets back in through the side door.
 #
 # This is the invariant this gate's own `# desc:` line has always claimed to check.
+#
+# THE PIN IS READ FROM THE SUBMODULE AND NOWHERE ELSE. A bare `git -C vendor/slax-kitchen`
+# can answer for THIS repository instead, two ways, both measured:
+#
+#   a commit from a     git exports GIT_DIR to the hooks, and GIT_DIR beats -C. The pin read
+#   linked worktree     back as our own HEAD and sections 7 and 8 failed 24 times on a clean
+#                       tree, refusing the commit.
+#   an uninitialised    an empty directory, so discovery walks up and finds ours: `rev-parse
+#   submodule           HEAD` succeeded, the "not checked out" note below could never fire,
+#                       and every citation was compared with the wrong commit.
+#
+# So subgit() clears git's repository-local variables -- the names come from git, as in
+# 80-unit.sh, and in a subshell, because this gate's other git calls must KEEP them to see
+# the commit in progress -- and sub_ready() insists that the repository git then finds is
+# the submodule's own. Found while adding section 10, which reads the submodule's history
+# the same way; tests/unit/test_release_consistency.py drives both cases.
+_repo_env=$(git rev-parse --local-env-vars 2>/dev/null)
+subgit() { ( unset $_repo_env; git -C "$REPO_ROOT/vendor/slax-kitchen" "$@" ); }
+sub_ready() {
+    _subtop=$(subgit rev-parse --show-toplevel 2>/dev/null) || return 1
+    [ "$_subtop" = "$(cd "$REPO_ROOT/vendor/slax-kitchen" 2>/dev/null && pwd -P)" ]
+}
 if ! have git; then
     note "git not installed - provenance-header check skipped"
-elif ! git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse HEAD >/dev/null 2>&1; then
+elif [ -z "$_repo_env" ]; then
+    # Fail closed, as 80-unit.sh does: without the list the hook's repository stays in
+    # reach, and a pin read from there is a guess that looks like a measurement.
+    fail "git rev-parse --local-env-vars answered nothing, so the pin cannot be read from the submodule alone -- refusing to guess it"
+elif ! sub_ready; then
     note "vendor/slax-kitchen not checked out - provenance-header check skipped"
 else
-    PIN=$(git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse HEAD)
+    PIN=$(subgit rev-parse HEAD)
     : > "$TMP/hdr"
     for d in ci tests; do
         [ -d "$REPO_ROOT/$d" ] || continue
@@ -452,7 +478,7 @@ else
     if [ -n "${PIN:-}" ]; then                                                      # (c)
         while read -r n f st; do
             [ "$st" = active ] || continue
-            fix=$(git -C "$REPO_ROOT/vendor/slax-kitchen" log -E -i --format=%h \
+            fix=$(subgit log -E -i --format=%h \
                       --grep="^(closes|fixes|resolves) #$n([^0-9]|\$)" "$PIN" 2>/dev/null | tail -1)
             if [ -n "$fix" ]; then
                 fail "$f: works around slax-kitchen#$n, which $fix closed and the pin (${PIN%"${PIN#???????}"}) contains -- retire the workaround in this bump, or mark its row 'kept after fix' and say why"
