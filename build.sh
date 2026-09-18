@@ -193,8 +193,13 @@ build_variant() {
     # The uefi image genuinely HAS an EFI El Torito entry, so its absence must stop being
     # asserted -- and its presence must start being. Getting this wrong in either
     # direction is a check that cannot fail.
+    # `if`, not `[ ... ] && ...`. Under `set -e` an AND-OR list whose first command fails
+    # is ignored MID-script, but is fatal as the LAST command of a function -- verified in
+    # sh, dash and bash. Both of the `&&` forms this file used to have were safe only
+    # because something happened to follow them, which is a property of the line order
+    # rather than of the code. Two of these, so spell them out.
     uefi_flag=""
-    [ "$v" = uefi ] && uefi_flag="--expect-uefi"
+    if [ "$v" = uefi ]; then uefi_flag="--expect-uefi"; fi
     # shellcheck disable=SC2086
     python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$MAX_ISO_MIB" $uefi_flag \
         --require /slax/modules/20-wine.sb \
@@ -231,9 +236,17 @@ build_variant() {
                 "$(awk -v n="$sz" 'BEGIN{printf "%.1f", n/1048576}')" \
                 "$(unsquashfs -l "$f" 2>/dev/null | grep -c squashfs-root)"
         done
-        [ -f "$work/iso/boot/efi.img" ] && \
+        if [ -f "$work/iso/boot/efi.img" ]; then
             printf '%-18s %10s bytes  (GRUB ESP, not a bundle)\n' "boot/efi.img" \
                 "$(stat -c%s "$work/iso/boot/efi.img")"
+            # The ONLY GPLv3+ component in the image, and the only one built here rather
+            # than redistributed as upstream shipped it -- grub-mkstandalone links the
+            # host's GRUB into BOOTX64.EFI. NOTICE.md says the corresponding source is
+            # whichever GRUB the build host had, so record which one that was. Without
+            # this line that sentence would be a promise nothing keeps.
+            printf '%-18s %s\n' "grub (ESP)" \
+                "$(grub-mkstandalone --version 2>/dev/null | head -1 || echo unknown)"
+        fi
         echo
         isz=$(stat -c%s "$out_iso")
         printf 'ISO             %s bytes  %.1f MiB\n' "$isz" \

@@ -168,6 +168,21 @@ else
         [ "$seen" = 1 ] || fail "recipe is in no profile, so it is never built: $n"
     done < "$TMP/rec"
 
+    # (a2) ...and the reverse: every recipe a profile NAMES actually exists. Without this
+    # a typo in a path -- notepad-pp.yaml, or a .yml extension -- passes every gate and
+    # fails at build time, which is exactly the class of error this section exists for.
+    # Verified by introducing one: before this check, all eleven gates stayed green.
+    while IFS= read -r prof; do
+        [ -n "$prof" ] || continue
+        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$prof" \
+            | sed -n 's|^- \(recipes/available/.*\)$|\1|p' > "$TMP/named" || true
+        while IFS= read -r named; do
+            [ -n "$named" ] || continue
+            [ -f "$REPO_ROOT/$named" ] \
+                || fail "${prof#"$REPO_ROOT"/} names a recipe that does not exist: $named"
+        done < "$TMP/named"
+    done < "$TMP/prof"
+
     # (b) the two shipped profiles carry an IDENTICAL core list, in the same order.
     # uefi adds `- uefi-bootable`, a bare name resolved from the engine, so comparing
     # only the recipes/available/ entries is the right comparison.

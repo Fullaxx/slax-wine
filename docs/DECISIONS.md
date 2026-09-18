@@ -77,8 +77,10 @@ a persistent stick without rebuilding.
 
 slax-kitchen's canonical table allocates `00`–`09` to the platform, **`10`–`89` to forks**, `90`–`97`
 to headroom, and refuses `98` (generated database) and `99` (`savechanges`). Inside the fork band this
-project uses `20`–`29` for its platform and `30`–`89` for applications. `10`–`12` are left alone
-because slax-kitchen's example app recipes sit there.
+project uses `20`–`29` for its platform and `30`–`89` for applications, starting at `20` rather than
+`10` because the bottom of the fork band is where slax-kitchen's example recipes sit — and **that set
+grows**: `10`–`12` when this was written, `10`–`16` today. Ceding the low end costs nothing and makes
+a collision structurally impossible rather than merely unlikely.
 
 An earlier draft used `07`/`08`, which are slax-kitchen's. Reading the convention back to upstream is
 what prompted them to consolidate four disagreeing statements into one table.
@@ -107,15 +109,36 @@ proprietary case becomes "point it at a local path instead of a URL".
 
 **What would change this:** needing a build with no network at all.
 
-## D-8 · No `isohybrid`, no `uefi-bootable`
+## D-8 · No `isohybrid`. `uefi-bootable` — **reversed**, and the original reasoning had a hole
 
-Neither is applied, because the supported USB route does not need them: `bootinst.sh` installs
-extlinux, writes the MBR and relocates the EFI loader, giving BIOS **and** UEFI boot from an
-ordinary ISO. And a `dd`'d image is a read-only ISO9660 filesystem booted through `isolinux.cfg`,
-where persistence is `MENU DISABLED` — so the one route those recipes enable is the one that cannot
-keep a Wine prefix.
+**`isohybrid`: still not applied, and the argument stands.** A `dd`'d image is a read-only ISO9660
+filesystem booted through `isolinux.cfg`, where persistence is `MENU DISABLED` — so the one route it
+enables is the one that cannot keep a Wine prefix.
 
-**What would change this:** wanting a read-only demo stick where persistence does not matter.
+**`uefi-bootable`: now applied, in `profiles/slax-wine-uefi.yaml`.** The original entry said it was
+unnecessary because *"`bootinst.sh` installs extlinux, writes the MBR and relocates the EFI loader,
+giving BIOS **and** UEFI boot from an ordinary ISO."* Every clause of that is true. What it left out
+is the clause that mattered: **the loader `bootinst` relocates is `syslinux.efi`, which reads FAT
+only.** So "UEFI boot from an ordinary ISO" silently meant "UEFI boot *from a FAT32 stick*" — and
+FAT32 is exactly the filesystem that caps persistence at a 16 GB dynfilefs container.
+
+The entry was therefore arguing to protect persistence with a premise that quietly forfeited it.
+Adopting `uefi-bootable` brings GRUB, which **reads ext4**, so UEFI and unlimited persistence can
+coexist for the first time.
+
+Worth recording precisely because **the stated trigger never fired.** "What would change this"
+predicted a read-only demo stick; no one ever wanted one. The thing that actually changed the answer
+was noticing a constraint the entry had not written down. A "what would change this" line is a
+prediction, and this one was wrong in a way worth keeping visible — the next entry's prediction may
+be too.
+
+It is not free: `uefi-bootable` costs a 6.2 MiB GRUB ESP and introduces the image's only GPLv3
+component (see [NOTICE.md](../NOTICE.md)). That is why it is a second image rather than a change to
+the first — the bios image stays byte-identical in size and stock in its boot path.
+
+**What would change this:** upstream shipping a `bootia32.efi`, which would make 32-bit UEFI firmware
+reachable and might justify collapsing back to one image; or `syslinux.efi` gaining ext4 support,
+which would remove the reason for the split entirely.
 
 ## D-9 · No `perchsize` in the recipe
 
@@ -148,12 +171,18 @@ project has no security claim that depends on it.
 
 **What would change this:** shipping slax-wine somewhere the initramfs is exposed to untrusted input.
 
-## D-12 · Publish the ISO, with the licence gap documented
+## D-12 · Publish the ISOs, with the licence gap documented
 
 slax-kitchen publishes no image, because the GPLv2 source-offer obligation cannot be fully discharged
 for three static binaries with no recorded version or build config. We publish anyway, attach source
 as release assets for everything identifiable, and state the gap plainly in [NOTICE.md](../NOTICE.md)
 with a written offer. An upstream issue asks for the missing provenance.
+
+Two images now, and the uefi one adds an obligation the bios one does not have: its GRUB ESP is
+**GPLv3+**, built at release time from the build host's GRUB rather than redistributed as upstream
+shipped it. `build.sh` records that GRUB's version on a `grub (ESP)` line in
+`out/build-summary-uefi.txt` so the corresponding source is identifiable — the same standard the rest
+of this entry holds everything else to.
 
 **What would change this:** upstream answering that issue — which closes the gap for every Slax
 derivative, not just this one.

@@ -37,11 +37,20 @@ and `ci/checks/96-release-consistency.sh` fails if that commit is not the curren
 | non-free firmware in `01-firmware.sb` | per-package redistribution terms |
 | the released `.iso` | an **aggregate**; no single licence covers it |
 
-## Redistributing the ISO
+## Redistributing the ISOs
 
 slax-kitchen deliberately publishes **no** ISO, and says why: the GPLv2 source-offer obligation falls
-on whoever publishes a customized image. **slax-wine does publish one**, so that obligation is ours,
-and this section is how it is discharged rather than a disclaimer.
+on whoever publishes a customized image. **slax-wine publishes two** — `slax-wine-bios` and
+`slax-wine-uefi` — so that obligation is ours, and this section is how it is discharged rather than
+a disclaimer.
+
+The two images contain the **same** software: identical bundles, identical packages. The uefi one
+additionally carries a GRUB EFI binary built by `grub-mkstandalone` from the host's GRUB 2, which is
+**GPLv3+** — a licence the rest of the image does not use. It is generated at build time from
+packages the builder already has, so the corresponding source is whatever GRUB the build host
+installed. `build.sh` records which one that was on a `grub (ESP)` line in
+`out/build-summary-uefi.txt`, so the claim above points at something checkable rather than being a
+promise nothing keeps. The bios image contains no GPLv3 component at all.
 
 **Nothing here is modified.** Every binary in the image is upstream's, redistributed as built. So
 "complete corresponding source" means each component's own upstream release, and none of it had to be

@@ -117,11 +117,14 @@ Failing any of these fails the build:
 - the base ISO's size and sha256 match `build.env`, which in turn matches the pinned
   `compat/sources.yaml`
 - the payload's sha256 matches `APP_SHA256`
-- the ISO's volume id is `SLAX-WINE` and it is under `MAX_ISO_MIB`
+- **each** ISO's volume id is `SLAX-WINE` and each is under `MAX_ISO_MIB`
 - `/slax/modules/` contains **exactly** nine bundles — five stock survivors, our three, and the
-  generated `98-dpkg-db.sb`
+  generated `98-dpkg-db.sb`. The same list for both variants, because `uefi-bootable` builds no
+  bundle
+- the uefi ISO has an EFI El Torito entry (`--expect-uefi`) and the bios ISO does not
 
-`out/build-summary.txt` records every number the docs quote. If one moves, something changed.
+`out/build-summary-<variant>.txt` records every number the docs quote, one file per variant. If one
+moves, something changed.
 
 ## What it does not do
 

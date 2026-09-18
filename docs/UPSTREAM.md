@@ -253,7 +253,7 @@ round. Each was read in code and demonstrated before filing; none blocks the bum
 | # | Issue | Why it is theirs |
 |---|---|---|
 | [17](https://github.com/Fullaxx/slax-kitchen/issues/17) | a `.desktop` whose `Icon=` does not resolve is silently deleted from the launcher | Slax's behaviour, but absent from `known-upstream-bugs.md`, and `remove-chromium.md` teaches a stub that works only because it omits `Icon=` |
-| [18](https://github.com/Fullaxx/slax-kitchen/issues/18) | `tier-c.sh`: `--allow-dirty` accepts `--ledger` alone, so a dirty run can write a committed golden | `ci/tier-c.sh:45-46` clears the guard on *either* flag; the doc and the `die` message both say both |
+| [18](https://github.com/Fullaxx/slax-kitchen/issues/18) | `tier-c.sh`: `--allow-dirty` accepts `--ledger` alone, so a dirty run can write a committed golden | `ci/tier-c.sh:46-47` clears the guard on *either* flag; the doc and the `die` message both say both |
 | [19](https://github.com/Fullaxx/slax-kitchen/issues/19) | `00-no-binaries` can be walked past two ways | `file_size` fails open (`lib.sh:87`), and the extension list has no `.exe`/`.dll`/`.msi` |
 
 **17 is the one that cost us something.** It deleted both of this image's launchers — the entire
