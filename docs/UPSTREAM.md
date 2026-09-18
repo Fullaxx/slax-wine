@@ -570,10 +570,17 @@ by sha256 after transfer, since it is byte-for-byte the same size as the old one
 Evidence is in `out/boot-tests/`; the `bcd4f00`-era set was kept beside it as
 `out/boot-tests-bcd4f00/`, on `bacon` too.
 
-## Found at the `337f7e7` bump — a unit test that writes into the commit running it
+## Filed at the `337f7e7` bump — [#23](https://github.com/Fullaxx/slax-kitchen/issues/23), a unit test that writes into the commit running it
 
-**Not yet filed.** Found while adopting `tests/unit/test_ci_lib.py`, the test that came with the
-`#22` fix, and it is a property of that test running inside a hook, not of the fix.
+Found while adopting `tests/unit/test_ci_lib.py`, the test that came with the `#22` fix, and it is
+a property of that test running inside a hook, not of the fix. Filed as #23 after one more claim
+was checked rather than inferred: that the fixture's `git add -A` *drops* the commit's own files.
+Isolated with no hook — an absolute `GIT_INDEX_FILE` standing in for the commit's `index.lock` —
+the pending index went from `seed` to `big.bin payload.exe`.
+
+Also before filing, each of the other three tests was read for how it builds its environment,
+since two pass `env=` explicitly and a clean one would be immune: `test_release.py` copies
+`os.environ`, and `test_sources.py` and `test_tier_c_guard.py` pass none. All three inherit.
 
 `80-unit.sh` runs at `pre-commit`, and git exports its repository to hooks. `githooks(5)` is
 explicit about the consequence: *"if your hook needs to invoke Git commands in a foreign repository
