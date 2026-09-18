@@ -5,14 +5,19 @@
 | | boots on | pick it when |
 |---|---|---|
 | `slax-wine-bios-<ver>.iso` | BIOS | you know the machine boots BIOS/legacy and you want the stock loader |
-| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | anything else — **including if you want UEFI *and* unlimited persistence** |
+| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | you want to boot the **ISO itself** on a UEFI machine — a DVD, or a virtual CD in a VM |
 
 The uefi image is a **superset**: it keeps the BIOS boot entry and adds an EFI one, so it boots
-everywhere the bios image does, for 6.2 MiB more. It carries a GRUB EFI loader in an El Torito ESP,
-and **GRUB reads ext4** — which is the whole reason it matters here, because the stock loader does
-not, and that is what forces the FAT32 decision below.
+everywhere the bios image does, for 6.2 MiB more. **If unsure, take it.**
 
-**If unsure, take the uefi image.**
+> **It does not change anything about USB sticks.** Its GRUB loader lives in an El Torito ESP at
+> `/boot/efi.img` — an *ISO* structure. A stick has no El Torito catalog, `bootinst.sh` never copies
+> it, and the procedure below copies only `slax/`, which does not contain it. What `bootinst`
+> relocates is `slax/boot/EFI/Boot/`, and that directory is **byte-for-byte identical in both
+> images** (verified). So on a stick, both use the stock FAT-only `syslinux.efi`, and the FAT32
+> decision below applies to both equally.
+>
+> The uefi image's value is booting the **ISO** on UEFI: optical media, or a virtual CD.
 
 ---
 
@@ -36,7 +41,7 @@ later. Everything else follows from it.
 |---|---|---|
 | BIOS boot — either image | yes | yes |
 | **UEFI**, `slax-wine-bios` image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only |
-| **UEFI**, `slax-wine-uefi` image | yes | **yes** — GRUB reads ext4 |
+| **UEFI** from a stick — *either* image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only. The uefi image's GRUB is an ISO structure and never reaches the stick |
 | **UEFI**, 32-bit firmware — either image | **no** — see below | **no** |
 | Persistence | a sparse container file, **16 GB minimum** | a plain directory, **no limit** |
 | Readable from Windows | yes | no |
@@ -60,13 +65,16 @@ later. Everything else follows from it.
 > `perchsize=`, no `xfs_growfs`. Everything in the FAT32 column is still read from `livekitlib`
 > rather than measured.
 >
-> **What has actually been booted, and by whom.** slax-kitchen boot-tests a 32-bit Slax image through
-> **GRUB under x86-64 OVMF** and records it passing — that is the loader the `slax-wine-uefi` image
-> carries, so the mechanism is proven upstream on our exact target. It is **not** proof of the rows
-> in the table above, for two reasons: their test boots the ISO, not a `bootinst`-prepared stick, and
-> the `slax-wine-bios` row describes `syslinux.efi`, a different loader entirely. **Nobody has UEFI
-> booted a slax-wine image from a stick.** The rows are read from the loaders' documented behaviour;
-> treat them as well-founded expectations, not measurements.
+> **What has actually been booted, and by whom.** A slax-wine image has now been UEFI-booted:
+> measured 2026-09-18, GRUB under x86-64 OVMF loads `BOOTX64.EFI` and boots the 32-bit kernel to
+> `Live Kit done`, in 6 seconds under KVM. That is the `slax-wine-uefi` image's own loader, on our
+> own image — not an upstream result borrowed.
+>
+> It is **not** proof of the stick rows in the table above, and the distinction is the whole point of
+> this note: that test boots the **ISO**, through its El Torito catalog. A `bootinst`-prepared stick
+> has no such catalog and uses `syslinux.efi` instead — a different loader, unexercised.
+> **Nobody has UEFI-booted a slax-wine image from a stick.** Those rows are read from the loaders'
+> documented behaviour; treat them as well-founded expectations, not measurements.
 
 Pick by the machine you are booting, not by the stick:
 

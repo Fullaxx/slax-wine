@@ -8,10 +8,30 @@ base:
   arch: 32bit
   version: "12.2.0"
 recipes:
-  # NOT A SHIPPED IMAGE. This exists so `kitchen test --persistence` has something to
-  # assert against, and it is deliberately excluded from ci/checks/96's bios-vs-uefi
-  # core-list comparison: it carries the same four recipes so the thing under test is
-  # OUR image rather than a stock one, plus testkit, which the shipped pair must not have.
+  # NOT A SHIPPED IMAGE. This exists so `kitchen test` has something of OURS to assert
+  # against, and it is deliberately excluded from ci/checks/96's bios-vs-uefi core-list
+  # comparison: it carries the same four recipes so the thing under test is OUR image
+  # rather than a stock one, plus three things the shipped pair must not have.
+  #
+  # ORDER IS LOAD-BEARING IN BOTH DIRECTIONS HERE. Read the two notes below before
+  # moving anything; getting either backwards does not fail, it quietly tests nothing.
+
+  # FIRST, and this is the one that is easy to get wrong.
+  #
+  # serial-console adds the only boot entry carrying `console=ttyS0`, and without such an
+  # entry the whole exercise is pointless: lib/build.sh:46 derives its menu keystrokes by
+  # searching for `console=ttyS`, finds nothing, and the harness falls back to SCREENSHOT
+  # ONLY -- it boots, asserts nothing, and says so. Upstream ran four CI passes in that
+  # state believing they were checked.
+  #
+  # But its append line HARDCODES `automount` (recipes/available/serial-console.yaml:46).
+  # So it must come BEFORE slax-wine-iso, whose `boot.cmdline remove: [automount]` strips
+  # the flag from every APPEND line in both configs. Put serial-console after it and the
+  # serial entry -- the only entry any boot test actually selects -- would be the one
+  # entry that still had automount, and the probe below would report a failure that is an
+  # artefact of recipe order rather than of the image.
+  - serial-console
+
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
   - recipes/available/notepadpp.yaml
@@ -48,5 +68,37 @@ recipes:
         /usr/share/applications/7notepadpp.desktop
         /etc/profile.d/wine.sh /etc/slax-wine-release
         /opt/notepadpp/npp-installer.exe
+
+  # DO NOT ADD /media TO THAT LIST. It was there for one build, as a probe for whether
+  # `automount` had been removed -- fstab_create returns early without it and only past
+  # that point does it `mkdir -p /media/<dev>`, and /media is in no bundle. The mechanism
+  # is real; the probe is not.
+  #
+  # Measured 2026-09-18: a --kernel boot whose cmdline DID carry automount still reported
+  # `file /media: absent`, because fstab_create only creates a mountpoint for a device
+  # that is not the boot device, and a plain boot has only the CD. So /media reads
+  # `absent` on every route whether or not the flag is there -- a check that always says
+  # "pass". It was the positive control that caught this, which is the whole argument for
+  # having one.
+  #
+  # The automount claim is asserted where it actually lives: the `Kernel command line:`
+  # line of the serial log. See docs/50-cookbook/slax-wine-iso.md. Grep that line
+  # specifically -- systemd logs an unrelated "Set up automount ... Automount Point" later
+  # in the same log, which a naive grep counts.
+
+  # LAST, because boot.uefi generates its GRUB menu by PARSING slax/boot/isolinux.cfg --
+  # so it has to run after serial-console has added its entry and after slax-wine-iso has
+  # edited every entry. Order it earlier and the GRUB menu would be a snapshot of a
+  # config that no longer exists, which is the failure mode upstream's own cookbook page
+  # warns about.
+  #
+  # menu_timeout is left at uefi-bootable's shipped default of 5, NOT raised to the 30
+  # that profiles/boot-matrix.yaml uses. That is deliberate: a 5 s menu gives the harness
+  # a 2 s keystroke lead (lib/build.sh:63-75), which is correct under KVM and a gamble
+  # under TCG. Running these boots on a KVM host is what buys the right to test the GRUB
+  # configuration we actually SHIP rather than a test-only variant of it. If a run ever
+  # misses the menu, raise it here and say in the result that the tested timeout was not
+  # the shipped one.
+  - uefi-bootable
 output:
   name: "slax-wine-test-{{version}}.iso"

@@ -198,8 +198,16 @@ build_variant() {
     # sh, dash and bash. Both of the `&&` forms this file used to have were safe only
     # because something happened to follow them, which is a property of the line order
     # rather than of the code. Two of these, so spell them out.
+    #
+    # DERIVED FROM THE PROFILE, not from the variant name. This keyed off `$v = uefi`
+    # until the test profile also took uefi-bootable, at which point the build failed its
+    # own assertion -- correctly, and that is the only reason it was noticed. A name is
+    # not evidence about an artifact; the recipe list is. `kitchen build` derives the same
+    # flag the same way (lib/build.sh: `case " $RECIPES " in *" uefi-bootable "*`).
     uefi_flag=""
-    if [ "$v" = uefi ]; then uefi_flag="--expect-uefi"; fi
+    if grep -qE '^[[:space:]]*-[[:space:]]*uefi-bootable[[:space:]]*$' "$profile"; then
+        uefi_flag="--expect-uefi"
+    fi
     # shellcheck disable=SC2086
     python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$MAX_ISO_MIB" $uefi_flag \
         --require /slax/modules/20-wine.sb \

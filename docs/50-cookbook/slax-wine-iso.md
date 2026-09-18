@@ -1,22 +1,59 @@
 # `slax-wine-iso` — label the image, and stop `automount` grabbing every disk
 
-**Status: boot-verified** — the volume id, application id and checksum are confirmed in the built
-image, 21 structure assertions passed including the `--volid SLAX-WINE` check, and the image has now
-been booted **through its own bootloader** to a full desktop. That is what raised this from
-`artifact boot-verified`: the automated run (`kitchen test --kernel`) boots the kernel directly and
-never reads `isolinux.cfg` or `syslinux.cfg` at all.
+**Status: runtime-verified** — the volume id, application id and checksum are confirmed in the built
+image and 21 structure assertions pass including `--volid SLAX-WINE`; and this recipe's only
+functional change, removing `automount` from the boot line, has now been **observed taking effect
+through both bootloaders**.
 
-**Not `runtime-verified`, deliberately.** This recipe's only functional change is removing
-`automount` from the boot line, and nobody has checked the *effect* — that `/proc/cmdline` lacks the
-flag and `/etc/fstab` has no `/media/<dev>` entries for other disks. The edit is correct in the
-artifact (2 entries changed in each config, matching `apply.log`). One command on a booted system
-would settle it:
+## How the `automount` removal was proven
+
+Measured 2026-09-18 on a KVM host, against `slax-wine-test` (this image plus `serial-console` and
+`testkit`). The observable is the kernel's own `Kernel command line:` line in the serial log:
+
+| boot route | cmdline comes from | `automount` | reached `Live Kit done` |
+|---|---|---|---|
+| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes |
+| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes |
+| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes |
+
+**The first row is the point.** A check that only ever reports "absent" proves nothing; the
+`--kernel` route boots with a cmdline that *does* carry the flag, so the same grep on the same log
+format demonstrably detects it. Without that control the other two rows would be indistinguishable
+from a broken test.
+
+Both bootloader rows selected the **serial entry** — which is how there is any userspace output to
+read at all, since only that entry routes `/dev/console` to `ttyS0`.
+
+Two traps worth writing down, both hit while doing this:
+
+- **`grep -c automount <log>` is wrong.** systemd logs `Set up automount … Automount Point` later in
+  every boot. Grep the `^Kernel command line:` line specifically.
+- **`/media` is not a usable probe**, though it looks like one. `fstab_create` returns before its
+  `mkdir -p /media/<dev>` when the flag is absent, and `/media` ships in no bundle — but it only
+  creates a mountpoint for a device that is *not* the boot device, and a plain boot has only the CD.
+  Measured: the `--kernel` route, **with** `automount`, still reported `file /media: absent`. It
+  reads "absent" either way. `profiles/slax-wine-test.yaml` records this so nobody re-adds it.
+
+Reproducing it, which matters more than the logs — `out/` is gitignored, so a fresh clone has no
+evidence files, only the means to regenerate them:
 
 ```sh
-grep -c automount /proc/cmdline; grep /media /etc/fstab
+./build.sh --test                      # profiles/slax-wine-test.yaml: + serial-console, + testkit
+K=vendor/slax-kitchen/kitchen; I="$PWD/out/slax-wine-test-1.0.0.iso"
+$K test "$I" --kernel                  # the control: its cmdline HAS automount
+$K test "$I" --bios
+$K test "$I" --uefi
+grep -a '^Kernel command line:' out/boot-tests/slax-wine-test-1.0.0-*.serial.log
 ```
 
-Expect `0` and no output. UEFI is also still untested — see [INSTALL.md](../../INSTALL.md).
+Expect `automount` on the `-kernel` line and on neither of the others. **A UEFI run needs KVM**: at
+the shipped `menu_timeout` of 5 the harness gets a 2-second keystroke lead, which is correct under
+KVM and misses the menu under TCG — and a missed menu boots the *default* entry, so the test would
+assert against a boot it never selected. These runs were made on a KVM host for that reason.
+
+**What this does not cover:** the shipped images byte-for-byte — the tested image adds
+`serial-console` and `testkit`. The boot configs are otherwise identical, and the removal is applied
+to *every* `APPEND` line in both files, so it transfers.
 
 ```sh
 ./build.sh

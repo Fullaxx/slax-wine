@@ -115,30 +115,40 @@ proprietary case becomes "point it at a local path instead of a URL".
 filesystem booted through `isolinux.cfg`, where persistence is `MENU DISABLED` — so the one route it
 enables is the one that cannot keep a Wine prefix.
 
-**`uefi-bootable`: now applied, in `profiles/slax-wine-uefi.yaml`.** The original entry said it was
-unnecessary because *"`bootinst.sh` installs extlinux, writes the MBR and relocates the EFI loader,
-giving BIOS **and** UEFI boot from an ordinary ISO."* Every clause of that is true. What it left out
-is the clause that mattered: **the loader `bootinst` relocates is `syslinux.efi`, which reads FAT
-only.** So "UEFI boot from an ordinary ISO" silently meant "UEFI boot *from a FAT32 stick*" — and
-FAT32 is exactly the filesystem that caps persistence at a 16 GB dynfilefs container.
+**`uefi-bootable`: now applied, in `profiles/slax-wine-uefi.yaml`** — for a **narrower** reason than
+this entry first claimed on reversing, and the correction is the useful part.
 
-The entry was therefore arguing to protect persistence with a premise that quietly forfeited it.
-Adopting `uefi-bootable` brings GRUB, which **reads ext4**, so UEFI and unlimited persistence can
-coexist for the first time.
+The original entry called it unnecessary because *"`bootinst.sh` … relocates the EFI loader, giving
+BIOS **and** UEFI boot from an ordinary ISO."* True, and incomplete: the loader `bootinst` relocates
+is `syslinux.efi`, which reads **FAT only**, so "UEFI boot" there silently meant "from a FAT32
+stick" — the filesystem that caps persistence at a 16 GB container.
 
-Worth recording precisely because **the stated trigger never fired.** "What would change this"
-predicted a read-only demo stick; no one ever wanted one. The thing that actually changed the answer
-was noticing a constraint the entry had not written down. A "what would change this" line is a
-prediction, and this one was wrong in a way worth keeping visible — the next entry's prediction may
-be too.
+**The first rewrite then over-corrected**, claiming GRUB's ext4 support let "UEFI and unlimited
+persistence coexist". **That is false, and boot-testing the image is what exposed it.** `uefi-bootable`
+puts GRUB in an El Torito ESP at `/boot/efi.img` — an *ISO* structure. A stick has no El Torito
+catalog, `bootinst` never copies it, and `slax/boot/EFI/Boot/` (what `bootinst` *does* relocate) is
+**byte-for-byte identical in both images**. Verified by diffing the two artifacts.
 
-It is not free: `uefi-bootable` costs a 6.2 MiB GRUB ESP and introduces the image's only GPLv3
-component (see [NOTICE.md](../NOTICE.md)). That is why it is a second image rather than a change to
-the first — the bios image stays byte-identical in size and stock in its boot path.
+So what the uefi image actually buys is: **the ISO boots on UEFI firmware** — optical media, or a
+virtual CD — which stock Slax cannot do at all (upstream's `known-upstream-bugs.md` entry 1). It
+changes nothing about sticks. Measured 2026-09-18: GRUB under x86-64 OVMF boots the 32-bit image to
+`Live Kit done`.
 
-**What would change this:** upstream shipping a `bootia32.efi`, which would make 32-bit UEFI firmware
-reachable and might justify collapsing back to one image; or `syslinux.efi` gaining ext4 support,
-which would remove the reason for the split entirely.
+That is still worth a second image — it is a superset for 6.2 MiB, and it fixes a real upstream
+limitation — but it is worth less than the previous paragraph claimed, and anyone planning a USB
+install should read it as "no difference".
+
+**This entry has now been wrong twice, both times about what the loader actually reaches**, and both
+times the error survived review and was caught by measurement. Its original "what would change this"
+predicted a read-only demo stick, which never happened. Treat predictions here as weaker evidence
+than the tables in `docs/50-cookbook/`.
+
+It is not free: a 6.2 MiB ESP and the image's only GPLv3 component (see [NOTICE.md](../NOTICE.md)) —
+which is why it is a second image rather than a change to the first.
+
+**What would change this:** `bootinst` learning to install a GRUB ESP on a stick, or `syslinux.efi`
+gaining ext4 support — either would make UEFI-on-ext4 real, which it currently is not. Upstream
+shipping a `bootia32.efi` would extend both images to 32-bit UEFI firmware.
 
 ## D-9 · No `perchsize` in the recipe
 

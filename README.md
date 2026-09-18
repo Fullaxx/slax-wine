@@ -27,7 +27,7 @@ is not obvious.
 | | boots on | why you would pick it |
 |---|---|---|
 | `slax-wine-bios-<ver>.iso` | BIOS | stock Slax bootloader, no GRUB, 6.2 MiB smaller |
-| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | adds a GRUB ESP. UEFI works from an **ext4** stick, so you are not forced onto FAT32 |
+| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
 
 **The UEFI image is a superset, not an alternative** — it keeps the BIOS El Torito entry and adds an
 EFI one, so it boots anywhere the BIOS image does. Verified on the artifacts: `xorriso
@@ -68,10 +68,15 @@ drop another in — no rebuild, no remaster. That is the whole point of the laye
 without an xterm wrapper, the Notepad++ installer runs under Wine and the installed editor launches,
 there is **no** Wine Mono / Gecko download prompt, and the browser is gone from the launcher.
 
-**What is still unverified: persistence.** That observation was a non-persistent boot, so nothing
-here has yet survived a reboot — the Wine `C:` drive on a USB stick, which is the reason
-[INSTALL.md](INSTALL.md) exists, is untested on hardware. So is UEFI. Every page states the rung it
-actually reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
+**UEFI and both bootloaders are now measured too** — GRUB under OVMF and isolinux each boot to
+`Live Kit done`, and `automount` is confirmed gone from the kernel command line on both, against a
+control that shows the check can fail.
+
+**What is still unverified: the USB story.** The Wine `C:` drive surviving a reboot has been seen
+only on a **VM ext4 disk**, never on a stick; the FAT32 container route is untested entirely; and no
+UEFI boot has gone through `bootinst`'s loader. That is the reason [INSTALL.md](INSTALL.md) exists,
+and it is still the weakest-evidenced part of this project. Every page states the rung it actually
+reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
 
 ## Documentation
 

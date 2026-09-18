@@ -36,10 +36,13 @@ Two consequences worth holding onto:
 - **The uefi image is a superset.** `pack.sh` adds its EFI entry with `-eltorito-alt-boot`, leaving
   the BIOS entry in place. `xorriso -report_el_torito` on the two artifacts shows `isolinux.bin` in
   both and `/boot/efi.img` only in the second. It boots anywhere the bios image does.
-- **GRUB reads ext4; `syslinux.efi` does not.** That is the only reason the distinction earns two
-  images rather than one flag: with the stock loader, UEFI forces a FAT32 stick and its 16 GB
-  persistence container. With GRUB, UEFI and unlimited ext4 persistence can coexist. See
-  [INSTALL.md](../INSTALL.md).
+- **What it buys is a UEFI-bootable ISO, and only that.** Stock Slax cannot boot on UEFI at all
+  (upstream's `known-upstream-bugs.md` entry 1); `uefi-bootable` fixes that for the **ISO** — optical
+  media, or a virtual CD. It does **nothing** for a USB stick: its GRUB lives in an El Torito ESP at
+  `/boot/efi.img`, an ISO structure that `bootinst` never copies, and the directory `bootinst` *does*
+  relocate — `slax/boot/EFI/Boot/` — is byte-for-byte identical in both images. So sticks use the
+  stock FAT-only `syslinux.efi` either way, and UEFI-on-a-stick still means FAT32 for both.
+  See [INSTALL.md](../INSTALL.md).
 
 Ordering is load-bearing: `uefi-bootable` generates its GRUB menu by *parsing* `isolinux.cfg`, so it
 must run after `slax-wine-iso`, which edits that file. Its pack hint (`uefi`) is a different key from
@@ -226,11 +229,19 @@ found it (`perch-marker: present`), both reaching `Live Kit done`. The same run 
 that all seven of our launcher files reached the assembled union with the right sizes, which is one
 rung below "the tile appears" and is the half a machine can check.
 
+**Both bootloaders, and UEFI: observed.** Measured 2026-09-18 on a KVM host against
+`slax-wine-test`: `kitchen test --bios` boots through isolinux and `--uefi` boots through GRUB under
+x86-64 OVMF, each reaching `Live Kit done` in 6 s, each selecting the serial entry. Their kernel
+command lines carry **no `automount`**, while the `--kernel` control — whose cmdline the harness
+builds and which *does* carry it — shows it present. That pairing is what makes the negative result
+mean something.
+
 **Still unverified:** the **FAT32** persistence route entirely — dynfilefs container, XFS inside it,
-`perchsize=`, `xfs_growfs` — plus `bootinst`, any bootloader-driven boot, and real hardware. The
-harness deliberately uses raw ext4 on a bare file. UEFI on a slax-wine image likewise. So roughly
-half of what [INSTALL.md](../INSTALL.md) promises is now measured and half is still read from
-`livekitlib`, and the document says which is which.
+`perchsize=`, `xfs_growfs` — plus `bootinst`, a stick, and real hardware. The persistence harness
+deliberately uses raw ext4 on a bare file, and **no UEFI boot has ever gone through `bootinst`'s
+`syslinux.efi`**, which is a different loader from the GRUB the uefi image carries. So roughly half
+of what [INSTALL.md](../INSTALL.md) promises is measured and half is still read from `livekitlib`,
+and the document says which is which.
 
 The ladder is in the [cookbook index](50-cookbook/README.md), and the distinction is the one thing
 this project treats as a real error.
