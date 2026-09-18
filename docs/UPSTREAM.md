@@ -681,7 +681,8 @@ it passes, and it passes inside the pinned submodule too (`python3 -B`, so no by
 and never removes the directory, so every run leaves two throwaway repositories of 184 KiB in
 `/tmp` — and gate 80 runs at every commit and every push. Thirty-two of exactly that shape were
 already in `/tmp` here before our first run, all dated 18:52–19:00 on 2026-09-18, the window in
-which `3a44e8a` was written. Not a reason to adapt the test; a small thing to report. Not filed.
+which `3a44e8a` was written. Not a reason to adapt the test; a small thing to report — filed as
+[#24](https://github.com/Fullaxx/slax-kitchen/issues/24), and it turned out wider than this test.
 
 **Retired: `wine.yaml`'s explicit `from:`**, the belt-and-braces kept after issue 1 was fixed and
 the ledger's other row. Its two reasons are answered in [DECISIONS.md](DECISIONS.md) D-3; the
@@ -746,6 +747,35 @@ drives all three cases. It failed six checks against the unfixed gate and passes
 one. Then the same worktree commit went through the real hook with all twelve gates green, and
 landed on its own branch with its full tree. That also shows upstream's #23 fix working end to end
 here, in the mode that did the most damage.
+
+## Filed at the `3a44e8a` bump — [#24](https://github.com/Fullaxx/slax-kitchen/issues/24), five unit tests leave their fixtures in `/tmp`
+
+What started as `test_unit_gate.py`'s probe is five of upstream's fifteen unit tests. Each was
+measured on its own at `3a44e8a`, with `TMPDIR` pointed at an empty private directory so nothing
+else on the machine could add to the count:
+
+| test | left per run | size |
+|---|---|---|
+| `test_apply.py` | 22 | 516 KiB |
+| `test_dpkgdb.py` | 13 | 312 KiB |
+| `test_qemu_boot.py` | 5 | 36 KiB |
+| `test_release_assets.py` | 4 | 260 KiB |
+| `test_unit_gate.py` | 2 | 372 KiB |
+
+That is 46 entries and 1,496 KiB every time their unit gate runs, which is at every commit and every
+push. All of it is test fixtures: the directories the code under test creates are named `kitchen-*`,
+and none of those remained. On a development machine with the hooks installed, 2,337 of the named
+ones (29 MB) had accumulated over four days, on a `/tmp` that is not a tmpfs.
+
+The fix was tried before it was offered, which is the lesson of #20. The unit gate gives each test a
+`TMPDIR` of its own and removes it afterwards, the same shape as their #23 fix. In a clone at
+`3a44e8a` that took the leftovers from 46 to 0 with every test still passing, and a deliberately
+failing test still failed the gate.
+
+**Here:** of the five we carry only `test_unit_gate.py`, so our gate 80 leaves two 184 KiB
+directories per run. It is deliberately **not** worked around. That would mean a second difference
+in `80-unit.sh` and a row in [Local workarounds](#local-workarounds), for two small directories per
+commit, and upstream's fix will arrive with a pin bump either way.
 
 ## Two findings were dropped before filing, in round one
 
