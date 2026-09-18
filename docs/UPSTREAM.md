@@ -702,7 +702,7 @@ build overwrote them.
 | what | result |
 |---|---|
 | everything outside our four modules: base bundles, kernel, initrd, every boot config | **byte-identical**, except `/boot/efi.img` on the two GRUB images |
-| `/boot/efi.img` | it holds one file, `EFI/BOOT/BOOTX64.EFI`, **identical** to the one in the `337f7e7` test ISO still on the KVM host. The FAT image around it differs in 36 bytes, the volume serial and directory timestamps, and differs just as much between two images of the *same* build |
+| `/boot/efi.img` | it holds one file, `EFI/BOOT/BOOTX64.EFI`, **identical** to the one in the `337f7e7` test ISO still on the KVM host. The FAT image around it differs in 36 bytes, the volume serial and sixteen timestamp fields, at exactly the offsets where two images of the *same* build differ |
 | `20-wine`, `21-wine-desktop`, `30-notepadpp`, `98-dpkg-db` | **identical content**: 3,831 entries by type, mode, owner, size, link target and sha256. The `.sb` files differ byte for byte only because the build stamps directory mtimes, as they already did between the three images of one build |
 
 So the image did not change, and the boot evidence recorded at the `337f7e7` bump stands for this

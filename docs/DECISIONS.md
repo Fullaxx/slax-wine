@@ -79,9 +79,11 @@ are closed by `997a9ab` — it is seeded from the journal so it survives separat
 documents the stack and protects anyone building against an engine older than the pin — at the price
 of hard-failing if any named bundle is ever renamed.
 
-**Changed at the `3a44e8a` bump: `wine.yaml` no longer names its stack.** Everything above stands
-except that last paragraph. Once the list was held up as what it was — a workaround for issue 1, and
-listed as one in [UPSTREAM.md](UPSTREAM.md) § *Local workarounds* — neither of its reasons survived:
+**Changed at the `3a44e8a` bump: `wine.yaml` no longer names its stack.** The two places above that
+keep the explicit list — the end of the second paragraph and *What would change this* — describe the
+decision as it stood until then; the rest stands. Once the list was held up as what it was — a
+workaround for issue 1, and listed as one in [UPSTREAM.md](UPSTREAM.md) § *Local workarounds* —
+neither of its reasons survived:
 
 - **The order has two guards without it.** The engine refuses a removal that follows a build, across
   the whole plan and across separate invocations, and gate 96 §5(a3) refuses a shipped profile that
