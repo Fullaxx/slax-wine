@@ -1,0 +1,3 @@
+[submodule "vendor/slax-kitchen"]
+	path = vendor/slax-kitchen
+	url = https://github.com/Fullaxx/slax-kitchen

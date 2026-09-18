@@ -1,0 +1,16 @@
+extends: default
+rules:
+  line-length:
+    max: 120
+    level: warning
+  document-start: disable
+  truthy:
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  # A commented-out example block legitimately sits at its own indent -- recipes use
+  # them to show an alternative step without enabling it. Warning only, but noisy.
+  comments-indentation: disable
+  indentation:
+    spaces: 2
+    indent-sequences: consistent

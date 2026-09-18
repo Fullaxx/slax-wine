@@ -1,0 +1,33 @@
+# Build inputs and outputs. NEVER commit these -- ci/checks/00-no-binaries.sh
+# rejects them too, because .gitignore alone is not enough: `git add -f` and
+# explicit paths bypass it, and history cannot be un-fattened afterwards.
+isos/
+work/
+out/
+*.iso
+*.sb
+*.img
+
+# Session working files. See ci/checks/10-no-dnc.sh.
+*.DNC.md
+
+# The application payload is fetched and verified by build.sh, not committed.
+recipes/available/notepadpp.files/
+
+__pycache__/
+*.pyc
+
+# Editor leftovers.
+*~
+
+# Engine scratch dirs. bundle.packages and friends mkdtemp(dir=dirname(work)), i.e. as a
+# SIBLING of work/, and remove them in a finally -- so these only survive a SIGKILL or a
+# failed rmtree. When they do they are root-owned and full of unsquashed rootfs, which is
+# the last thing that should reach `git add -A`.
+kitchen-pkg-*/
+kitchen-irfs-*/
+kitchen-bb-*/
+kitchen-bf-*/
+kitchen-bt-*/
+kitchen-bs-*/
+kitchen-esp-*/
