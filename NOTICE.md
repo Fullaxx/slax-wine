@@ -1,0 +1,88 @@
+# NOTICE
+
+## Credit
+
+**Slax** and **Linux Live Kit** are the work of **Tomáš Matějíček** (`Tomas-M`). This project
+customizes *his* work; without it there would be nothing here to customize.
+
+- <https://www.slax.org> — the project, downloads, changelog, and his donate page
+- <https://www.linux-live.org> — Linux Live Kit, the framework Slax is built on
+- <https://github.com/Tomas-M/linux-live> — the source: Linux Live Kit *and* the complete official
+  Slax build system. There is no separate `Tomas-M/slax` repository; this is it.
+- <https://github.com/Tomas-M> — components Slax depends on directly: `dynfilefs`,
+  `httpfs2-enhanced`, `ncurses-menu`, `mini-commander`
+
+If you find this useful, support Slax upstream. This repository is not that project's home.
+
+**Wine** is the work of the WineHQ project — <https://www.winehq.org>. **Notepad++** is Don Ho's —
+<https://notepad-plus-plus.org>. Neither is modified here; both are redistributed as their
+publishers built them.
+
+The build engine is [slax-kitchen](https://github.com/Fullaxx/slax-kitchen), pinned as a submodule.
+`ci/lib.sh` and six `ci/checks/*.sh` are copied from it verbatim (MIT → MIT); `ci/run-checks.sh` and
+four more gates are adapted from it. Each carries a header naming the upstream commit it came from,
+and `ci/checks/96-release-consistency.sh` fails if that commit is not the current submodule pin.
+
+## Licence boundary
+
+| component | licence |
+|---|---|
+| slax-wine's own recipes, scripts, docs and workflows | **MIT** — see [LICENSE](LICENSE) |
+| `vendor/slax-kitchen/` — pinned, unmodified submodule | MIT |
+| `vendor/slax-kitchen/vendor/linux-live/` — nested submodule | **GPLv2**, © Tomáš Matějíček |
+| Wine 8.0 (`wine`, `wine32`, `libwine`, `wine32-preloader`, `fonts-wine`) | **LGPL-2.1-or-later** |
+| Notepad++ 8.9.8 | **GPLv3** |
+| every other Debian package in the image | its own licence, per `/usr/share/doc/*/copyright` |
+| the Linux kernel, aufs-patched by upstream Slax | **GPLv2** |
+| non-free firmware in `01-firmware.sb` | per-package redistribution terms |
+| the released `.iso` | an **aggregate**; no single licence covers it |
+
+## Redistributing the ISO
+
+slax-kitchen deliberately publishes **no** ISO, and says why: the GPLv2 source-offer obligation falls
+on whoever publishes a customized image. **slax-wine does publish one**, so that obligation is ours,
+and this section is how it is discharged rather than a disclaimer.
+
+**Nothing here is modified.** Every binary in the image is upstream's, redistributed as built. So
+"complete corresponding source" means each component's own upstream release, and none of it had to be
+written by us.
+
+**Source is attached to the release, not merely linked.** GPLv2 §3's closing paragraph counts
+offering source as distribution only when it is available *"from the same place"* as the binary — and
+unlike GPLv3 §6(d), it does not bless pointing at a third-party server. So each release carries source
+tarballs as assets alongside the ISO, for everything whose version is known:
+
+| shipped binary | source attached |
+|---|---|
+| Wine 8.0~repack-4 and its Debian dependencies | Debian `deb-src`, bookworm — also permanently at `snapshot.debian.org` |
+| Notepad++ 8.9.8 | the `v8.9.8` tag, `notepad-plus-plus/notepad-plus-plus` |
+| Linux Live Kit, and the Slax build system | `Tomas-M/linux-live` at the commit pinned by the nested submodule |
+| `busybox` 1.26.2 in the initramfs | busybox.net, that release |
+| `ncurses-menu`, `mount.dynfilefs`, `mount.httpfs2`, `mc` | Tomáš's repositories, at their releases |
+| the kernel | upstream Slax's build, plus the out-of-tree aufs patch set |
+
+### What we cannot supply, stated plainly
+
+Three static binaries in the initramfs — **`blkid`, `eject` and `xfs_growfs`** — are prebuilt blobs
+inherited from upstream Slax. Its `initramfs/static/README` says only *"To rebuild these static
+binaries, use buildroot"*, and records neither the upstream release nor the build configuration. We
+therefore cannot identify which source corresponds to them, and no build config exists publicly for
+any of the static set.
+
+We are not able to close that ourselves, and we do not pretend otherwise:
+
+- an issue asking upstream for those versions and configs is open — see
+  [docs/UPSTREAM.md](docs/UPSTREAM.md);
+- **written offer:** for three years from each release, we will pass any request for source for those
+  components to upstream and forward whatever is provided, at no charge beyond the cost of
+  distribution. Open an issue on this repository.
+
+This is a genuine and knowing gap, not an oversight, and it is the reason slax-kitchen chose to
+publish no image at all. We have taken the other choice, with the limit documented. If that is not
+good enough for your use, build the ISO yourself with `./build.sh` — nothing is distributed and the
+question does not arise.
+
+### If you rebuild and redistribute
+
+The obligation becomes yours, not ours. MIT's no-warranty clause covers *our* recipes; it does not
+and cannot waive anything for the aggregate.
