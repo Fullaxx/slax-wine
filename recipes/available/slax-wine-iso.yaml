@@ -33,6 +33,13 @@ steps:
   # because there is nowhere in the tree they could live -- the mastering tool writes
   # them into the PVD.
   #
+  # This recipe is NOT required to run last, and in profiles/slax-wine-uefi.yaml it does
+  # not: `uefi-bootable` follows it, because boot.uefi generates its GRUB menu by parsing
+  # slax/boot/isolinux.cfg and must therefore see the boot.cmdline edit above. That is
+  # safe -- v_boot_uefi writes the hint key `uefi`, which is distinct from the volid,
+  # appid, sysid, preparer and checksums keys written here, so the two recipes cannot
+  # overwrite one another. An earlier version of this comment claimed the opposite.
+  #
   # None of these carries the slax-wine version, ON PURPOSE. The version lives in exactly
   # one file (build.env) and build.sh passes it to `kitchen pack --appid`, where a
   # command-line flag beats a recipe hint. So no version string exists in any YAML that

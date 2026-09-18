@@ -1,0 +1,52 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax-wine-test
+  summary: The BIOS image plus testkit -- built to be asserted against, never shipped
+base:
+  flavour: debian
+  arch: 32bit
+  version: "12.2.0"
+recipes:
+  # NOT A SHIPPED IMAGE. This exists so `kitchen test --persistence` has something to
+  # assert against, and it is deliberately excluded from ci/checks/96's bios-vs-uefi
+  # core-list comparison: it carries the same four recipes so the thing under test is
+  # OUR image rather than a stock one, plus testkit, which the shipped pair must not have.
+  - recipes/available/wine.yaml
+  - recipes/available/wine-desktop.yaml
+  - recipes/available/notepadpp.yaml
+  - recipes/available/slax-wine-iso.yaml
+
+  # testkit prints facts about the ASSEMBLED union to the serial console just before
+  # change_root, from a rootcopy.preinit hook. It builds no bundle, so this image still
+  # has the same nine modules as the shipped pair.
+  #
+  # Two jobs:
+  #
+  # `marker` is the persistence probe. On boot 1 of a pair the file is absent and gets
+  # created + synced; on boot 2 it must still be there. That is the whole two-boot
+  # assertion. It writes into the UNION, whose writable branch is the perch session when
+  # perch is on and tmpfs when it is not -- which is exactly the property INSTALL.md
+  # claims and this project has never observed.
+  #
+  # NOT /root/.wine/... deliberately, tempting though it is: testkit mkdir -p's the
+  # parent, and a pre-existing /root/.wine could make Wine treat an empty directory as an
+  # already-initialised prefix and skip wineboot. The persistence property is a fact
+  # about the writable branch, not about that path, so a neutral file tests the same
+  # mechanism without perturbing the thing under test.
+  #
+  # `report` boot-asserts that our launcher files reached the union. That is one rung
+  # BELOW "the tile appears" -- testkit runs before change_root, so there is no X, no
+  # Fluxbox and no xlunch to ask -- but it is the half a machine can check, and it is the
+  # half that C1 (upstream #17) silently broke.
+  - name: testkit
+    vars:
+      marker: /var/lib/slax-wine-perch-marker
+      report: >-
+        /usr/local/bin/slax-wine /usr/local/bin/notepadpp
+        /usr/share/applications/5wine.desktop
+        /usr/share/applications/7notepadpp.desktop
+        /etc/profile.d/wine.sh /etc/slax-wine-release
+        /opt/notepadpp/npp-installer.exe
+output:
+  name: "slax-wine-test-{{version}}.iso"

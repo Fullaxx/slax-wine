@@ -12,11 +12,11 @@ compat:
   # The launcher below calls /usr/local/bin/slax-wine, which 21-wine-desktop supplies.
   # Stating it in prose was not enough: `kitchen apply notepadpp` on its own happily
   # built a bundle whose launcher pointed at a wrapper that was not in the image.
-  # resolve() walks this list before applying (apply.py:2787), so the dependency is now
+  # resolve() walks this list before applying (apply.py:2868), so the dependency is now
   # real rather than documentary.
   #
   # PATHS, not bare names. Bare-name resolution searches the ENGINE's recipes/
-  # directories plus the current working directory (apply.py:2761), and ours live in this
+  # directories plus the current working directory (apply.py:2842), and ours live in this
   # repo -- so a bare "wine-desktop" would not be found. build.sh cd's to the repo root
   # for exactly this reason.
   requires:

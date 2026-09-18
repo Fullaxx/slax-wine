@@ -1,0 +1,64 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax-wine-uefi
+  summary: Slax with Wine and Notepad++, plus a GRUB ESP -- boots BIOS and UEFI
+base:
+  # IDENTICAL to slax-wine-bios.yaml. Both images are the same 32-bit Debian Slax; the
+  # only difference between them is the last recipe in this file.
+  flavour: debian
+  arch: 32bit
+  version: "12.2.0"
+recipes:
+  # THE CORE FOUR, byte-for-byte the list in profiles/slax-wine-bios.yaml and in the same
+  # order. ci/checks/96-release-consistency.sh section 5 fails if the two disagree.
+  - recipes/available/wine.yaml
+  - recipes/available/wine-desktop.yaml
+  - recipes/available/notepadpp.yaml
+  - recipes/available/slax-wine-iso.yaml
+
+  # -- and the one thing that makes this image different ------------------------------
+  #
+  # LAST, and that is not stylistic. boot.uefi generates its GRUB menu by PARSING
+  # slax/boot/isolinux.cfg, so it has to run after anything that edits that file --
+  # which slax-wine-iso does, removing `automount` from every entry. Put uefi-bootable
+  # first and the BIOS menu would lose the flag while the GRUB menu kept it, which is
+  # the worst kind of difference: invisible until someone boots the other way.
+  #
+  # A BARE NAME, not a path. Bare-name resolution searches the ENGINE's recipes/
+  # directories, which is exactly where this one lives -- so there is nothing to vendor,
+  # copy, or re-sync on a pin bump. Our own four are paths because they are not there.
+  #
+  # What it adds: ONE file, boot/efi.img -- a FAT12 ESP holding GRUB. MEASURED at
+  # 6,488,064 bytes (6.2 MiB), which is grub-mkstandalone embedding its modules; an
+  # earlier draft of this comment guessed "KiB-sized" and was wrong by three orders of
+  # magnitude. The ISO goes 531,935,232 -> 538,425,344 bytes, 507.3 -> 513.5 MiB, still
+  # inside MAX_ISO_MIB.
+  #
+  # It builds NO bundle, so both images carry exactly the same nine .sb modules and
+  # build.sh's WANT_MODULES assertion is shared between them unchanged.
+  #
+  # How it reaches `kitchen pack`: v_boot_uefi writes the pack hint `uefi: true`, pack.sh
+  # reads it and switches to the xorriso backend on its own. build.sh passes no extra
+  # flag. The hint key is distinct from slax-wine-iso's volid/appid/checksums hints, so
+  # the two recipes do not contend -- which is why "slax-wine-iso last" could be relaxed.
+  #
+  # THIS IMAGE IS A SUPERSET, NOT AN ALTERNATIVE. pack.sh adds the EFI entry with
+  # `-eltorito-alt-boot`; the BIOS entry is untouched. Verified on the built artifacts
+  # rather than taken from upstream's word -- `xorriso -report_el_torito` shows:
+  #
+  #   bios ISO:  img path 1 /slax/boot/isolinux.bin
+  #   uefi ISO:  img path 1 /slax/boot/isolinux.bin   <- identical, still there
+  #              img path 2 /boot/efi.img
+  #
+  # So the same ISO boots both ways. Nothing in this repo may describe it as "the UEFI
+  # one" in a sense that implies it fails on BIOS.
+  #
+  # Still NOT covered, by either image: firmware that is itself 32-bit. The EFI binary is
+  # x86-64 (BOOTX64.EFI) and no bootia32.efi exists anywhere upstream. That is a statement
+  # about the firmware, not about this 32-bit target -- upstream measured
+  # debian-32bit-12.2.0 booting through GRUB under x86-64 OVMF. See INSTALL.md.
+  - uefi-bootable
+output:
+  # Not used -- build.sh names the output from build.env. See slax-wine-bios.yaml.
+  name: "slax-wine-uefi-{{version}}.iso"

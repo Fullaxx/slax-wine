@@ -7,7 +7,19 @@
 # sets SLAX-WINE, so every build would fail its own test. The other two historical objections are gone --
 # `apply --profile` runs no tests, and the output name is chosen at pack.
 #
-#   ./build.sh [--keep-work] [--no-fetch]
+#   ./build.sh [--bios|--uefi|--both] [--keep-work] [--no-fetch]
+#
+# TWO IMAGES, and --both is the default because they are the release pair:
+#   slax-wine-bios-<ver>.iso   stock bootloader. BIOS only.
+#   slax-wine-uefi-<ver>.iso   + a GRUB ESP. Boots BIOS *and* UEFI -- it is a SUPERSET,
+#                              not an alternative, because pack.sh adds the EFI El Torito
+#                              entry with -eltorito-alt-boot and leaves the BIOS one.
+# Same base, same four recipes, same nine bundles. Use --bios while iterating; each
+# variant is a full unpack+apply, so --both costs roughly twice the wall clock.
+#
+#   --test  builds slax-wine-test-<ver>.iso, which is the BIOS image plus testkit. NOT
+#           shipped and NOT part of --both; it is the artifact `kitchen test
+#           --persistence` is run against. See profiles/slax-wine-test.yaml.
 #
 # --no-fetch skips DOWNLOADING the base ISO; it is still verified, and it does NOT cover
 # the application payload, which is fetched whenever it is absent or its hash does not
@@ -21,7 +33,7 @@ set -eu
 REPO_ROOT=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 # The cd above is inside a command substitution, so it never moved this shell. Move it
 # now, because the profile names its recipes by RELATIVE path and kitchen resolves those
-# against the CURRENT WORKING DIRECTORY, not the repo root: lib/apply.py:2761 is a bare
+# against the CURRENT WORKING DIRECTORY, not the repo root: lib/apply.py:2842 is a bare
 # `if os.path.isfile(n)`, and the search path is recipe_search_path() + [os.getcwd()].
 # Without this line `/path/to/slax-wine/build.sh` run from anywhere else died with
 # "recipe not found: recipes/available/wine.yaml" -- but only at step 4, AFTER step 3
@@ -35,7 +47,6 @@ ASSERT="$REPO_ROOT/vendor/slax-kitchen/tests/structure/iso_assert.py"
 ISO_DIR=${ISO_DIR:-$REPO_ROOT/isos}
 WORK=${WORK:-$REPO_ROOT/work}
 OUT=${OUT:-$REPO_ROOT/out}
-OUT_ISO="$OUT/slax-wine-$VERSION.iso"
 STAGE="$REPO_ROOT/recipes/available/notepadpp.files"
 
 # The expected /slax/modules contents. iso_assert.py has --require but no --forbid, and
@@ -45,9 +56,16 @@ STAGE="$REPO_ROOT/recipes/available/notepadpp.files"
 # Forgetting that last one is the easy way to fail the build on its own output.
 WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp.sb 98-dpkg-db.sb"
 
-KEEP_WORK=0; NO_FETCH=0
+KEEP_WORK=0; NO_FETCH=0; VARIANTS="bios uefi"
 while [ $# -gt 0 ]; do
     case "$1" in
+        --bios)      VARIANTS="bios"; shift ;;
+        --uefi)      VARIANTS="uefi"; shift ;;
+        --both)      VARIANTS="bios uefi"; shift ;;
+        # Not shipped, and not in --both: the test image adds testkit, which prints to
+        # the serial console and carries a persistence marker. It exists so
+        # `kitchen test --persistence` has something of OURS to assert against.
+        --test)      VARIANTS="test"; shift ;;
         --keep-work) KEEP_WORK=1; shift ;;
         --no-fetch)  NO_FETCH=1; shift ;;
         *) echo "build.sh: unknown option $1" >&2; exit 2 ;;
@@ -55,6 +73,24 @@ while [ $# -gt 0 ]; do
 done
 
 say() { printf '\n== %s\n' "$*"; }
+
+# Only the apply step is elevated; set this once rather than per variant.
+SUDO=""
+[ "$(id -u)" -eq 0 ] || SUDO="sudo -E"
+
+# Give the tree back whether apply succeeded or not. bundle.packages runs as root and
+# writes INTO <work>/iso/slax/modules/, so a root-owned tree is left behind either way --
+# and `rm -rf` on it is the first thing the NEXT run does, unprivileged. Running this on
+# the success path only meant one failed build wedged every subsequent one, with nothing
+# but a bare "Permission denied" and no documented recovery.
+#
+# (Not the scratch dir: bundle.packages does put kitchen-pkg-* beside the work tree, but
+# removes it in a `finally: shutil.rmtree(...)`, so that is not what this is for.)
+give_back_work() {
+    [ -n "$SUDO" ] || return 0
+    [ -e "$1" ] || return 0
+    $SUDO chown -R "$(id -u):$(id -g)" "$1" 2>/dev/null || true
+}
 
 [ -x "$K" ] || {
     echo "build.sh: vendor/slax-kitchen is empty -- run:" >&2
@@ -102,107 +138,118 @@ upstream: $APP_URL
 sha256:   $APP_SHA256
 PROV
 
-# ---- 3. unpack ---------------------------------------------------------------------
-# Fresh every run. Recipes are NOT idempotent -- apply consults its journal and refuses
-# a second application -- so a clean tree is the only supported starting point.
-say "unpack"
-rm -rf "$WORK"
-"$K" unpack "$ISO_DIR/$BASE_ISO" -o "$WORK" --force
-
-# ---- 4. apply ----------------------------------------------------------------------
-# The profile is authoritative: it carries the ordered recipe list and any per-recipe
-# vars, so there is exactly one place that says what this image is.
-say "apply"
-SUDO=""
-[ "$(id -u)" -eq 0 ] || SUDO="sudo -E"
-# Piping into tee would hide a failure: the pipeline's status is tee's, which is
-# always 0, so `set -e` never fires. POSIX sh has no PIPESTATUS, so the success of the
-# real command is recorded out of band. slax-kitchen's upstream-watch job was silently
-# inert for exactly this reason.
-# Give the tree back whether apply succeeded or not. bundle.packages runs as root and
-# writes INTO work/iso/slax/modules/, so a root-owned work/ is left behind either way --
-# and step 3's `rm -rf "$WORK"` is the first thing the NEXT run does, unprivileged. On
-# the success path only, one failed build wedged every subsequent one with nothing but a
-# bare "Permission denied" and no documented recovery.
+# ---- 3..7, once per variant --------------------------------------------------------
+# Two images, one build: same base, same core four recipes, same nine bundles. The UEFI
+# profile adds `uefi-bootable` as a fifth recipe and nothing else. Everything below is
+# shared, which is the point -- a difference between the two images can only come from
+# that one recipe.
 #
-# (Not the scratch dir: bundle.packages does put kitchen-pkg-* beside work/, but removes
-# it in a `finally: shutil.rmtree(...)`, so that is not what this is for.)
-give_back_work() {
-    [ -n "$SUDO" ] || return 0
-    [ -e "$WORK" ] || return 0
-    $SUDO chown -R "$(id -u):$(id -g)" "$WORK" 2>/dev/null || true
+# Each variant gets its OWN work tree under work/, because recipes are not idempotent:
+# apply consults its journal and refuses a second application, so the trees cannot be
+# reused between variants. Keeping them under work/ also puts the engine's kitchen-pkg-*
+# scratch dir (mkdtemp beside ctx.work) inside an already-gitignored directory.
+build_variant() {
+    v=$1
+    profile="$REPO_ROOT/profiles/slax-wine-$v.yaml"
+    work="$WORK/$v"
+    out_iso="$OUT/slax-wine-$v-$VERSION.iso"
+    applog="$OUT/apply-$v.log"
+    sum="$OUT/build-summary-$v.txt"
+    [ -f "$profile" ] || { echo "build.sh: no such profile: $profile" >&2; exit 2; }
+
+    say "[$v] unpack"
+    rm -rf "$work"
+    "$K" unpack "$ISO_DIR/$BASE_ISO" -o "$work" --force
+
+    # The profile is authoritative: it carries the ordered recipe list, so there is
+    # exactly one place that says what this image is.
+    say "[$v] apply"
+    rm -f "$OUT/.apply-ok"
+    { $SUDO "$K" apply --profile "$profile" -w "$work" \
+        && touch "$OUT/.apply-ok"; } 2>&1 | tee "$applog"
+    [ -f "$OUT/.apply-ok" ] || {
+        give_back_work "$work"
+        echo "build.sh: [$v] apply failed -- see $applog" >&2
+        exit 1
+    }
+    rm -f "$OUT/.apply-ok"
+    give_back_work "$work"
+
+    # --appid carries the version, because a CLI flag beats a recipe hint and that keeps
+    # every version string out of the YAML where it could drift from the git tag.
+    #
+    # No --uefi flag for the uefi variant: v_boot_uefi writes the pack hint `uefi: true`
+    # and pack.sh reads it, switching to the xorriso backend on its own.
+    say "[$v] pack"
+    "$K" pack -s "$work/iso" -o "$out_iso" \
+        --appid "slax-wine $VERSION $v (base $BASE_ISO)" --force
+
+    # Read the volid back out of the pack hints rather than hardcoding it; the recipe is
+    # the one place that decides it.
+    say "[$v] assert"
+    volid=$(sed -n 's/^volid: *//p' "$work/.kitchen/pack.yaml" | head -1 | sed "s/^[\"']//;s/[\"']$//")
+    [ -n "$volid" ] || { echo "build.sh: [$v] no volid hint -- did slax-wine-iso.yaml run?" >&2; exit 1; }
+
+    # The uefi image genuinely HAS an EFI El Torito entry, so its absence must stop being
+    # asserted -- and its presence must start being. Getting this wrong in either
+    # direction is a check that cannot fail.
+    uefi_flag=""
+    [ "$v" = uefi ] && uefi_flag="--expect-uefi"
+    # shellcheck disable=SC2086
+    python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$MAX_ISO_MIB" $uefi_flag \
+        --require /slax/modules/20-wine.sb \
+        --require /slax/modules/21-wine-desktop.sb \
+        --require /slax/modules/30-notepadpp.sb \
+        --require /slax/modules/98-dpkg-db.sb
+
+    # WANT_MODULES is shared deliberately: uefi-bootable builds NO bundle, it writes one
+    # boot/efi.img. If this ever differs between the variants, something is wrong.
+    got=$(xorriso -indev "$out_iso" -lsl /slax/modules/ -- 2>/dev/null \
+          | sed -n "s/.*'\\(.*\\.sb\\)'\$/\\1/p" | sort | tr '\n' ' ')
+    want=$(printf '%s ' $WANT_MODULES)
+    if [ "$got" != "$want" ]; then
+        echo "build.sh: [$v] /slax/modules is not what was expected" >&2
+        echo "  want: $want" >&2
+        echo "  got:  $got"  >&2
+        exit 1
+    fi
+    echo "  ok   modules: $got"
+
+    say "[$v] summary"
+    {
+        echo "slax-wine $VERSION ($v)"
+        echo "profile         profiles/slax-wine-$v.yaml"
+        echo "base            $BASE_ISO ($BASE_SHA256)"
+        echo "slax-kitchen    $(git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse --short HEAD)"
+        echo "app             $APP_NAME $APP_VERSION"
+        echo
+        for b in 20-wine 21-wine-desktop 30-notepadpp 98-dpkg-db; do
+            f="$work/iso/slax/modules/$b.sb"
+            [ -f "$f" ] || continue
+            sz=$(stat -c%s "$f")
+            printf '%-18s %10s bytes  %6.1f MiB  %s paths\n' "$b.sb" "$sz" \
+                "$(awk -v n="$sz" 'BEGIN{printf "%.1f", n/1048576}')" \
+                "$(unsquashfs -l "$f" 2>/dev/null | grep -c squashfs-root)"
+        done
+        [ -f "$work/iso/boot/efi.img" ] && \
+            printf '%-18s %10s bytes  (GRUB ESP, not a bundle)\n' "boot/efi.img" \
+                "$(stat -c%s "$work/iso/boot/efi.img")"
+        echo
+        isz=$(stat -c%s "$out_iso")
+        printf 'ISO             %s bytes  %.1f MiB\n' "$isz" \
+            "$(awk -v n="$isz" 'BEGIN{printf "%.1f", n/1048576}')"
+        printf 'vs stock        %+d bytes\n' "$(( isz - BASE_SIZE ))"
+        echo "sha256          $(cut -d' ' -f1 < "$out_iso.sha256")"
+        echo
+        echo "--- apply delta lines ---"
+        grep -E 'delta:|built slax/modules|removed|installed:' "$applog" || true
+    } > "$sum"
+    cat "$sum"
+
+    [ "$KEEP_WORK" = 1 ] || rm -rf "$work"
+    say "[$v] done -> $out_iso"
 }
-rm -f "$OUT/.apply-ok"
-{ $SUDO "$K" apply --profile "$REPO_ROOT/profiles/slax-wine.yaml" -w "$WORK" \
-    && touch "$OUT/.apply-ok"; } 2>&1 | tee "$OUT/apply.log"
-[ -f "$OUT/.apply-ok" ] || {
-    give_back_work
-    echo "build.sh: apply failed -- see $OUT/apply.log" >&2
-    exit 1
-}
-rm -f "$OUT/.apply-ok"
-give_back_work
 
-# ---- 5. pack -----------------------------------------------------------------------
-# --appid carries the version, because a CLI flag beats a recipe hint and that keeps
-# every version string out of the YAML where it could drift from the git tag.
-say "pack"
-"$K" pack -s "$WORK/iso" -o "$OUT_ISO" \
-    --appid "slax-wine $VERSION (base $BASE_ISO)" --force
-
-# ---- 6. assert ---------------------------------------------------------------------
-# Read the volid back out of the pack hints rather than hardcoding it here; the recipe
-# is the one place that decides it.
-say "assert"
-VOLID=$(sed -n 's/^volid: *//p' "$WORK/.kitchen/pack.yaml" | head -1 | sed "s/^[\"']//;s/[\"']$//")
-[ -n "$VOLID" ] || { echo "build.sh: no volid hint -- did slax-wine-iso.yaml run?" >&2; exit 1; }
-
-python3 "$ASSERT" "$OUT_ISO" --volid "$VOLID" --max-size-mib "$MAX_ISO_MIB" \
-    --require /slax/modules/20-wine.sb \
-    --require /slax/modules/21-wine-desktop.sb \
-    --require /slax/modules/30-notepadpp.sb \
-    --require /slax/modules/98-dpkg-db.sb
-
-got=$(xorriso -indev "$OUT_ISO" -lsl /slax/modules/ -- 2>/dev/null \
-      | sed -n "s/.*'\\(.*\\.sb\\)'\$/\\1/p" | sort | tr '\n' ' ')
-want=$(printf '%s ' $WANT_MODULES)
-if [ "$got" != "$want" ]; then
-    echo "build.sh: /slax/modules is not what was expected" >&2
-    echo "  want: $want" >&2
-    echo "  got:  $got"  >&2
-    exit 1
-fi
-echo "  ok   modules: $got"
-
-# ---- 7. measure --------------------------------------------------------------------
-# One source for the docs' ## Verified sections, the release notes and the CI log.
-say "summary"
-SUM="$OUT/build-summary.txt"
-{
-    echo "slax-wine $VERSION"
-    echo "base            $BASE_ISO ($BASE_SHA256)"
-    echo "slax-kitchen    $(git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse --short HEAD)"
-    echo "app             $APP_NAME $APP_VERSION"
-    echo
-    for b in 20-wine 21-wine-desktop 30-notepadpp 98-dpkg-db; do
-        f="$WORK/iso/slax/modules/$b.sb"
-        [ -f "$f" ] || continue
-        sz=$(stat -c%s "$f")
-        printf '%-18s %10s bytes  %6.1f MiB  %s paths\n' "$b.sb" "$sz" \
-            "$(awk -v n="$sz" 'BEGIN{printf "%.1f", n/1048576}')" \
-            "$(unsquashfs -l "$f" 2>/dev/null | grep -c squashfs-root)"
-    done
-    echo
-    isz=$(stat -c%s "$OUT_ISO")
-    printf 'ISO             %s bytes  %.1f MiB\n' "$isz" \
-        "$(awk -v n="$isz" 'BEGIN{printf "%.1f", n/1048576}')"
-    printf 'vs stock        %+d bytes\n' "$(( isz - BASE_SIZE ))"
-    echo "sha256          $(cut -d' ' -f1 < "$OUT_ISO.sha256")"
-    echo
-    echo "--- apply delta lines ---"
-    grep -E 'delta:|built slax/modules|removed|installed:' "$OUT/apply.log" || true
-} > "$SUM"
-cat "$SUM"
-
-[ "$KEEP_WORK" = 1 ] || rm -rf "$WORK"
-say "done -> $OUT_ISO"
+for v in $VARIANTS; do
+    build_variant "$v"
+done

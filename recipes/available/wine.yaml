@@ -37,14 +37,14 @@ steps:
   # at the pinned commit that rule is FULLY enforced -- the three bypasses we reported as
   # issue #11 are closed by 997a9ab. It is seeded from the journal, so it holds across
   # separate `kitchen apply` invocations (apply.py:254), and --skip-preflight no longer
-  # disables it: the call at apply.py:3063 sits BEFORE the `if not a.skip_preflight:`
-  # guard at :3074. Both issues are closed; see docs/UPSTREAM.md.
+  # disables it: the call at apply.py:3144 sits BEFORE the `if not a.skip_preflight:`
+  # guard at :3155. Both issues are closed; see docs/UPSTREAM.md.
   #
   # The explicit `from:` therefore no longer compensates for anything. It stays as
   # belt-and-braces -- it documents the stack, and it means reordering these two steps
   # cannot silently reintroduce the libpulse0 bug even on an engine older than the pin.
   # It is not free, though: naming bundles explicitly makes this recipe hard-fail if any
-  # of the five is renamed anywhere in the declared slax: range (apply.py:713 raises
+  # of the five is renamed anywhere in the declared slax: range (apply.py:702 raises
   # "no bundle matching"). Cheap insurance, not costless insurance.
   #
   # 05-chromium.sb is 81.7 MiB. That is NOT "almost exactly what Wine costs" -- Wine is
@@ -62,8 +62,11 @@ steps:
   # it allocates 00-09 to the platform (upstream's 01-06 plus slax-kitchen's own
   # OS-adjusting recipes at 07-09), 10-89 to forks, 90-97 to headroom, and refuses 98
   # (the generated package database) and 99 (savechanges). Within the fork band this
-  # project uses 20-29 for its platform and 30-89 for applications; 10-12 are left alone
-  # because slax-kitchen's example app recipes sit there.
+  # project uses 20-29 for its platform and 30-89 for applications, and starts at 20
+  # rather than 10 because slax-kitchen's example app recipes occupy the bottom of the
+  # band and that set GROWS -- it was 10-12 when this was written and is 10-16 today
+  # (chromium, firefox, libreoffice, browsers x2, tor x3). Leaving the low end to them
+  # costs nothing and means an upstream example can never collide with ours.
   # See vendor/slax-kitchen/docs/10-anatomy/bundles-squashfs.md.
   #
   # The build root is stacked from the ISO's own bundles, so there is no debootstrap and
@@ -139,11 +142,11 @@ steps:
       #
       # update: true because the stacked root's package index is from October 2023 and
       # covers only bookworm-security. (NOT because of BUNDLE_EXCLUDE: that rule --
-      # apply.py:2381, ^var/lib/(apt|slackpkg) -- governs bundles slax-kitchen BUILDS,
+      # apply.py:2462, ^var/lib/(apt|slackpkg) -- governs bundles slax-kitchen BUILDS,
       # and this stack is five upstream bundles it never built. 01-core.sb ships 15
       # var/lib/apt/lists entries. The flag is right; the old reason was not.)
       #
-      # Both keys below restate engine defaults (apply.py:2630, :2635). Kept explicit
+      # Both keys below restate engine defaults (apply.py:2711, :2716). Kept explicit
       # because an apt invocation that silently changed either would change what ships.
       update: true
       no_recommends: true

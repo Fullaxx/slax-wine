@@ -1,27 +1,31 @@
 apiVersion: slax-kitchen/v1
 kind: Profile
 metadata:
-  name: slax-wine
-  summary: Slax with Wine, Notepad++ as a test payload, and no browser
+  name: slax-wine-bios
+  summary: Slax with Wine and Notepad++, stock bootloader -- BIOS only, no browser
 base:
   flavour: debian
   arch: 32bit
   version: "12.2.0"
 recipes:
-  # THE AUTHORITATIVE LIST. build.sh drives this with `kitchen apply --profile`, so the
-  # order here is the order applied, and a recipe absent from this file is never built
-  # -- ci/checks/96-release-consistency.sh fails on an orphan for exactly that reason.
+  # THE CORE FOUR, and the order they are applied in. `profiles/slax-wine-uefi.yaml`
+  # carries this same list and adds `uefi-bootable` after it; gate 96 section 5 fails if
+  # the two ever disagree, because two profiles that are meant to build the same system
+  # are exactly the kind of thing that drifts silently.
+  #
+  # A recipe absent from EVERY profile is never built -- the same gate fails on that too.
   #
   # Paths, not bare names: bare-name resolution searches the ENGINE's recipes/
-  # directories, and ours live in this repo rather than in the submodule. A path is
-  # explicitly supported and resolves from the repo root.
+  # directories, and ours live in this repo rather than in the submodule. A path
+  # resolves from the CURRENT WORKING DIRECTORY (apply.py:2842), which is why build.sh
+  # cd's to the repo root before applying.
   #
   # Order matters twice over:
   #   wine           removes 05-chromium BEFORE building, so apt never builds against a
   #                  bundle that is about to be deleted
   #   wine-desktop   masks the launcher the removal leaves behind, so it must follow wine
   #   notepadpp      depends on /usr/local/bin/slax-wine from wine-desktop
-  #   slax-wine-iso  pack hints; last so nothing can overwrite them
+  #   slax-wine-iso  boot line and pack hints; last in THIS profile
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
   - recipes/available/notepadpp.yaml
@@ -30,4 +34,4 @@ output:
   # Not used: build.sh names the output from build.env, because {{version}} here means
   # the SLAX version (12.2.0), not ours. Present so the profile is complete and
   # `kitchen build` would produce something sane if anyone ran it.
-  name: "slax-wine-{{version}}.iso"
+  name: "slax-wine-bios-{{version}}.iso"
