@@ -14,11 +14,14 @@
 #   slax-wine-uefi-<ver>.iso   + a GRUB ESP. Boots BIOS *and* UEFI -- it is a SUPERSET,
 #                              not an alternative, because pack.sh adds the EFI El Torito
 #                              entry with -eltorito-alt-boot and leaves the BIOS one.
-# Same base, same four recipes, same nine bundles. Use --bios while iterating; each
-# variant is a full unpack+apply, so --both costs roughly twice the wall clock.
+# Same base, same nine bundles, and the same recipe list: upstream's remove-bundle first
+# (it drops 05-chromium.sb, and the engine refuses a plan where a removal follows
+# anything that builds), then our four. Use --bios while iterating; each variant is a
+# full unpack+apply, so --both costs roughly twice the wall clock.
 #
-#   --test  builds slax-wine-test-<ver>.iso, which is the BIOS image plus testkit. NOT
-#           shipped and NOT part of --both; it is the artifact `kitchen test
+#   --test  builds slax-wine-test-<ver>.iso: the same recipes plus serial-console and
+#           testkit, and uefi-bootable so both firmware paths can be exercised from one
+#           image. NOT shipped and NOT part of --both; it is the artifact `kitchen test
 #           --persistence` is run against. See profiles/slax-wine-test.yaml.
 #
 # --no-fetch skips DOWNLOADING the base ISO; it is still verified, and it does NOT cover

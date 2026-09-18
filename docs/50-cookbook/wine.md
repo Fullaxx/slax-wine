@@ -29,14 +29,19 @@ That is not hypothetical. Measured on this exact base:
 | `libpulse0` in `01-core`…`04-apps` | **absent** |
 | `libpulse0` in `05-chromium.sb` | **present** |
 
-So with the default stack, apt sees it installed, skips it, and `bundle.remove` deletes the only
-copy. The build succeeds, every gate passes, and the merged package database is *correct* — it
-rightly does not claim `libpulse0`. The image ships `libwine.so` with an unsatisfiable hard
-dependency, and you find out when Wine will not start.
+So with the default stack, apt sees it installed, skips it, and the removal deletes the only copy.
+The build succeeds, every gate passes, and the merged package database is *correct* — it rightly
+does not claim `libpulse0`. The image ships `libwine.so` with an unsatisfiable hard dependency, and
+you find out when Wine will not start.
 
-This recipe does both halves: removes first **and** names its `from:` stack explicitly, so
-reordering the steps cannot reintroduce the bug. Reported upstream — see
-[UPSTREAM.md](../UPSTREAM.md) issue 1.
+**The removal is not in this recipe.** It was, until the `8adfca6` bump: `cc8a664` added a
+`lib/validate.py` rule that refuses a recipe mixing `bundle.remove` with anything that builds, so
+every profile now lists upstream's **`remove-bundle` first**, spelling out `drop:
+"^05-chromium\.sb$"` rather than inheriting that recipe's identical default. Ordering is still
+enforced — `check_plan_order` requires every removal to precede every `bundle.packages` across the
+whole plan, seeded from the journal so it holds across separate `kitchen apply` invocations — and
+this recipe still names its `from:` stack explicitly as belt-and-braces. See
+[DECISIONS.md](../DECISIONS.md) D-3, and [UPSTREAM.md](../UPSTREAM.md) issue 1.
 
 Verified in the output: `98-dpkg-db.sb` declares `libpulse0`, and `20-wine.sb` ships the two
 PulseAudio client libraries — `libpulse.so.0` and `libpulse-simple.so.0`, each with its versioned

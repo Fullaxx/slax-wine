@@ -1,8 +1,8 @@
 # Building slax-wine
 
 `./build.sh` does the whole thing: fetch the base ISO, fetch and verify the Notepad++ installer,
-unpack, apply the four recipes, pack, and assert the result. This page is what has to be true
-*before* that works.
+unpack, apply upstream's `remove-bundle` and then our four recipes, pack, and assert the result.
+This page is what has to be true *before* that works.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ roughly twice the wall clock; use `--bios` while iterating.
 | flag | effect |
 |---|---|
 | `--bios` / `--uefi` / `--both` | which image(s). **`--both` is the default** — they are the release pair |
-| `--test` | build `slax-wine-test-<ver>.iso` instead: the BIOS image plus `testkit`. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against |
+| `--test` | build `slax-wine-test-<ver>.iso` instead: the same recipes plus `serial-console`, `testkit` and `uefi-bootable`, so both firmware paths can be driven from one image. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against. **Cannot be built at the `8adfca6` pin** — see [UPSTREAM.md](UPSTREAM.md) |
 | `--keep-work` | leave `work/<variant>/` in place for inspection |
 | `--no-fetch` | skip *downloading* the base ISO (it is still verified). The application payload is fetched regardless if it is missing or its hash does not match |
 | `ISO_DIR=…` | reuse base ISOs you already have |
@@ -81,7 +81,7 @@ against the **current working directory**, not the repo root.
 
 ## Commit gates
 
-Eleven checks live in `ci/checks/`. They are not installed automatically — `.git/hooks/` is local to
+Twelve checks live in `ci/checks/`. They are not installed automatically — `.git/hooks/` is local to
 each clone and is not tracked — so **after cloning, do this once**:
 
 ```sh
@@ -139,5 +139,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`bcd4f00`](https://github.com/Fullaxx/slax-kitchen/tree/bcd4f00). Bumping the
+The engine is pinned at [`8adfca6`](https://github.com/Fullaxx/slax-kitchen/tree/8adfca6). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

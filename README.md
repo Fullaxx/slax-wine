@@ -54,10 +54,12 @@ change, never *how*.
 | — | [`slax-wine-iso`](docs/50-cookbook/slax-wine-iso.md) — boot defaults, ISO identity, checksum |
 | — | `uefi-bootable` — **upstream's**, applied only by the uefi profile. Adds a GRUB ESP; builds no bundle |
 
-Both images run the same four recipes in the same order; the uefi one adds `uefi-bootable` after
-them, which is why they carry an identical nine bundles.
-[`ci/checks/96-release-consistency.sh`](ci/checks/96-release-consistency.sh) fails if the two
-profiles ever disagree about that core list.
+Both images run upstream's `remove-bundle` first — it drops `05-chromium.sb`, named explicitly
+rather than inherited, and it has to come before anything that builds — then the same four recipes
+in the same order. The uefi one adds `uefi-bootable` after them, which is why they carry an
+identical nine bundles. [`ci/checks/96-release-consistency.sh`](ci/checks/96-release-consistency.sh)
+fails if the two profiles ever disagree about that core list, or if either drops the removal or
+lists it late.
 
 `30-notepadpp.sb` is meant to be replaced. Delete that one file from `/slax/modules/` on a stick and
 drop another in — no rebuild, no remaster. That is the whole point of the layering.

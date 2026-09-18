@@ -8,7 +8,7 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 
 ## The shape of the thing
 
-slax-wine owns no engine code. It is four recipes, three profiles, a build script and eleven gates,
+slax-wine owns no engine code. It is four recipes, three profiles, a build script and twelve gates,
 laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
 
 ```
@@ -16,7 +16,8 @@ build.env          version + base identity -- the single source of truth
 profiles/          three: -bios and -uefi ship, -test is built to be asserted against
 recipes/available/ four recipes
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
-ci/                eleven gates; six copied verbatim, four adapted, one ours
+ci/                twelve gates; seven copied verbatim, four adapted, one ours
+tests/unit/        one test, adapted: the .desktop trap that once cost both launchers
 vendor/            the engine, pinned by commit
 ```
 
@@ -26,10 +27,10 @@ built — `ci/checks/96-release-consistency.sh` fails on an orphan for that reas
 
 ### Two shipped images, one system
 
-`slax-wine-bios` and `slax-wine-uefi` run **the same four recipes in the same order**. The uefi
-profile adds one more, upstream's `uefi-bootable`, which builds no bundle and writes a single
-6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB. So both images carry an identical nine bundles and
-share `build.sh`'s `WANT_MODULES` assertion unchanged.
+`slax-wine-bios` and `slax-wine-uefi` run **upstream's `remove-bundle` and then the same four
+recipes in the same order**. The uefi profile adds one more, upstream's `uefi-bootable`, which
+builds no bundle and writes a single 6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB. So both
+images carry an identical nine bundles and share `build.sh`'s `WANT_MODULES` assertion unchanged.
 
 Two consequences worth holding onto:
 
@@ -199,7 +200,7 @@ A register, because every one of these cost time to find.
 |---|---|
 | **`from:` default includes a bundle you may delete** | see above. Remove first *and* name the stack |
 | **`Terminal=false` is mandatory on a `.desktop`** | `fbappselect` runs `ldd $binary \| grep libX11` and wraps in an xterm when empty. Debian's `/usr/bin/wine` is a shell script, so it always looks like a console program |
-| **`NoDisplay` does not hide anything in xlunch** | `xlunch_genquick` greps `^(Name\|Icon\|Exec\|Hidden\|Terminal)=` and tests `Hidden`. Use `Hidden=true`. *(A stub with neither still vanishes — see the next row for why — so upstream's `NoDisplay`-only example does work.)* |
+| **`NoDisplay` does not hide anything in xlunch** | `xlunch_genquick` greps `^(Name\|Icon\|Exec\|Hidden\|Terminal)=` and tests `Hidden`. Use `Hidden=true`. *(A `NoDisplay`-only stub vanishes anyway — see the next row — but only because it ships no `Icon=`; add one and the tile returns. Upstream now calls that a defect and its stub sets `Hidden=true`.)* |
 | **An `Icon=` that does not resolve DELETES the entry** | `xlunch_genquick:52` ends each entry with `if [ -e "$Icon" ]`. The search covers only numeric size dirs under `hicolor`/`pixmaps`/`icons-gnome` and only appends `.png` — so `scalable/*.svg` and anything under `Adwaita/` are invisible, `$Icon` stays a bare string, and the launcher silently disappears. This cost slax-wine **both** its tiles. Use an absolute path, or verify with `xlunch_genquick 64 --desktop` |
 | **`noautomount` is ignored** | `fstab_create` tests `grep -vq automount`, and `noautomount` *contains* `automount`. Remove the flag, do not negate it |
 | **`perch` is a substring match** | `perchsize=` on the `toram` entry would enable persistence on the one entry that unmounts the medium |

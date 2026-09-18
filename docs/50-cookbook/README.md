@@ -12,9 +12,12 @@ One page per recipe. Each states what it does, what it measured, and what it can
 All four are applied, in that order, by **both** shipped profiles:
 [`slax-wine-bios`](../../profiles/slax-wine-bios.yaml) and
 [`slax-wine-uefi`](../../profiles/slax-wine-uefi.yaml), which adds upstream's `uefi-bootable` after
-them. The profiles are authoritative — `build.sh` drives them with `kitchen apply --profile`, and a
-recipe named by no profile is never built. `ci/checks/96-release-consistency.sh` fails both on an
-unbuilt recipe and on the two profiles disagreeing about the core four.
+them. Both also list upstream's `remove-bundle` **first** — it has no page here because it is not
+ours; it drops `05-chromium.sb` with a pattern each profile states rather than inherits, and the
+engine refuses a plan where a removal follows anything that builds. The profiles are authoritative —
+`build.sh` drives them with `kitchen apply --profile`, and a recipe named by no profile is never
+built. `ci/checks/96-release-consistency.sh` fails on an unbuilt recipe, on the two profiles
+disagreeing about the core four, and on either of them dropping the removal or listing it late.
 
 ## The verification ladder
 

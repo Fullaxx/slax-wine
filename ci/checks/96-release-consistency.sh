@@ -1,6 +1,6 @@
 #!/bin/sh
 # stages: pre-commit pre-push ci
-# desc: build.env, the recipes, the profile, the submodule pin and the git tag all agree.
+# desc: build.env, the recipes, the profiles, the submodule pin, the copied files and the git tag all agree.
 #
 # This repo's own gate -- nothing upstream corresponds to it.
 #
@@ -183,6 +183,32 @@ else
         done < "$TMP/named"
     done < "$TMP/prof"
 
+    # (a3) the browser removal is listed, and listed BEFORE anything that builds.
+    #
+    # lib/validate.py refuses a recipe that mixes bundle.remove with building, so the
+    # removal lives in upstream's `remove-bundle` and each profile must list it. It is
+    # THEIRS, so it is named rather than pathed, which means check (b) below -- which
+    # compares recipes/available/ paths -- cannot see it: the two shipped profiles could
+    # disagree about whether the browser is removed at all and (b) would stay green. Drop it and the image silently gains 82 MiB
+    # and a three-year-old browser; list it late and check_plan_order refuses the build.
+    for prof in "$CORE_A" "$CORE_B"; do
+        [ -f "$prof" ] || continue
+        rel=${prof#"$REPO_ROOT"/}
+        # Both spellings: the bare `- remove-bundle` and the object form
+        # `- name: remove-bundle`, which is what these profiles actually use so that
+        # `drop:` is stated rather than inherited. Matching only one would make this
+        # check silently stop applying the day the other is adopted.
+        rm_ln=$(grep -nE '^[[:space:]]*-[[:space:]]*(name:[[:space:]]*)?remove-bundle[[:space:]]*$' "$prof" \
+                | head -1 | cut -d: -f1)
+        first_build=$(grep -nE '^[[:space:]]*-[[:space:]]*recipes/available/' "$prof" \
+                      | head -1 | cut -d: -f1)
+        if [ -z "$rm_ln" ]; then
+            fail "$rel does not list remove-bundle, so 05-chromium would ship"
+        elif [ -n "$first_build" ] && [ "$rm_ln" -gt "$first_build" ]; then
+            fail "$rel lists remove-bundle after a building recipe (line $rm_ln > $first_build); removal must come first"
+        fi
+    done
+
     # (b) the two shipped profiles carry an IDENTICAL core list, in the same order.
     # uefi adds `- uefi-bootable`, a bare name resolved from the engine, so comparing
     # only the recipes/available/ entries is the right comparison.
@@ -228,11 +254,15 @@ else
     fi
 fi
 
-# ---- 7. copied gates cite the pin they were copied from ----------------------------
-# Every file in ci/ carries "slax-kitchen @ <40 hex>" and "Do not edit here -- re-copy on
+# ---- 7. copied files cite the pin they were copied from ----------------------------
+# Every copied file carries "slax-kitchen @ <40 hex>" and "Do not edit here -- re-copy on
 # a submodule bump". Nothing enforced the first half, so a pin bump left twelve headers
 # naming the OLD commit while the content had in fact been refreshed -- a reader cannot
 # tell a stale citation from stale content, which is the header's entire purpose.
+#
+# SCOPE IS ci/ AND tests/, not ci/ alone. Copied code stopped being ci-only the moment
+# tests/unit/ arrived, and a scan that covers only the directory that happened to exist
+# when it was written is how the rot it prevents gets back in through the side door.
 #
 # This is the invariant this gate's own `# desc:` line has always claimed to check.
 if ! have git; then
@@ -241,7 +271,11 @@ elif ! git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse HEAD >/dev/null 2>&1; t
     note "vendor/slax-kitchen not checked out - provenance-header check skipped"
 else
     PIN=$(git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse HEAD)
-    grep -rln 'slax-kitchen @ [0-9a-f]' "$REPO_ROOT/ci" > "$TMP/hdr" 2>/dev/null || true
+    : > "$TMP/hdr"
+    for d in ci tests; do
+        [ -d "$REPO_ROOT/$d" ] || continue
+        grep -rln 'slax-kitchen @ [0-9a-f]' "$REPO_ROOT/$d" >> "$TMP/hdr" 2>/dev/null || true
+    done
     while IFS= read -r f; do
         [ -n "$f" ] || continue
         got=$(sed -n 's/.*slax-kitchen @ \([0-9a-f]\{7,40\}\).*/\1/p' "$f" | head -1)
@@ -251,6 +285,97 @@ else
             *) fail "${f#"$REPO_ROOT"/}: header cites slax-kitchen @ $got but the pin is ${PIN%"${PIN#???????}"}... (re-copy, or update the header)" ;;
         esac
     done < "$TMP/hdr"
+fi
+
+# ---- 8. prose and permalinks cite the pin too --------------------------------------
+# Section 7 covers the provenance headers on copied FILES. The pin is also stated in
+# English -- "slax-kitchen pinned at `<hex>`" -- and embedded in permalinks into their
+# docs, and nothing checked either: the 8adfca6 bump found seven stale citations by grep,
+# across CHANGELOG.md, docs/build.md and five links in INSTALL.md. A grep that has to be
+# remembered is not a check.
+#
+# A PERMALINK IS NOT EXEMPT JUST BECAUSE IT IS A PERMALINK. Pinning the URL is right --
+# upstream renamed remove-chromium.md out of existence, which is exactly what a permalink
+# protects a reader from -- but it should point at the docs for the engine THIS release
+# ships, not at whatever was current three bumps ago.
+#
+# docs/UPSTREAM.md is exempt from the prose half and only from that half: it is the bump
+# history, so "at the bcd4f00 bump" is a fact about the past and must not be rewritten.
+# It carries no blob/tree links, so the permalink half needs no exemption.
+if [ -z "${PIN:-}" ]; then
+    :                                       # section 7 already said why it could not run
+else
+    short=${PIN%"${PIN#???????}"}
+
+    # (a) permalinks into their tree, anywhere but vendor/
+    grep -rnoE 'slax-kitchen/(blob|tree)/[0-9a-f]{7,40}' \
+         --include='*.md' "$REPO_ROOT" 2>/dev/null \
+      | grep -v '/vendor/' > "$TMP/links" || true
+    while IFS= read -r hit; do
+        [ -n "$hit" ] || continue
+        got=${hit##*/}
+        case "$PIN" in
+            "$got"*) : ;;
+            *) fail "${hit%%:*}: permalink cites slax-kitchen @ $got but the pin is $short... (${hit#*:} -- point it at the engine this release ships)" ;;
+        esac
+    done < "$TMP/links"
+
+    # (b) "pinned at `<hex>`" in prose. Newline-tolerant, because CHANGELOG.md wraps
+    # between the words and the hex -- the first draft of this check missed it for
+    # exactly that reason and would have passed the stale line it was written to catch.
+    find "$REPO_ROOT" -name '*.md' -not -path '*/vendor/*' -print > "$TMP/mds" 2>/dev/null || true
+    while IFS= read -r md; do
+        [ -n "$md" ] || continue
+        rel=${md#"$REPO_ROOT"/}
+        [ "$rel" = "docs/UPSTREAM.md" ] && continue
+        got=$(tr '\n' ' ' < "$md" \
+              | grep -oE 'pinned at \[?`[0-9a-f]{7,40}`' \
+              | sed 's/.*`\([0-9a-f]*\)`/\1/' | head -1)
+        [ -n "$got" ] || continue
+        case "$PIN" in
+            "$got"*) : ;;
+            *) fail "$rel: prose says the engine is pinned at $got but the pin is $short..." ;;
+        esac
+    done < "$TMP/mds"
+fi
+
+# ---- 9. "copied verbatim" has to MEAN verbatim ------------------------------------
+# Section 7 checks the citation; this checks the content, and the two failures are
+# opposite. A header naming the current pin over stale content is the worse of the pair,
+# because it reads as verified. That is not hypothetical here: before this bump our
+# copies of ci/lib.sh and 00-no-binaries.sh were missing the #19 fix while their headers
+# looked fine, so the gate that calls itself the most important one in this repo accepted
+# a committed .exe -- in a project whose stated premise is "fetch Windows binaries, never
+# commit them".
+#
+# A file claiming "Copied verbatim" must differ from the vendored original by NOTHING but
+# the two provenance lines. Files marked "Adapted from" are deliberately different and
+# are not checked here -- their differences are stated in their own headers, which is the
+# whole reason the two words are distinct.
+if [ -z "${PIN:-}" ]; then
+    :
+else
+    for d in ci tests; do
+        [ -d "$REPO_ROOT/$d" ] || continue
+        # ANCHORED to the header form. An unanchored search matches this very file,
+        # which mentions the phrase in its own grep pattern and comments -- the first
+        # version of this check failed on itself.
+        grep -rlE '^# Copied verbatim from slax-kitchen @' "$REPO_ROOT/$d" 2>/dev/null || true
+    done > "$TMP/verbatim"
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        rel=${f#"$REPO_ROOT"/}
+        up=$(grep -o 'slax-kitchen @ [0-9a-f]* ([^)]*)' "$f" | head -1 | sed 's/.*(\(.*\))/\1/')
+        [ -n "$up" ] || { fail "$rel: says 'Copied verbatim' but names no upstream path"; continue; }
+        orig="$REPO_ROOT/vendor/slax-kitchen/$up"
+        [ -f "$orig" ] || { fail "$rel: upstream path no longer exists at the pin: $up"; continue; }
+        grep -vE '^# (Copied verbatim from slax-kitchen @|MIT, same author\. Do not edit here)' \
+             "$f" > "$TMP/stripped"
+        if ! cmp -s "$TMP/stripped" "$orig"; then
+            n=$(diff "$TMP/stripped" "$orig" | grep -c '^[<>]')
+            fail "$rel: claims 'Copied verbatim' but differs from vendor/slax-kitchen/$up by $n line(s) -- re-copy it, or change the header to 'Adapted from' and say what differs"
+        fi
+    done < "$TMP/verbatim"
 fi
 
 check_result

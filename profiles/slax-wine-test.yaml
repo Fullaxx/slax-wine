@@ -10,8 +10,11 @@ base:
 recipes:
   # NOT A SHIPPED IMAGE. This exists so `kitchen test` has something of OURS to assert
   # against, and it is deliberately excluded from ci/checks/96's bios-vs-uefi core-list
-  # comparison: it carries the same four recipes so the thing under test is OUR image
-  # rather than a stock one, plus three things the shipped pair must not have.
+  # comparison: it carries remove-bundle plus the same four recipes, so the thing under
+  # test is OUR image rather than a stock one, plus three things the shipped pair must
+  # not have. Note the removal-first check in ci/checks/96 §5(a3) covers only the two
+  # SHIPPED profiles; this one is held to the same order by the engine itself, which
+  # refuses any plan where a removal follows something that builds.
   #
   # ORDER IS LOAD-BEARING IN BOTH DIRECTIONS HERE. Read the two notes below before
   # moving anything; getting either backwards does not fail, it quietly tests nothing.
@@ -31,6 +34,34 @@ recipes:
   # entry that still had automount, and the probe below would report a failure that is an
   # artefact of recipe order rather than of the image.
   - serial-console
+
+  # REMOVAL FIRST, AND IT MUST BE A RECIPE OF ITS OWN. lib/validate.py refuses a recipe
+  # that mixes `bundle.remove` with anything additive, so the browser removal that used to
+  # live inside wine.yaml is now upstream's `remove-bundle`, listed here. Its default
+  # `drop:` is already `^05-chromium\.sb$` -- we override nothing.
+  #
+  # It goes BEFORE ANYTHING THAT BUILDS, because a bundle is built against everything
+  # below it: build 20-wine before dropping 05-chromium and apt links libwine against
+  # that bundle's libpulse0, which then leaves with it. check_plan_order refuses that
+  # order outright; this listing is what makes the plan legal in the first place.
+  #
+  # It is SECOND here rather than first, and that is legal for a specific reason: the
+  # rule is removal-before-building, not removal-first-in-the-file. serial-console above
+  # edits isolinux.cfg/syslinux.cfg and builds no bundle, so it is not something the
+  # removal has to precede. The two shipped profiles have nothing before it, which is
+  # why ci/checks/96 §5(a3) can hold THEM to the stricter literal form.
+  #
+  # A BARE NAME, resolved from the engine's own recipes/ -- nothing to vendor or re-sync.
+  #
+  # `drop:` IS SPELLED OUT even though it restates the recipe's own default, and that is
+  # this repo's standing rule for a default that decides what ships (see wine.yaml's apt
+  # keys, kept explicit for the same reason). This one decides which 81.7 MiB leaves the
+  # image: if a later pin changed remove-bundle's default, a bare name would silently
+  # change what our ISO deletes, and no gate here could see it. It is upstream's own
+  # convention too -- all four of their profiles spell it out, and profiles/minimal.yaml
+  # gives the reason: "a profile line that deletes something should say what."
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
 
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml

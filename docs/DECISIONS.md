@@ -42,15 +42,33 @@ recipe installs a current one — its cookbook page measures the bundle at 114 M
 debian-64bit**, where the net is +35 MiB because it replaces the stock browser. Here there is
 nothing to replace, so budget the full +114 MiB and expect the 32-bit figure to differ.
 
-## D-3 · Remove first, and name `from:` anyway
+## D-3 · Remove first, in a recipe of its own, and name `from:` anyway
 
 The engine's `from:` default is now every bundle below the one being built, which for `20-wine`
 includes `05-chromium`. Building against it and then deleting it produces an image whose
 `libwine.so` has an unsatisfiable hard dependency on `libpulse0` — measured: absent from
 `01-core`…`04-apps`, present in `05-chromium.sb`.
 
-Removal-first fixes it by making the default correct, which is the idiom `chromium-current` uses. The
-explicit `from:` list is kept as well, so reordering the steps cannot reintroduce the bug.
+Removal-first fixes it by making the default correct. The explicit `from:` list is kept as well, so
+reordering the steps cannot reintroduce the bug.
+
+**The removal no longer lives in `wine.yaml`, and that is now a rule rather than a preference.**
+`cc8a664` (in the `8adfca6` bump) added a `lib/validate.py` rule that refuses a recipe mixing
+`bundle.remove` with anything that builds: *"a recipe that removes or renumbers a bundle does
+nothing else. Put the removal in its own recipe — `remove-bundle` takes a `drop:` pattern — and list
+that first."* Our recipe did exactly that and stopped validating.
+
+We followed the reasoning rather than working around it. All three profiles now list upstream's
+**`remove-bundle` first**, each spelling out `drop: "^05-chromium\.sb$"`. That restates the recipe's
+own default deliberately: the pattern decides which 81.7 MiB leaves the image, and a default that
+decides what ships should not be inherited silently across a pin bump — the same rule this project
+already applies to `wine.yaml`'s apt keys. Upstream spells it out in all four of its own profiles
+for the same reason. The removal is now performed by upstream's recipe rather than by a copy of its
+logic. The cost is that the ordering argument is no longer visible in the file that depends on it,
+so `wine.yaml` carries it as a comment and `ci/checks/96-release-consistency.sh` §5(a3) asserts both
+shipped profiles list `remove-bundle` *before* any building recipe — the core-list comparison in
+§5(b) reads only `recipes/available/` paths, and `remove-bundle` is named rather than pathed because
+it is upstream's.
 
 **This has already happened.** Upstream added the stack/removal conflict check
 ([UPSTREAM.md](UPSTREAM.md) issue 1, `68879d9`), and the three bypasses we then reported as issue 11

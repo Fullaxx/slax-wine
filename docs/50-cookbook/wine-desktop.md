@@ -61,15 +61,21 @@ and only the first is read by the launcher:
 
 `NoDisplay` is not in that key set.
 
-**That does not mean a `NoDisplay`-only stub leaves the tile visible.** slax-kitchen's
-`remove-chromium` page masks with `NoDisplay` alone, and it works — because `xlunch_genquick` also
-ends each entry with `if [ -e "$Icon" ]; then echo ...`, and that stub ships no `Icon=` line, so the
-entry is never emitted at all. Two independent mechanisms, and only one of them is written down
-anywhere.
+**A `NoDisplay`-only stub does still vanish — but by accident, and that is the part worth
+knowing.** `xlunch_genquick` ends each entry with `if [ -e "$Icon" ]; then echo ...`, and a stub
+with no `Icon=` line fails that test on the empty string. So the tile disappears for a reason that
+has nothing to do with the key you wrote. Add a single `Icon=` line — the obvious way to make a
+masked entry look tidier — and the entry you were hiding comes back.
 
-This stub sets `Hidden` explicitly *and* omits `Icon`, so it is covered twice over, and keeps
-`NoDisplay` for anything else that honours the freedesktop standard. The entry degrades honestly
-either way: it is named "Web Browser (not included)" and runs `/bin/true`.
+Upstream now treats this as a defect rather than an idiom. Its `remove-bundle` page (which absorbed
+the old `remove-chromium` page in PR #16) sets `Hidden=true` in the stub, and its
+`tests/unit/test_desktop_entries.py` — which this repo runs as gate 80 — fails any
+`NoDisplay=true` without `Hidden=true`. An earlier version of this page said the `NoDisplay`-only
+form "works"; the mechanism described was right, the conclusion drawn from it was too generous.
+
+This stub has always set `Hidden` explicitly *and* omitted `Icon`, so it was never affected, and it
+keeps `NoDisplay` for anything else that honours the freedesktop standard. The entry degrades
+honestly either way: it is named "Web Browser (not included)" and runs `/bin/true`.
 
 ## The environment reaches the desktop, and the wrapper makes sure
 

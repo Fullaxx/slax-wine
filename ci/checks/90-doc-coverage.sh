@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ bcd4f00b03b028a13369de9d17a980c112b7ca82 (ci/checks/90-doc-coverage.sh).
+# Adapted from slax-kitchen @ 8adfca617cecae8681b719fa7b3684b172726131 (ci/checks/90-doc-coverage.sh).
 #
 # NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
 # recipes here that lookup table is more machinery than the drift it prevents -- left
@@ -13,8 +13,14 @@
 # TAKEN: the GATE-count check, because four files here state that number in prose and
 # nothing else checks them. The anchor is WIDER than upstream's, measured against this
 # tree rather than copied: upstream's `ci/checks|commit gates|run-checks` misses
-# docs/ARCHITECTURE.md's "ci/   eleven gates" (bare `ci/`) and docs/build.md's "Eleven
+# docs/ARCHITECTURE.md's "ci/   twelve gates" (bare `ci/`) and docs/build.md's "Twelve
 # checks live in" (the noun is `checks`, not `gates`). Both are now covered.
+#
+# It has now been proved in anger. Adding ci/checks/80-unit.sh took the tree from eleven
+# gates to twelve, and this check named three of the four stale files on the next run.
+# The fourth, docs/ARCHITECTURE.md's tree-map line, states the count a SECOND time in the
+# same file, and the check reports one hit per file -- so fixing what it names is not the
+# same as fixing the tree. Grep the whole tree for the old number as well.
 #
 # Whole-tree by design: a rename touches two directories, and checking only staged
 # files would pass a commit that moves one half.

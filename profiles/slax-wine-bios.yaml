@@ -15,17 +15,44 @@ recipes:
   #
   # A recipe absent from EVERY profile is never built -- the same gate fails on that too.
   #
-  # Paths, not bare names: bare-name resolution searches the ENGINE's recipes/
-  # directories, and ours live in this repo rather than in the submodule. A path
-  # resolves from the CURRENT WORKING DIRECTORY (apply.py:2842), which is why build.sh
-  # cd's to the repo root before applying.
+  # Paths for OURS, a NAME for THEIRS, and the distinction is mechanical rather than
+  # stylistic: name resolution searches the ENGINE's recipes/ directories, so it finds
+  # remove-bundle in the submodule and would never find ours, which live in this repo.
+  # (remove-bundle is written in the {name, vars} form rather than as a plain string so
+  # that `drop:` is stated; both forms resolve by name.) A path resolves from the CURRENT
+  # WORKING DIRECTORY (apply.py:2842), which is why build.sh cd's to the repo root before
+  # applying.
   #
-  # Order matters twice over:
-  #   wine           removes 05-chromium BEFORE building, so apt never builds against a
-  #                  bundle that is about to be deleted
+  # Order matters four times over:
+  #   remove-bundle  drops 05-chromium BEFORE anything is built, so apt never builds
+  #                  against a bundle that is about to be deleted
+  #   wine           the payload, built on the stack the removal leaves
   #   wine-desktop   masks the launcher the removal leaves behind, so it must follow wine
   #   notepadpp      depends on /usr/local/bin/slax-wine from wine-desktop
   #   slax-wine-iso  boot line and pack hints; last in THIS profile
+  #
+  # REMOVAL FIRST, AND IT MUST BE A RECIPE OF ITS OWN. lib/validate.py refuses a recipe
+  # that mixes `bundle.remove` with anything additive, so the browser removal that used to
+  # live inside wine.yaml is now upstream's `remove-bundle`, listed here. Its default
+  # `drop:` is already `^05-chromium\.sb$` -- we override nothing.
+  #
+  # It goes FIRST because a bundle is built against everything below it: build 20-wine
+  # before dropping 05-chromium and apt links libwine against that bundle's libpulse0,
+  # which then leaves with it. check_plan_order refuses that order outright; this listing
+  # is what makes the plan legal in the first place.
+  #
+  # A BARE NAME, resolved from the engine's own recipes/ -- nothing to vendor or re-sync.
+  #
+  # `drop:` IS SPELLED OUT even though it restates the recipe's own default, and that is
+  # this repo's standing rule for a default that decides what ships (see wine.yaml's apt
+  # keys, kept explicit for the same reason). This one decides which 81.7 MiB leaves the
+  # image: if a later pin changed remove-bundle's default, a bare name would silently
+  # change what our ISO deletes, and no gate here could see it. It is upstream's own
+  # convention too -- all four of their profiles spell it out, and profiles/minimal.yaml
+  # gives the reason: "a profile line that deletes something should say what."
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
+
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
   - recipes/available/notepadpp.yaml

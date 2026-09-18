@@ -9,7 +9,7 @@ See [docs/base-versions.md](docs/base-versions.md).
 
 Built on `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`), with slax-kitchen pinned at
-`bcd4f00`.
+`8adfca6`.
 
 **Two images, same system.** `slax-wine-bios-1.0.0.iso` (507.3 MiB) uses the stock Slax bootloader.
 `slax-wine-uefi-1.0.0.iso` (513.5 MiB) adds upstream's `uefi-bootable` recipe — a GRUB EFI loader in
@@ -19,8 +19,14 @@ GRUB lives in an El Torito ESP, which `bootinst` never copies, so both images fa
 FAT-only `syslinux.efi` there. Both carry the same nine bundles.
 
 ### Added
-- `wine` — Wine 8.0~repack-4 from Debian bookworm main as `20-wine.sb` (166.6 MiB), with
-  `05-chromium.sb` removed first to pay for it.
+- `remove-bundle` — **upstream's** recipe, listed **first** by all three profiles. Drops
+  `05-chromium.sb` (81.7 MiB), which is what pays for Wine. Each profile spells out `drop:
+  "^05-chromium\.sb$"` rather than inheriting the recipe's identical default, so a later pin cannot
+  change what the image deletes without the change being visible here. The engine refuses any plan
+  where a removal follows something that builds, and `ci/checks/96-release-consistency.sh` §5(a3)
+  additionally refuses a shipped profile that drops the removal or lists it late.
+- `wine` — Wine 8.0~repack-4 from Debian bookworm main as `20-wine.sb` (166.6 MiB), built on a
+  stack that no longer contains the browser.
 - `wine-desktop` — launcher entry, `WINEARCH`/`WINEDLLOVERRIDES` defaults, the `slax-wine` wrapper
   and `/etc/slax-wine-release`, as `21-wine-desktop.sb` (4 KiB).
 - `notepadpp` — the Notepad++ 8.9.8 NSIS installer and its launcher as `30-notepadpp.sb` (6.4 MiB),
@@ -28,7 +34,10 @@ FAT-only `syslinux.efi` there. Both carry the same nine bundles.
 - `slax-wine-iso` — `automount` removed from the boot line, ISO identity, sha256 beside the image.
   The removal is **runtime-verified**: absent from the kernel command line on both the isolinux
   and GRUB boot paths, against a control boot that shows the check can detect it.
-- `build.sh`, eleven commit gates, and the engineering documentation set.
+- `build.sh`, twelve commit gates, and the engineering documentation set. Gate 80 runs
+  upstream's `tests/unit/test_desktop_entries.py`, which refuses a `.desktop` whose `Icon=` Slax's
+  launcher generator would fail to resolve — the trap that silently deleted **both** of this
+  image's launchers before it was caught by hand.
 - `uefi-bootable` — **upstream's** recipe, applied only by `profiles/slax-wine-uefi.yaml`. Builds no
   bundle; adds one 6.2 MiB `boot/efi.img`.
 

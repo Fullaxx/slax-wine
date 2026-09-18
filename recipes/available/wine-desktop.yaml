@@ -105,14 +105,21 @@ steps:
       # `^(Name|Icon|Exec|Hidden|Terminal)=` and tests `Hidden = true`. NoDisplay is not
       # in that key set and is ignored there.
       #
-      # That does NOT mean a NoDisplay-only stub leaves the tile visible -- slax-kitchen's
-      # remove-chromium page uses one and it works, because the generator also ends each
-      # entry with `if [ -e "$Icon" ]` and that stub ships no Icon= line, so the entry is
-      # never emitted. Worth knowing precisely, because the two mechanisms are easy to
-      # confuse and only one of them is stated anywhere.
+      # A NoDisplay-only stub does still vanish, but BY ACCIDENT, and that distinction is
+      # the whole point. The generator ends each entry with `if [ -e "$Icon" ]`, and such a
+      # stub ships no Icon= line, so the empty string fails that test. Add one Icon= line --
+      # the obvious way to make a masked entry look tidier -- and the tile you were hiding
+      # comes back.
       #
-      # This stub sets Hidden explicitly AND omits Icon, so it is covered twice over, and
-      # keeps NoDisplay for anything else that honours the freedesktop standard.
+      # Upstream now treats that as a defect rather than an idiom: the stub in
+      # remove-bundle.md (which absorbed the old remove-chromium page in PR #16) carries
+      # Hidden=true, and tests/unit/test_desktop_entries.py fails a NoDisplay-without-Hidden
+      # stub outright -- we run that test as gate 80. An earlier version of this comment
+      # said the NoDisplay-only form "works": the mechanism was right, the conclusion was
+      # too generous.
+      #
+      # This stub has always set Hidden explicitly AND omitted Icon, so it was never
+      # affected. It keeps NoDisplay for anything else honouring the freedesktop standard.
       #
       # Upstream's fbliveapp offers to apt-install chromium when it is missing, which is
       # a reasonable default for a networked live system and useless on a released image

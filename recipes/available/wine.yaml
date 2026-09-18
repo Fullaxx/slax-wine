@@ -16,45 +16,40 @@ compat:
 vars:
   bundle: 20-wine
 steps:
-  # -- 1. remove the browser FIRST ---------------------------------------------------
+  # THE BROWSER REMOVAL IS NOT HERE ANY MORE, and that is a rule rather than a
+  # preference. lib/validate.py (slax-kitchen @ 8adfca6) refuses a recipe that mixes
+  # `bundle.remove` with anything that builds:
   #
-  # Order is load-bearing, and this step is first for a reason that has nothing to do
-  # with tidiness.
+  #   "a recipe that removes or renumbers a bundle does nothing else. Put the removal in
+  #    its own recipe -- remove-bundle takes a `drop:` pattern -- and list that first"
   #
-  # `from:` below names its stack explicitly, but the ENGINE DEFAULT is now "every
-  # bundle that will sit below this one" -- which for a 20- bundle includes
-  # 05-chromium.sb. A recipe that took the default and removed the browser afterwards
-  # would build against libraries it then deletes. Measured on this exact base:
-  # libpulse0 is a hard Depends of libwine, it is ABSENT from 01-core..04-apps, and it
-  # is PRESENT in 05-chromium.sb. apt would see it installed, skip it, and the files
-  # would leave with the bundle -- a silent missing .so at runtime.
+  # This recipe used to do both, and the split is upstream's reasoning, not ours: mixing
+  # hides a deletion inside an addition, and the deletion then dictates where the whole
+  # recipe may sit. All three profiles now list upstream's `remove-bundle` FIRST, each
+  # spelling out `drop: "^05-chromium\.sb$"` -- which restates that recipe's own default
+  # on purpose, because a default that decides what ships should not be inherited
+  # silently. Same rule as the apt keys below.
   #
-  # Removing first makes the default come out right on its own, which is the idiom
-  # slax-kitchen's own chromium-current recipe uses. We do BOTH: remove first AND name
-  # the stack, so reordering these steps cannot reintroduce the bug.
+  # WHY THE ORDER STILL MATTERS, because nothing in this file shows it any more:
+  # `from:` below names its stack explicitly, but the ENGINE DEFAULT is "every bundle
+  # that will sit below this one", which for a 20- bundle includes 05-chromium.sb.
+  # Building before removing would link against libraries that then leave with the
+  # bundle. Measured on this exact base: libpulse0 is a hard Depends of libwine, ABSENT
+  # from 01-core..04-apps and PRESENT in 05-chromium.sb -- apt would see it installed,
+  # skip it, and the .so would vanish at runtime.
   #
-  # The engine refuses build-then-remove outright (check_plan_order, from issue #1), and
-  # at the pinned commit that rule is FULLY enforced -- the three bypasses we reported as
-  # issue #11 are closed by 997a9ab. It is seeded from the journal, so it holds across
-  # separate `kitchen apply` invocations (apply.py:254), and --skip-preflight no longer
-  # disables it: the call at apply.py:3144 sits BEFORE the `if not a.skip_preflight:`
-  # guard at :3155. Both issues are closed; see docs/UPSTREAM.md.
+  # check_plan_order enforces removal-first across the whole plan, seeded from the
+  # journal so it holds across separate `kitchen apply` invocations (apply.py:254), and
+  # --skip-preflight no longer disables it. Issues #1 and #11, both closed.
   #
-  # The explicit `from:` therefore no longer compensates for anything. It stays as
-  # belt-and-braces -- it documents the stack, and it means reordering these two steps
-  # cannot silently reintroduce the libpulse0 bug even on an engine older than the pin.
-  # It is not free, though: naming bundles explicitly makes this recipe hard-fail if any
-  # of the five is renamed anywhere in the declared slax: range (apply.py:702 raises
-  # "no bundle matching"). Cheap insurance, not costless insurance.
+  # The explicit `from:` compensates for nothing now. It stays as belt-and-braces: it
+  # documents the stack, and it holds even on an engine older than the pin. Not free --
+  # naming bundles explicitly makes this recipe hard-fail if any of the five is renamed
+  # anywhere in the declared slax: range (apply.py:702, "no bundle matching").
   #
-  # 05-chromium.sb is 81.7 MiB. That is NOT "almost exactly what Wine costs" -- Wine is
-  # 166.6 MiB, 2.04x as much -- and removing it does not keep the image within ~35 MiB of
-  # stock. Both figures were planning estimates, wrong by about 50 MiB, and docs/sizing.md
-  # retracts them with the measured ledger. The real numbers: the image is +91.4 MiB over
-  # stock at 507.3 MiB, and it would be 589 MiB if the browser stayed. Removing it is
-  # still the right call; it simply buys half of Wine, not all of it.
-  - verb: bundle.remove
-    match: "^05-chromium\\.sb$"
+  # The size argument for dropping the browser lives in docs/DECISIONS.md D-2 and
+  # docs/sizing.md, which carry the measured ledger: 05-chromium.sb is 81.7 MiB against
+  # Wine's 166.6 MiB, so it buys half of Wine, not all of it.
 
   # -- 2. the Wine bundle ------------------------------------------------------------
   #

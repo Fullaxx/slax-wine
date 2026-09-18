@@ -159,7 +159,7 @@ the same bytes everywhere except those fields. See [sizing.md](../sizing.md):
 ```
 verdict    : MODIFIED (4 unexplained differences)
 explained by recipes:
-  bundles.05-chromium.sb      <- remove-chromium
+  bundles.05-chromium.sb      <- remove-bundle
   iso.preparer_id             <- iso-identity
   iso.publisher_id            <- iso-identity
   iso.volume_id               <- iso-identity
