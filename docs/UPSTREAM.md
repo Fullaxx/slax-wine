@@ -94,7 +94,9 @@ Two rules make our end of it work:
   adds it.
 - **A pin bump is never automatic.** Every design decision in [ARCHITECTURE.md](ARCHITECTURE.md)
   reasons about specific engine behaviour, so a bump gets read as a diff before it is committed.
-  `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one.
+  `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one. **It lands only on a
+  commit whose upstream CI is green** — every job, builds and boot test included — and a red or
+  still-running one is waited out rather than pinned around. `7194e0b` was.
 
 The first rule used to read *"carries the issue URL in a comment, so it is findable with `grep`"*,
 and nothing checked it. The #23 workaround carried no URL, so the grep that was meant to find it
@@ -748,7 +750,7 @@ one. Then the same worktree commit went through the real hook with all twelve ga
 landed on its own branch with its full tree. That also shows upstream's #23 fix working end to end
 here, in the mode that did the most damage.
 
-## Filed at the `3a44e8a` bump — [#24](https://github.com/Fullaxx/slax-kitchen/issues/24), five unit tests leave their fixtures in `/tmp`
+## Filed at the `3a44e8a` bump — [#24](https://github.com/Fullaxx/slax-kitchen/issues/24), five unit tests leave their fixtures in `/tmp` · **closed by `6e4470e`**
 
 What started as `test_unit_gate.py`'s probe is five of upstream's fifteen unit tests. Each was
 measured on its own at `3a44e8a`, with `TMPDIR` pointed at an empty private directory so nothing
@@ -775,7 +777,38 @@ failing test still failed the gate.
 **Here:** of the five we carry only `test_unit_gate.py`, so our gate 80 leaves two 184 KiB
 directories per run. It is deliberately **not** worked around. That would mean a second difference
 in `80-unit.sh` and a row in [Local workarounds](#local-workarounds), for two small directories per
-commit, and upstream's fix will arrive with a pin bump either way.
+commit, and upstream's fix will arrive with a pin bump either way. *(It arrived at the `6bd59f1`
+bump: gate 80 now leaves nothing — below.)*
+
+## Adopted at the `6bd59f1` bump
+
+Four commits, `3a44e8a..6bd59f1`, answering #24 and the issue it led to:
+
+| commit | what | upstream CI |
+|---|---|---|
+| `6e4470e` | **closes #24**. The unit gate gives each test a `TMPDIR` of its own and removes it; a failing test keeps its fixtures and prints the path. `test_unit_gate.py` gains the regression test, checked against six mutations | green |
+| `7194e0b` | **closes #25**, the by-hand half: the four leaking tests now clean up after themselves, and the gate's box became a **detector** — anything a *passing* test leaves turns the gate red, named | **red** |
+| `f3ff3a3` | the red, fixed: `test_apply.py:1096` built a tar directory with `TarInfo`'s default `0o644`, which nobody but root can empty. The detector was right; the same leftover had printed `Permission denied` in `6e4470e`'s green run, where nothing looked | green |
+| `6bd59f1` | their self-review of #23–#25: the boxes set `TMPDIR` for child processes too, "milliseconds" became "seconds" (the gate is 17 s), and the gate's three rules are written down in their `CONTRIBUTING.md` | **green**: gates, all four builds, TCG boot |
+
+**Held, then taken.** At the first look the tip was `7194e0b` and red. We waited rather than pin the
+last green commit or the red one — now a rule in [The lifecycle](#the-lifecycle) — and took
+`6bd59f1` once its run had finished with every job green.
+
+**What moved in our tree.** `ci/checks/80-unit.sh` is re-copied and still *Adapted*, one difference:
+upstream's `desc` still says "the recipe engine's pure logic", so ours stays. `test_unit_gate.py`
+is re-copied — §9 named it first, 137 lines stale. The other fourteen were re-cited after checking
+each had zero upstream commits; §7 named all sixteen headers and §8 all eight pins, and §10 had
+nothing to say, with no active workaround on the ledger.
+
+**The detector now polices our tests too**, so it was run against them the way `f3ff3a3` says it
+must be: through the gate and by hand, as root and as uid 65534 in a copy that user owns. All four
+pass and leave nothing, every way. Upstream's five changed tests pass inside the pinned submodule
+and leave 0 where they left 46, and the submodule stays pristine.
+
+**No rebuild.** The range touches `ci/checks/80-unit.sh`, `tests/unit/`, `CLAUDE.md`,
+`CONTRIBUTING.md` and `docs/00-overview/status.md` — nothing the build runs. The `3a44e8a` images and
+the boot evidence behind them stand unchanged.
 
 ## Two findings were dropped before filing, in round one
 

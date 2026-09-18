@@ -9,7 +9,7 @@ See [docs/base-versions.md](docs/base-versions.md).
 
 Built on `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`), with slax-kitchen pinned at
-`3a44e8a`.
+`6bd59f1`.
 
 **Two images, same system.** `slax-wine-bios-1.0.0.iso` (507.3 MiB) uses the stock Slax bootloader.
 `slax-wine-uefi-1.0.0.iso` (513.5 MiB) adds upstream's `uefi-bootable` recipe — a GRUB EFI loader in

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 3a44e8a852f750fc4cb7f7743c6544b63eb2b54e (tests/unit/test_unit_gate.py).
+# Copied verbatim from slax-kitchen @ 6bd59f14acbd861c3aa9fcfc2f2b7ea095f0cd3b (tests/unit/test_unit_gate.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """ci/checks/80-unit.sh must not hand git's repository variables to the tests it runs.
 
@@ -47,7 +47,8 @@ FAILURES = []
 # commit in it. With the variables inherited, `git -C d add -A` writes the index of the
 # commit in progress instead of the fixture's.
 PROBE = '''#!/usr/bin/env python3
-import os, subprocess, sys, tempfile
+import os, shutil, subprocess, sys, tempfile
+open(os.environ["PROBE_REPORT"] + ".tmpdir", "w").write(tempfile.gettempdir())
 d = tempfile.mkdtemp(prefix="probe-")
 def g(*a):
     return subprocess.run(["git", "-C", d] + list(a), capture_output=True, text=True)
@@ -56,7 +57,8 @@ open(os.path.join(d, "fixture-file"), "w").write("x\\n")
 g("add", "-A"); g("commit", "-qm", "fixture commit")
 with open(os.environ["PROBE_REPORT"], "w") as fh:
     fh.write("\\n".join(sorted(k for k in os.environ if k.startswith("GIT_"))))
-sys.exit(%d)
+LITTER or shutil.rmtree(d, ignore_errors=True)
+sys.exit(EXIT)
 '''
 
 
@@ -107,8 +109,12 @@ def victim_repo(tmp):
     return repo
 
 
-def gate_fixture(tmp, probe_exit=0):
-    """A REPO_ROOT for the gate: the real lib.sh and the real gate, plus one probe test."""
+def gate_fixture(tmp, probe_exit=0, litter=False):
+    """A REPO_ROOT for the gate: the real lib.sh and the real gate, plus one probe test.
+
+    litter=True leaves the probe's fixture behind, which is what a badly-behaved test does
+    and what the gate's detector exists to name.
+    """
     fx = os.path.join(tmp, "fixture")
     os.makedirs(os.path.join(fx, "ci", "checks"))
     os.makedirs(os.path.join(fx, "tests", "unit"))
@@ -116,7 +122,7 @@ def gate_fixture(tmp, probe_exit=0):
     shutil.copy2(GATE, os.path.join(fx, "ci", "checks", "80-unit.sh"))
     p = os.path.join(fx, "tests", "unit", "test_probe.py")
     with open(p, "w") as fh:
-        fh.write(PROBE % probe_exit)
+        fh.write(PROBE.replace("LITTER", str(bool(litter))).replace("EXIT", str(probe_exit)))
     os.chmod(p, 0o755)
     return fx
 
@@ -178,6 +184,42 @@ def test_a_test_cannot_reach_the_commit_in_progress():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_a_test_that_litters_is_named():
+    """The box is a detector, not only a mop. Issue #25.
+
+    Removing a test's leftovers quietly is how four tests here went on littering every
+    by-hand run with nothing to say so: the gate cleaned up after them, so a gate run was
+    always green and the mess only appeared somewhere nobody was looking. The gate now says
+    which test left what -- and still removes it, because the point is not to start
+    accumulating again in order to prove a point.
+    """
+    tmp = tempfile.mkdtemp(prefix="unitgate-litter-")
+    try:
+        victim = victim_repo(tmp)
+        fx = gate_fixture(tmp, litter=True)
+        report = os.path.join(tmp, "report")
+        rc, out = run_gate(fx, victim, report)
+        check("the gate goes red", rc != 0, True)
+        check("...naming the test", "test_probe.py" in out, True)
+        check("...and what it left", "left 1 fixture(s) in its TMPDIR" in out, True)
+        check("...listing it by name", "probe-" in out, True)
+
+        # Still removed. A detector that stopped mopping would trade this issue for #24.
+        # Guarded like the case above, and for the reason that case gives: an uncaught
+        # FileNotFoundError here aborts the suite and hides every check after it. Written
+        # unguarded first, and the mutation that empties the sidecar proved it by wiping out
+        # the whole run's output.
+        sidecar = report + ".tmpdir"
+        if not os.path.exists(sidecar):
+            FAILURES.append("the probe recorded no TMPDIR, so the mop is unchecked here")
+            return
+        with open(sidecar) as fh:
+            box = fh.read().strip()
+        check("...and the box is removed anyway", os.path.exists(box), False)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_it_refuses_to_run_when_git_will_not_name_the_variables():
     """Fails closed. An empty list means running the tests with the index in reach.
 
@@ -220,9 +262,89 @@ def test_the_gate_still_has_teeth_through_the_subshell():
     try:
         victim = victim_repo(tmp)
         fx = gate_fixture(tmp, probe_exit=1)
-        rc, out = run_gate(fx, victim, os.path.join(tmp, "report"))
+        report = os.path.join(tmp, "report")
+        rc, out = run_gate(fx, victim, report)
         check("a failing test fails the gate", rc != 0, True)
         check("...and is named", "test_probe.py" in out, True)
+
+        # And the other half of issue #24: a FAILING test keeps its fixtures, because that
+        # is when they are worth having. Pinned here rather than in its own case because
+        # this is already the only place that drives the gate to red.
+        check("...and its fixtures are kept", "fixtures kept" in out, True)
+        kept = out.split("fixtures kept for debugging:", 1)[-1].split("\n")[0].strip() \
+            if "fixtures kept" in out else ""
+        check("...at a path that still exists", bool(kept) and os.path.isdir(kept), True)
+        if kept:
+            # It lives outside `tmp` by construction -- the gate made it, not this test --
+            # so the finally below cannot reach it. Removing it here is the difference
+            # between fixing a leak and trading one for another.
+            shutil.rmtree(kept, ignore_errors=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_test_leaves_nothing_behind():
+    """The gate gives each test a TMPDIR of its own and removes it. Issues #24 and #25.
+
+    Five of the fifteen tests here never remove their fixtures -- 46 directories per run of
+    this gate, 238 MB on the machine where it was found, because the gate runs at both
+    pre-commit and pre-push. Nothing would have noticed the fix going again: every test
+    passes with or without it.
+
+    Asserted on the TMPDIR the gate handed out rather than on a fixture inside it: that
+    directory is made by `mktemp -d` in the gate itself, so it is the gate's to remove and
+    nothing else's. A probe that tidied up after itself would otherwise leave an empty box
+    that could sit there forever without any assertion noticing.
+    """
+    tmp = tempfile.mkdtemp(prefix="unitgate-tmp-")
+    try:
+        victim = victim_repo(tmp)
+        fx = gate_fixture(tmp)
+        report = os.path.join(tmp, "report")
+        rc, _out = run_gate(fx, victim, report)
+        check("the gate passes", rc, 0)
+
+        # Caught rather than left to raise: a missing sidecar means the probe never ran, and
+        # an uncaught FileNotFoundError here would abort the suite and hide every later
+        # check. Without this the case passes vacuously -- "the directory is gone" is
+        # trivially true of a directory that was never made.
+        sidecar = report + ".tmpdir"
+        if not os.path.exists(sidecar):
+            FAILURES.append("the probe recorded no TMPDIR, so this case proves nothing")
+            return
+        with open(sidecar) as fh:
+            box = fh.read().strip()
+        check("the probe was given a TMPDIR of its own", bool(box), True)
+        check("...not the one this test is using", box != tempfile.gettempdir(), True)
+        check("...and it is gone once the gate returns", os.path.exists(box), False)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_it_refuses_to_run_when_it_cannot_get_a_private_tmpdir():
+    """The other fail-closed branch, and it needs its own case or it is decorative.
+
+    Dropping the `mktemp -d ||` guard changes nothing while mktemp works, so no other test
+    here would notice it going. Without it a machine that cannot make a temp directory runs
+    every test against the shared /tmp instead -- quietly, which is the state this gate is
+    supposed to be getting us out of.
+    """
+    tmp = tempfile.mkdtemp(prefix="unitgate-nomk-")
+    try:
+        victim = victim_repo(tmp)
+        fx = gate_fixture(tmp)
+        binp = os.path.join(tmp, "bin")
+        os.makedirs(binp)
+        stub = os.path.join(binp, "mktemp")
+        with open(stub, "w") as fh:
+            fh.write("#!/bin/sh\nexit 1\n")
+        os.chmod(stub, 0o755)
+
+        report = os.path.join(tmp, "report")
+        rc, out = run_gate(fx, victim, report, extra_path=binp)
+        check("the gate refuses", rc != 0, True)
+        check("...and says which test and why", "cannot create its TMPDIR" in out, True)
+        check("...and ran it anyway: no", os.path.exists(report), False)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -239,7 +361,10 @@ def test_every_test_here_is_registered():
 
 
 TESTS = [test_a_test_cannot_reach_the_commit_in_progress,
+         test_a_test_leaves_nothing_behind,
+         test_a_test_that_litters_is_named,
          test_it_refuses_to_run_when_git_will_not_name_the_variables,
+         test_it_refuses_to_run_when_it_cannot_get_a_private_tmpdir,
          test_the_gate_still_has_teeth_through_the_subshell,
          test_every_test_here_is_registered]
 

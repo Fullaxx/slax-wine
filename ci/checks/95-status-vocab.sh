@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 3a44e8a852f750fc4cb7f7743c6544b63eb2b54e (ci/checks/95-status-vocab.sh).
+# Copied verbatim from slax-kitchen @ 6bd59f14acbd861c3aa9fcfc2f2b7ea095f0cd3b (ci/checks/95-status-vocab.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Every cookbook page declares one rung of the verification ladder, by name.
