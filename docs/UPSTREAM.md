@@ -511,7 +511,7 @@ the sidecar failing at pack time, which only a real build showed.
 
 **Their stated gap does not reach us.** A builder under some unusual prefix — their example is
 `/opt/somebuilder/artifacts` — is caught by neither half unless it is this build's own tree. Ours
-build under `/root/…` in the container and would run under `/home/…` on `bacon`; both are shapes.
+build under `/root/…` in the container and would run under `/home/…` on the KVM host; both are shapes.
 Checked in memory against the new code before bumping: all five of our overrides pass (`drop` ×3,
 `marker`, `report`), while `/home/…`, `~/…` and a path under our work tree are still flagged.
 
@@ -587,7 +587,7 @@ paths in it are `testkit`'s in-image vars, kept with their slash, and it contain
 path. The shipped sidecars contain no absolute path of any kind — in-image paths go through
 `in_image()` — so for them "no leak" is true but proves little, and is recorded as such.
 
-**The boot routes, re-run on `bacon` under KVM** — whose own checkout had meanwhile moved to
+**The boot routes, re-run on the KVM host** — whose own checkout had meanwhile moved to
 `337f7e7`, so the harness is the pinned engine's rather than an equivalent one. The ISO was checked
 by sha256 after transfer, since it is byte-for-byte the same size as the old one:
 
@@ -599,7 +599,7 @@ by sha256 after transfer, since it is byte-for-byte the same size as the old one
 | `--persistence` | boot 1 `absent, creating` + `synced`; boot 2 `present, written 2026-09-18T18:07:47Z` — the timestamp boot 1 wrote. 5 s per boot |
 
 Evidence is in `out/boot-tests/`; the `bcd4f00`-era set was kept beside it as
-`out/boot-tests-bcd4f00/`, on `bacon` too.
+`out/boot-tests-bcd4f00/`, on the KVM host too.
 
 ## Filed at the `337f7e7` bump — [#23](https://github.com/Fullaxx/slax-kitchen/issues/23), a unit test that writes into the commit running it · **closed by `3a44e8a`**
 
@@ -726,6 +726,11 @@ yet - skipping"* note before, and fails naming the input after. Gate 96 with no 
 exception: §4 already failed on the missing `wine-desktop.yaml`, so that change adds a second, more
 direct reason rather than closing a silent pass. **Gate 20's skip stays**, because it is upstream's
 own line — a missing `vendor/slax-kitchen` notes and skips there too.
+
+**Taken from `d877143`'s reasoning, not its code:** *a machine's name is not useful to anyone
+else*. This page named the machine that runs our KVM boot routes three times; it now says "the KVM
+host". The name told a reader nothing they could use, and the rest of this repository already
+describes what a host must have rather than which host it was.
 
 ## Two findings were dropped before filing, in round one
 
