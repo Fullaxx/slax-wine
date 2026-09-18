@@ -370,7 +370,7 @@ source-attribution table is a licence-adjacent change and deserves its own pass,
 a correctness fix. Run it against both shipped ISOs and decide then. Recorded here so the deferral
 reads as a decision rather than an oversight.
 
-## Found by the `8adfca6` bump — the #19 fix blocks every submodule bump
+## Filed at the `8adfca6` bump — [#22](https://github.com/Fullaxx/slax-kitchen/issues/22), the #19 fix blocks every submodule bump
 
 Second finding, and this one is a consequence of a fix we ourselves asked for. `file_size` used to
 answer `|| echo 0` on both branches; closing that turned a fail-open into a fail-closed, which is
@@ -389,9 +389,16 @@ FAIL size could not be measured, so the limit was not applied: vendor/slax-kitch
 pin bump, including this one. It did not surface until now because the old `|| echo 0` answered 0
 for this path and the case was invisible.
 
-Upstream has no submodule of its own, so its copy cannot reach the branch. This repo has one because
-upstream's own `docs/40-workflow/recipes-in-a-fork.md` tells a fork to vendor the engine that way,
-so the gate is shipped to exactly the people who will trip it.
+**Upstream has a submodule of its own** — `vendor/linux-live`, per its `.gitmodules` and
+`docs/15-upstream/README.md` — and `git cat-file -s` fails on that gitlink in their tree exactly as
+it does on ours, so their next `linux-live` pin bump should hit this too. `check_files` reaches it:
+`git diff --cached --name-only --diff-filter=ACMR` lists a modified gitlink.
+
+(An earlier draft of this section said their `docs/40-workflow/recipes-in-a-fork.md` tells forks to
+vendor the engine as a submodule. It does not — that page never mentions submodules, and the claim
+was checked before it reached the issue. What upstream *does* do is anticipate the arrangement:
+`kitchen sources --fetch` looks for "the tree of the project that vendors it, found as the git
+superproject" (`docs/90-reference/cli.md:366`).)
 
 **Fixed locally rather than worked around**, and `ci/lib.sh` is now *Adapted from* rather than
 *Copied verbatim* with the one difference stated — the convention exists for this, and gate 96 §9
@@ -404,7 +411,7 @@ size, an oversized file still trips `TOO_BIG`, and a planted `payload.exe` still
 The suggested upstream fix is the same shape: skip mode `160000` in `file_size`, with a unit test —
 there is currently none over `file_size` either.
 
-## Found by the `8adfca6` bump, not yet filed — the provenance guard refuses in-image paths
+## Filed at the `8adfca6` bump — [#20](https://github.com/Fullaxx/slax-kitchen/issues/20), the provenance guard refuses in-image paths
 
 **This blocks our test image, and it blocks one of upstream's own profiles.** Both shipped images
 build clean; `profiles/slax-wine-test.yaml` cannot complete `kitchen apply` at this pin.
@@ -445,7 +452,20 @@ the work tree, both look better — and either wants the unit test that is missi
 
 **What it costs us right now:** the shipped pair is unaffected and rebuilt clean at this pin, with
 the new explicit `drop:` var recorded in the sidecar without complaint. But every boot route we run
-drives `slax-wine-test-*.iso`, so re-running them has to wait on this. Not filed yet.
+drives `slax-wine-test-*.iso`, so re-running them has to wait on this — which is why the bump sits
+on `bump/slax-kitchen-8adfca6` rather than on `master`.
+
+## In flight upstream, noticed while filing at this bump
+
+**[PR #21](https://github.com/Fullaxx/slax-kitchen/pull/21) `Closes #14`** — *"apt may not remove a
+package, and what leaves is now counted"*, opened while this bump was being prepared. Issue 14 is in
+our open-upstream register above, so this retires it, and the change has teeth for us: after it,
+`bundle.packages` **refuses** rather than warns when apt would drop a package to resolve a conflict.
+
+Nothing here triggers it today — `wine` installs sixteen packages and the build's own delta line
+reports `3836 added, 105 modified` with no removals — but it is the kind of change that turns a
+silent accommodation into a hard failure, which is exactly what the `#19` fix did to our submodule
+(`#22` above). Worth re-reading before the next pin bump rather than discovering at build time.
 
 ## Two findings were dropped before filing, in round one
 
