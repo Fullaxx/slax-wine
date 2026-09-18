@@ -77,8 +77,8 @@ is not runtime-verified.** A correct file in the right place is not a working fe
 
 ```
 find → verify → draft here → file upstream → record in the register
-     → work around locally, with the issue URL in a comment
-     → upstream fixes → bump the submodule pin → re-evaluate → remove the workaround
+     → work around locally: mark the code, add a row to Local workarounds
+     → upstream fixes → bump the submodule pin → gate 96 §10 names it → remove the workaround
 ```
 
 **The tail of that is now upstream's to define, not ours.** After our first round they wrote it
@@ -89,11 +89,41 @@ credited). Read those rather than this paragraph; what follows is only our side.
 
 Two rules make our end of it work:
 
-- **A local workaround carries the issue URL in a comment**, so the thing to delete when it is fixed
-  is findable with `grep -rn "slax-kitchen/issues"`.
+- **A local workaround is marked and listed.** The code carries `WORKAROUND <issue URL>` in a comment,
+  and [Local workarounds](#local-workarounds) below carries a row for it, both from the commit that
+  adds it.
 - **A pin bump is never automatic.** Every design decision in [ARCHITECTURE.md](ARCHITECTURE.md)
   reasons about specific engine behaviour, so a bump gets read as a diff before it is committed.
   `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one.
+
+The first rule used to read *"carries the issue URL in a comment, so it is findable with `grep`"*,
+and nothing checked it. The #23 workaround carried no URL, so the grep that was meant to find it
+could not; it was found at the next bump by reading its *Adapted* header instead. A convention that
+has to be remembered is not a check, so the rule now has a gate behind it.
+
+## Local workarounds
+
+Every place this repository works around a slax-kitchen bug, and what became of it. Gate 96 §10
+holds this table and the code in step:
+
+- every `WORKAROUND <issue URL>` comment outside `vendor/` and the Markdown has a row here that is
+  not retired, for the same issue and the same file — and every such row's file still carries it;
+- a row that is **active** fails the commit whose pin contains a `Closes #N` for its issue. Retire
+  the workaround in that same bump, or mark the row *kept after fix* and say why.
+
+The second half is what makes "re-evaluate" happen at the bump rather than whenever someone
+remembers. It reads the vendored history, so it needs no network, and it keys on the same `Closes`
+trailer the [register](#register) does. An issue closed *without* a fix has no such line, which is
+the right answer: its workaround is still needed.
+
+Status is one of three: `active since <pin>`, `kept after fix — <why>`, `retired at <pin>`. A
+retired row stays, so the next reader can see what we once carried and why it went.
+
+| Issue | File | What it does here | Status |
+|---|---|---|---|
+| [#23](https://github.com/Fullaxx/slax-kitchen/issues/23) | `ci/checks/80-unit.sh` | runs each unit test with git's repository-local variables cleared | active since `337f7e7` |
+| [#1](https://github.com/Fullaxx/slax-kitchen/issues/1) | `recipes/available/wine.yaml` | names the `from:` stack instead of taking the default | kept after fix — belt-and-braces, [DECISIONS.md](DECISIONS.md) D-3 |
+| [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where the copy at `8adfca6` answered `MISSING` | retired at `337f7e7` |
 
 ---
 

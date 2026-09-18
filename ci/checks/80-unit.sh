@@ -12,6 +12,7 @@
 . "$(dirname "$0")/../lib.sh"
 
 # LOCAL CHANGE. A UNIT TEST MUST NOT SEE THE COMMIT THAT IS RUNNING IT.
+# WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/23
 #
 # This gate runs inside the pre-commit hook, and git exports its repository to hooks:
 # githooks(5) -- "if your hook needs to invoke Git commands in a foreign repository ... it

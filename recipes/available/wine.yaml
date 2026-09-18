@@ -42,6 +42,7 @@ steps:
   # journal so it holds across separate `kitchen apply` invocations (apply.py:254), and
   # --skip-preflight no longer disables it. Issues #1 and #11, both closed.
   #
+  # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/1 -- kept after the fix.
   # The explicit `from:` compensates for nothing now. It stays as belt-and-braces: it
   # documents the stack, and it holds even on an engine older than the pin. Not free --
   # naming bundles explicitly makes this recipe hard-fail if any of the five is renamed
