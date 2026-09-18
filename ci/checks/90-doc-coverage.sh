@@ -34,7 +34,7 @@ RECIPES="$REPO_ROOT/recipes/available"
 COOKBOOK="$REPO_ROOT/docs/50-cookbook"
 INDEX="$COOKBOOK/README.md"
 
-[ -d "$RECIPES" ]  || { note "recipes/available not present yet - skipping"; exit 0; }
+[ -d "$RECIPES" ]  || fail "missing recipes/available"
 [ -d "$COOKBOOK" ] || fail "missing docs/50-cookbook"
 [ -f "$INDEX" ]    || fail "missing docs/50-cookbook/README.md"
 

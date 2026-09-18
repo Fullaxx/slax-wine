@@ -37,7 +37,7 @@ TMP=$(mktemp -d) || { fail "cannot create a temp dir"; check_result; exit; }
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 ENVF="$REPO_ROOT/build.env"
-[ -f "$ENVF" ] || { note "build.env not present yet - skipping"; exit 0; }
+[ -f "$ENVF" ] || { fail "build.env is missing, and every section of this gate reads it"; check_result; exit; }
 
 # shellcheck source=/dev/null
 . "$ENVF"
@@ -145,7 +145,7 @@ CORE_A="$PROFDIR/slax-wine-bios.yaml"
 CORE_B="$PROFDIR/slax-wine-uefi.yaml"
 
 if [ ! -d "$REPO_ROOT/recipes/available" ]; then
-    note "recipes/available not present yet - orphan check skipped"
+    fail "recipes/available is missing, so the profiles have nothing of ours to build"
 elif [ ! -d "$PROFDIR" ]; then
     fail "profiles/ is missing, so no recipe is built by anything"
 else

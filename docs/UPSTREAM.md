@@ -711,6 +711,22 @@ an omission. The sidecars record `kitchen.commit` `3a44e8a`, keep the test marke
 and contain no build-machine path. They also say `711ad6f-dirty`, truthfully: the images were built
 with this change in the tree, before its commit existed.
 
+**Retired: the empty-tree skips.** This repo was built gates-first, so four checks were taught to
+note-and-skip while their inputs did not exist yet, and nothing ever taught them to stop:
+
+| gate | used to skip when | now |
+|---|---|---|
+| 95 | `docs/50-cookbook/` is missing | fails. The skip was its **only** difference from upstream, so it is back to *Copied verbatim* and §9 holds it there |
+| 90 | `recipes/available/` is missing | fails, as upstream's does. It stays *Adapted* for its other differences |
+| 96 | `build.env` is missing, which skipped the **whole** gate | fails, then stops: every section reads it |
+| 96 §5 | `recipes/available/` is missing, which skipped the orphan check | fails |
+
+Measured in a scratch copy with each input deleted: every one of those exited 0 with a *"not present
+yet - skipping"* note before, and fails naming the input after. Gate 96 with no recipes was the
+exception: §4 already failed on the missing `wine-desktop.yaml`, so that change adds a second, more
+direct reason rather than closing a silent pass. **Gate 20's skip stays**, because it is upstream's
+own line — a missing `vendor/slax-kitchen` notes and skips there too.
+
 ## Two findings were dropped before filing, in round one
 
 Recording them because disproved candidates are worth as much as findings.
