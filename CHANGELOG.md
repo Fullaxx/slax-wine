@@ -21,12 +21,11 @@ Built on `slax-32bit-debian-12.2.0.iso`
 - `build.sh`, eleven commit gates, and the engineering documentation set.
 
 ### Known limitations
-- **Not `runtime-verified`.** The image boots to `slax login:` with every bundle mounted, but Wine
-  has not yet been observed running a Windows program, and no launcher tile has been seen on a
-  screen. Both launchers were once dropped silently by xlunch because their `Icon=` values did not
-  resolve; the fix is asserted against the generator's own resolution loop, not against a booted
-  desktop. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)'s "things that will bite you" and the
-  [cookbook index](docs/50-cookbook/README.md) for the rung each page actually claims.
+- **Persistence is unverified.** The image is `runtime-verified` on a full desktop boot — the Wine
+  tile opens, the Notepad++ installer runs under Wine, no Mono/Gecko prompt, no browser — but that
+  was a **non-persistent** boot. Nothing has yet been shown to survive a reboot, so the persistent
+  Wine `C:` drive on a USB stick, which is the point of [INSTALL.md](INSTALL.md), is still untested
+  on hardware. Neither is `automount` removal, nor UEFI.
 - No Wine Mono or Wine Gecko, so .NET and embedded-HTML applications do not run. Debian packages
   neither; the first-run prompt is suppressed rather than satisfied.
 - No GPU firmware, because stock Slax ships none — 3D under Wine falls back to software rendering.

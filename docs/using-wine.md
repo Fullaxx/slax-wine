@@ -5,8 +5,7 @@ What works, what does not, and the two things that surprise people.
 ## First run
 
 Open the launcher (`Super`, or `Alt+F2`) and pick **Wine**, or run `slax-wine` from a terminal.
-The tile is `runtime-verified` territory and has not been confirmed on hardware yet — if it is not
-there, `slax-wine` from a terminal does the same thing.
+Both work — the tile has been confirmed on a full desktop boot.
 
 The first `wine` call creates the prefix at `/root/.wine`. It takes **10–30 seconds with no
 feedback**, which looks like nothing happening. It is not. After that, launches are immediate.

@@ -1,13 +1,22 @@
 # `slax-wine-iso` — label the image, and stop `automount` grabbing every disk
 
-**Status: artifact boot-verified** — the volume id, application id and checksum are confirmed in the
-built image and 21 structure assertions passed, including the `--volid SLAX-WINE` check. The ISO does
-boot under TCG to `slax login:`, but that run **cannot** verify this recipe: `kitchen test --kernel`
-boots the kernel directly and bypasses the bootloader entirely, so its command line came from the
-test harness — carrying `automount`, the one flag this recipe removes — and `isolinux.cfg` /
-`syslinux.cfg` were never read. The edit is correct *in the artifact* (2 entries changed in each
-file, matching `apply.log`); it has not been booted. `kitchen test --uefi`, or a real boot, is what
-would raise this to `boot-verified`.
+**Status: boot-verified** — the volume id, application id and checksum are confirmed in the built
+image, 21 structure assertions passed including the `--volid SLAX-WINE` check, and the image has now
+been booted **through its own bootloader** to a full desktop. That is what raised this from
+`artifact boot-verified`: the automated run (`kitchen test --kernel`) boots the kernel directly and
+never reads `isolinux.cfg` or `syslinux.cfg` at all.
+
+**Not `runtime-verified`, deliberately.** This recipe's only functional change is removing
+`automount` from the boot line, and nobody has checked the *effect* — that `/proc/cmdline` lacks the
+flag and `/etc/fstab` has no `/media/<dev>` entries for other disks. The edit is correct in the
+artifact (2 entries changed in each config, matching `apply.log`). One command on a booted system
+would settle it:
+
+```sh
+grep -c automount /proc/cmdline; grep /media /etc/fstab
+```
+
+Expect `0` and no output. UEFI is also still untested — see [INSTALL.md](../../INSTALL.md).
 
 ```sh
 ./build.sh

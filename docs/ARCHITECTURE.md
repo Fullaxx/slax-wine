@@ -190,6 +190,17 @@ A register, because every one of these cost time to find.
 ## What is verified, and what is not
 
 `boot-verified`: the ISO boots under TCG to `slax login:` with all three livekit markers and all nine
-bundles mounted in order. `runtime-verified` — Wine actually running a Windows program — is **not yet
-claimed**. The ladder is in the [cookbook index](50-cookbook/README.md), and the distinction is the
-one thing this project treats as a real error.
+bundles mounted in order.
+
+`runtime-verified`, on a full desktop boot: the **Wine tile opens from the launcher** with no xterm
+wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches, there is **no
+Mono/Gecko prompt**, and the **browser is absent** from the launcher. Three of the four recipes claim
+this rung; `slax-wine-iso` does not, because the *effect* of removing `automount` was never checked.
+
+**Still unverified, and the gap worth remembering:** every persistence claim in this document and in
+[INSTALL.md](../INSTALL.md). That boot was non-persistent, so the Wine prefix surviving a reboot —
+the whole argument for a USB install over a CD — rests on reading `livekitlib`, not on having seen
+it. UEFI likewise.
+
+The ladder is in the [cookbook index](50-cookbook/README.md), and the distinction is the one thing
+this project treats as a real error.

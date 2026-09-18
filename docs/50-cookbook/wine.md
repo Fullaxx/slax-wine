@@ -1,9 +1,10 @@
 # `wine` — install Wine, and drop the browser to pay for it
 
-**Status: boot-verified** — applied to `debian-32bit-12.2.0`, all sixteen packages confirmed
-installed against the package database, 21 structure assertions passed, and the ISO booted under TCG
-to `slax login:` with `20-wine.sb` mounted. Whether Wine actually *runs* a Windows program is
-`runtime-verified` and is [`notepadpp`](notepadpp.md)'s claim, not this one.
+**Status: runtime-verified** — applied to `debian-32bit-12.2.0`, all sixteen packages confirmed
+installed against the package database, 21 structure assertions passed, and on a full desktop boot
+**Wine ran a Windows program**: the Notepad++ installer executed and the installed editor launched.
+See [`notepadpp`](notepadpp.md) for that test. No Wine Mono / Gecko prompt appeared, which confirms
+`WINEDLLOVERRIDES` reached the session.
 
 ```sh
 ./build.sh
@@ -117,11 +118,12 @@ installed size 563 MiB, but squashfs at 1 MiB blocks compresses it to 166.6 MiB 
 than the solid `.tar.xz` inside the `.deb`. The planning estimate of 105–120 MiB was wrong by about
 50 MiB, and [sizing.md](../sizing.md) carries the corrected ledger.
 
-## What this does not prove
+## What this bundle alone does not prove
 
-That Wine runs anything. Sixteen packages in the right place is not a working Wine — see the ladder
-in the [cookbook index](README.md). The `runtime-verified` claim belongs to
-[`notepadpp`](notepadpp.md).
+Sixteen packages in the right place is not a working Wine — that took a desktop boot, and the test
+that produced it lives in [`notepadpp`](notepadpp.md). This page inherits its `runtime-verified`
+status from that observation rather than from anything checkable at build time; see the ladder in the
+[cookbook index](README.md).
 
 | you want | use |
 |---|---|

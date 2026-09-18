@@ -42,10 +42,14 @@ drop another in — no rebuild, no remaster. That is the whole point of the laye
 
 ## Status
 
-**boot-verified.** The image boots to `slax login:` with all nine bundles mounted in order.
-**It is not `runtime-verified`** — Wine has not yet been observed running a Windows program on real
-hardware. Every page states the rung it actually reached; the ladder is in the
-[cookbook index](docs/50-cookbook/README.md).
+**runtime-verified.** On a full desktop boot: the **Wine** tile appears in the launcher and opens
+without an xterm wrapper, the Notepad++ installer runs under Wine and the installed editor launches,
+there is **no** Wine Mono / Gecko download prompt, and the browser is gone from the launcher.
+
+**What is still unverified: persistence.** That observation was a non-persistent boot, so nothing
+here has yet survived a reboot — the Wine `C:` drive on a USB stick, which is the reason
+[INSTALL.md](INSTALL.md) exists, is untested on hardware. So is UEFI. Every page states the rung it
+actually reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
 
 ## Documentation
 

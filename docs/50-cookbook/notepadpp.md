@@ -1,9 +1,14 @@
 # `notepadpp` — the swappable application layer
 
-**Status: boot-verified** — the bundle builds, ships the verified installer plus its launcher, and
-the ISO booted under TCG to `slax login:` with `30-notepadpp.sb` mounted. **Running the installer
-under Wine is not yet verified** — that is the `runtime-verified` rung, and the acceptance test for
-this whole project.
+**Status: runtime-verified** — **the acceptance test for this whole project passed.** On a full
+desktop boot, the Notepad++ tile was picked from the launcher, the NSIS installer ran under Wine,
+and the installed editor launched. That exercises PE loading, the NSIS runtime, registry writes and
+file creation in the prefix — which was the entire reason for shipping the installer rather than a
+portable tree.
+
+**Not yet verified: that it survives a reboot.** The observation was a non-persistent boot, so the
+install landed in RAM. On a persistent USB it should happen once; that is
+[INSTALL.md](../../INSTALL.md)'s claim and it is still untested on hardware.
 
 ```sh
 ./build.sh

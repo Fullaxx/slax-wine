@@ -1,9 +1,14 @@
 # `wine-desktop` — put Wine in the launcher, and hide the browser we removed
 
-**Status: boot-verified** — the bundle builds, ships five files, and the ISO booted under TCG to
-`slax login:` with `21-wine-desktop.sb` mounted. The `Terminal=false` and `Hidden=true` claims below
-are read out of the shipped scripts; whether the tile *looks* right in xlunch is `runtime-verified`
-and not claimed here.
+**Status: runtime-verified** — on a full desktop boot, every claim this bundle makes was observed:
+the **Wine tile appears** in xlunch, clicking it opens Wine **with no xterm wrapper** (so
+`Terminal=false` is doing its job), the **browser is absent** from the launcher, and there is **no
+Wine Mono / Gecko download prompt** (so `/etc/profile.d/wine.sh` reached the session through
+`su --login`).
+
+That matters more than a green tick: an earlier draft of this recipe used `Icon=wine`, which
+resolves to nothing, and xlunch silently dropped the entry. The tile is the whole point of the
+bundle, and it is the one thing no gate can check.
 
 ```sh
 ./build.sh
