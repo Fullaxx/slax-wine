@@ -2,7 +2,7 @@ apiVersion: slax-kitchen/v1
 kind: Recipe
 metadata:
   name: wine
-  summary: Install Wine 8.0 from bookworm main, and drop Chromium to pay for its size
+  summary: Install Wine 8.0 from bookworm main
   tags: [bundle, packages, wine, size]
 compat:
   # Debian and 32-bit only, and not a limit we intend to lift. The point of this image is
@@ -30,23 +30,24 @@ steps:
   # on purpose, because a default that decides what ships should not be inherited
   # silently. Same rule as the apt keys below.
   #
-  # WHY THE ORDER STILL MATTERS, because nothing in this file shows it any more:
-  # `from:` below names its stack explicitly, but the ENGINE DEFAULT is "every bundle
-  # that will sit below this one", which for a 20- bundle includes 05-chromium.sb.
-  # Building before removing would link against libraries that then leave with the
-  # bundle. Measured on this exact base: libpulse0 is a hard Depends of libwine, ABSENT
-  # from 01-core..04-apps and PRESENT in 05-chromium.sb -- apt would see it installed,
-  # skip it, and the .so would vanish at runtime.
+  # WHY THE ORDER STILL MATTERS, because nothing in this file shows it any more: the
+  # build below takes the ENGINE DEFAULT for `from:`, "every bundle that will sit below
+  # this one", which for a 20- bundle would include 05-chromium.sb if it were still
+  # there. Building before removing would link against libraries that then leave with
+  # the bundle. Measured on this exact base: libpulse0 is a hard Depends of libwine,
+  # ABSENT from 01-core..04-apps and PRESENT in 05-chromium.sb -- apt would see it
+  # installed, skip it, and the .so would vanish at runtime.
   #
-  # check_plan_order enforces removal-first across the whole plan, seeded from the
-  # journal so it holds across separate `kitchen apply` invocations (apply.py:254), and
-  # --skip-preflight no longer disables it. Issues #1 and #11, both closed.
+  # Two guards hold the order. check_plan_order refuses a removal that follows a build,
+  # across the whole plan and seeded from the journal so it holds across separate
+  # `kitchen apply` invocations (apply.py:254), and --skip-preflight no longer disables
+  # it -- issues #1 and #11, both closed. And ci/checks/96-release-consistency.sh
+  # §5(a3) refuses a shipped profile that lists remove-bundle late.
   #
-  # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/1 -- kept after the fix.
-  # The explicit `from:` compensates for nothing now. It stays as belt-and-braces: it
-  # documents the stack, and it holds even on an engine older than the pin. Not free --
-  # naming bundles explicitly makes this recipe hard-fail if any of the five is renamed
-  # anywhere in the declared slax: range (apply.py:702, "no bundle matching").
+  # This recipe used to name its stack as a third guard, and stopped at the 3a44e8a bump
+  # (docs/DECISIONS.md D-3): the named list protected nothing the two above do not, and
+  # it had a cost of its own. A stack named by hand goes stale the moment a bundle is
+  # added below 20, and apt then reinstalls libraries the image already has.
   #
   # The size argument for dropping the browser lives in docs/DECISIONS.md D-2 and
   # docs/sizing.md, which carry the measured ledger: 05-chromium.sb is 81.7 MiB against
@@ -68,11 +69,10 @@ steps:
   # The build root is stacked from the ISO's own bundles, so there is no debootstrap and
   # no external base image, and everything installed matches the shipped kernel's ABI.
   #
-  # `from:` stops at 04-apps. That is the whole of the image once step 1 has run, so
-  # apt's idea of "already installed" matches the finished ISO exactly.
+  # The default stack is 01-core..04-apps once remove-bundle has run: the whole of the
+  # finished image below 20, so apt's idea of "already installed" matches the ISO exactly.
   - verb: bundle.packages
     bundle: "{{bundle}}"
-    from: [01-core, 01-firmware, 02-xorg, 03-desktop, 04-apps]
     # Five packages are the payload; eleven are libwine Recommends named back by hand.
     #
     #   wine              arch-all wrapper; Depends: wine64 | wine32, and i386 picks wine32

@@ -122,7 +122,7 @@ retired row stays, so the next reader can see what we once carried and why it we
 | Issue | File | What it does here | Status |
 |---|---|---|---|
 | [#23](https://github.com/Fullaxx/slax-kitchen/issues/23) | `ci/checks/80-unit.sh` | ran each unit test with git's repository-local variables cleared | retired at `3a44e8a` |
-| [#1](https://github.com/Fullaxx/slax-kitchen/issues/1) | `recipes/available/wine.yaml` | names the `from:` stack instead of taking the default | kept after fix — belt-and-braces, [DECISIONS.md](DECISIONS.md) D-3 |
+| [#1](https://github.com/Fullaxx/slax-kitchen/issues/1) | `recipes/available/wine.yaml` | named the `from:` stack instead of taking the default | retired at `3a44e8a`; kept after the fix until then, [DECISIONS.md](DECISIONS.md) D-3 |
 | [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where upstream's at `8adfca6` answered `MISSING` | retired at `337f7e7` |
 
 ---
@@ -223,7 +223,8 @@ rather than deleting it.
 
 **#1 — partially fixed.** The in-plan case is genuinely closed, including across recipes. Three
 bypasses remain and are now [#11](https://github.com/Fullaxx/slax-kitchen/issues/11). This is why our
-explicit `from:` stays.
+explicit `from:` stays. *(Later: `997a9ab` closed #11, and the explicit `from:` stayed as
+belt-and-braces until the `3a44e8a` bump — see [Local workarounds](#local-workarounds).)*
 
 **#2 — fixed for the reported case**, with a latent divergence: the chroot merge lacks `merge_tree`'s
 "a real status resets fragments" rule, so an add-on numbered `00`–`04` would build against packages
@@ -681,6 +682,34 @@ and never removes the directory, so every run leaves two throwaway repositories 
 `/tmp` — and gate 80 runs at every commit and every push. Thirty-two of exactly that shape were
 already in `/tmp` here before our first run, all dated 18:52–19:00 on 2026-09-18, the window in
 which `3a44e8a` was written. Not a reason to adapt the test; a small thing to report. Not filed.
+
+**Retired: `wine.yaml`'s explicit `from:`**, the belt-and-braces kept after issue 1 was fixed and
+the ledger's other row. Its two reasons are answered in [DECISIONS.md](DECISIONS.md) D-3; the
+evidence is the build.
+
+**The build, at `3a44e8a`, without the list:**
+
+| image | steps | assertions | bytes | modules |
+|---|---|---|---|---|
+| bios | 7 | 21 / 21 | 531,935,232 | 9 |
+| uefi | 8 | 21 / 21 | 538,425,344 | 9 |
+| test | 10 | 21 / 21 | 538,437,632 | 9 |
+
+The sizes match the `337f7e7` images to the byte again. This time that was not left to stand for
+more than it is: every file of all three images was compared with the `337f7e7` builds before the
+build overwrote them.
+
+| what | result |
+|---|---|
+| everything outside our four modules: base bundles, kernel, initrd, every boot config | **byte-identical**, except `/boot/efi.img` on the two GRUB images |
+| `/boot/efi.img` | it holds one file, `EFI/BOOT/BOOTX64.EFI`, **identical** to the one in the `337f7e7` test ISO still on the KVM host. The FAT image around it differs in 36 bytes, the volume serial and directory timestamps, and differs just as much between two images of the *same* build |
+| `20-wine`, `21-wine-desktop`, `30-notepadpp`, `98-dpkg-db` | **identical content**: 3,831 entries by type, mode, owner, size, link target and sha256. The `.sb` files differ byte for byte only because the build stamps directory mtimes, as they already did between the three images of one build |
+
+So the image did not change, and the boot evidence recorded at the `337f7e7` bump stands for this
+one. The four routes were not re-run, and that is a conclusion from the comparison above rather than
+an omission. The sidecars record `kitchen.commit` `3a44e8a`, keep the test marker's leading slash,
+and contain no build-machine path. They also say `711ad6f-dirty`, truthfully: the images were built
+with this change in the tree, before its commit existed.
 
 ## Two findings were dropped before filing, in round one
 

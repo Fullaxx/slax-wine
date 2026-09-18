@@ -42,7 +42,7 @@ recipe installs a current one — its cookbook page measures the bundle at 114 M
 debian-64bit**, where the net is +35 MiB because it replaces the stock browser. Here there is
 nothing to replace, so budget the full +114 MiB and expect the 32-bit figure to differ.
 
-## D-3 · Remove first, in a recipe of its own, and name `from:` anyway
+## D-3 · Remove first, in a recipe of its own
 
 The engine's `from:` default is now every bundle below the one being built, which for `20-wine`
 includes `05-chromium`. Building against it and then deleting it produces an image whose
@@ -78,6 +78,26 @@ are closed by `997a9ab` — it is seeded from the journal so it survives separat
 **What would change this:** nothing pending. The explicit `from:` stays as belt-and-braces — it
 documents the stack and protects anyone building against an engine older than the pin — at the price
 of hard-failing if any named bundle is ever renamed.
+
+**Changed at the `3a44e8a` bump: `wine.yaml` no longer names its stack.** Everything above stands
+except that last paragraph. Once the list was held up as what it was — a workaround for issue 1, and
+listed as one in [UPSTREAM.md](UPSTREAM.md) § *Local workarounds* — neither of its reasons survived:
+
+- **The order has two guards without it.** The engine refuses a removal that follows a build, across
+  the whole plan and across separate invocations, and gate 96 §5(a3) refuses a shipped profile that
+  lists `remove-bundle` late. A third statement of the same rule added nothing either lacks.
+- **"An engine older than the pin" cannot build this repo.** `build.sh` runs the vendored engine,
+  and gate 20 holds `vendor/` byte-identical to the pin.
+- **A named stack has a failure of its own.** It goes stale the moment a bundle is added below 20,
+  and then — upstream's `verbs.md` — apt reinstalls libraries the image already has, and those copies
+  shadow the originals. The default cannot drift that way, and it is what 34 of upstream's 35
+  recipes use.
+
+Proved by building rather than argued: with the list gone, all three images came out with the same
+contents as the `337f7e7` builds. That covers every entry of `20-wine.sb`, `21-wine-desktop.sb`,
+`30-notepadpp.sb` and `98-dpkg-db.sb` by type, mode, owner, size, link target and sha256, and the
+five PulseAudio paths are still in `20-wine.sb`. The default stack left `05-chromium` out exactly as
+the named one did.
 
 ## D-4 · No Wine Mono, no Wine Gecko
 
