@@ -350,13 +350,12 @@ stage_bottles() {
 # so a warm stage needs no network. Each one is unpacked fresh on every run: a
 # half-extracted directory from an interrupted build must never ship.
 #
-# WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26
-# Staged under bottles-data/, NOT under a root/.var/... mirror of its destination, which
-# is how every other stage here is laid out. provenance.py checks a local input's
-# checkout-relative path with HOSTISH, whose unanchored `/root/` matches the directory
-# name `root` inside our own checkout, and apply.py refuses the recipe -- after its
-# bundles are built. bottles.yaml's `src:` for this tree is the other half.
-BDATA="$BSTAGE/bottles-data"
+# Staged as a mirror of where it lands, /root/.var/app/<id>/data/bottles, like every
+# other stage here. (Until slax-kitchen 5627f2d this tree had to live under a neutral
+# bottles-data/ instead: the provenance guard read the directory name `root` in its
+# checkout-relative path as the build machine's /root. slax-kitchen #26, retired at the
+# 86d27d5 bump -- see docs/UPSTREAM.md.)
+BDATA="$BSTAGE/root/.var/app/com.usebottles.bottles/data/bottles"
 stage_bottles_components() {
     mkdir -p "$BSTAGE/.cache"
     rm -rf "$BDATA"

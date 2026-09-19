@@ -93,15 +93,72 @@ Two rules make our end of it work:
   and [Local workarounds](#local-workarounds) below carries a row for it, both from the commit that
   adds it.
 - **A pin bump is never automatic.** Every design decision in [ARCHITECTURE.md](ARCHITECTURE.md)
-  reasons about specific engine behaviour, so a bump gets read as a diff before it is committed.
-  `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one. **It lands only on a
-  commit whose upstream CI is green** — every job, builds and boot test included — and a red or
-  still-running one is waited out rather than pinned around. `7194e0b` was.
+  reasons about specific engine behaviour, so a bump gets read as a diff before it is committed —
+  [Moving the pin](#moving-the-pin) is how — and `ci/checks/20-vendor-pristine.sh` fails a pointer
+  that moved without one.
 
 The first rule used to read *"carries the issue URL in a comment, so it is findable with `grep`"*,
 and nothing checked it. The #23 workaround carried no URL, so the grep that was meant to find it
 could not; it was found at the next bump by reading its *Adapted* header instead. A convention that
 has to be remembered is not a check, so the rule now has a gate behind it.
+
+## Moving the pin
+
+This is what "update the pin" means here: four steps, in this order, and only the fourth moves
+anything. `CLAUDE.md` points at this section; the steps live here and nowhere else.
+
+**1. Review every new upstream commit.**
+
+- The target is upstream's `master` tip, unless you are given a commit. List every commit between the
+  pin and the target, and read each one's message **and** diff, never a subject line alone (the
+  [register](#register)'s own lesson). Note each `Closes #N`, and ours above all.
+- **Upstream CI on the target must be green in every job**: the gates, all four builds and the boot
+  test. A red or still-running target is waited out, not pinned around. `7194e0b` was waited out,
+  and `6bd59f1` was taken only once its run had finished green.
+
+**2. Work out what it does to this repo.**
+
+- **Build inputs.** These are `kitchen`, `lib/`, `schema/`, `compat/`, `tools/`, and the upstream
+  recipes our profiles use.
+  - If any of them changed, rebuild all three images. Compare them file by file with the previous
+    build, content rather than bytes, since the build stamps directory mtimes. Re-run the boot
+    routes only if the contents changed.
+  - If none changed, say so, and the previous evidence stands.
+- **Copied files.** Find which of our copies changed upstream, with
+  `git rev-list --count <pin>..<target> -- <path>` on each source. Those are re-copied; the rest are
+  only re-cited.
+- **What upstream added.** A new gate or test is adopted, or it goes under
+  [Deliberately not adopted](#deliberately-not-adopted-from-upstream) with the reason.
+- **What the tests say.** Upstream's changed tests run inside the pinned submodule with
+  `python3 -B`, and the submodule must stay pristine. When a gate we copy changed, run it over our
+  own tests too, as root and as an unprivileged user; developing as root hides a whole class of
+  failure (`f3ff3a3`).
+- **Anything we cite.** Check whether a permalinked page moved or changed.
+
+**3. Retire what upstream has made redundant.**
+
+- [Local workarounds](#local-workarounds): every **active** row whose issue the new pin closes is
+  retired in this bump, or marked *kept after fix* with its reason. Gate 96 §10 names them once the
+  pin is staged, but it only knows what is marked and listed.
+- Every file headed *Adapted from slax-kitchen*: re-read its stated differences, and move it back
+  toward *Copied verbatim* wherever upstream now makes a difference unnecessary. These headers are
+  read by hand, because a difference we keep for a reason of our own has no issue to close.
+- Anything else that exists only because upstream fell short gets the same question. The `3a44e8a`
+  bump found two kinds: belt-and-braces kept after the fix it guarded against, and skips that
+  outlived the empty tree they were written for.
+
+**4. Move the pin, up to the commit.**
+
+- On a branch, fetch, check the target out in `vendor/slax-kitchen`, and stage it. Gate 96 then
+  names what has to follow: §7 every header, §8 every pin and permalink, §9 any stale verbatim copy,
+  §10 any fixed workaround.
+- Re-copy and re-cite, and run every gate in tree scope.
+- Record the bump here as *Adopted at the `<pin>` bump*: the commits and their CI, what moved, what
+  was retired, the proofs, and why there was or was not a rebuild.
+- **Stop there, uncommitted,** and hand over what changed, what was verified and how, and the commit
+  message ([`CLAUDE.md`](../CLAUDE.md) § *Before committing or pushing anything*). When the user asks
+  for the commit it goes through the hook, then `master` is fast-forwarded and the branch deleted.
+  **A push is its own request.**
 
 ## Local workarounds
 
@@ -126,8 +183,8 @@ retired row stays, so the next reader can see what we once carried and why it we
 | [#23](https://github.com/Fullaxx/slax-kitchen/issues/23) | `ci/checks/80-unit.sh` | ran each unit test with git's repository-local variables cleared | retired at `3a44e8a` |
 | [#1](https://github.com/Fullaxx/slax-kitchen/issues/1) | `recipes/available/wine.yaml` | named the `from:` stack instead of taking the default | retired at `3a44e8a`; kept after the fix until then, [DECISIONS.md](DECISIONS.md) D-3 |
 | [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where upstream's at `8adfca6` answered `MISSING` | retired at `337f7e7` |
-| [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `build.sh` | stages DXVK/VKD3D under `bottles-data/` instead of a `root/.var/…` mirror of where they go | active since `6bd59f1` |
-| [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `recipes/available/bottles.yaml` | takes that stage from `bottles-data/`, the `src:` half of the same workaround | active since `6bd59f1` |
+| [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `build.sh` | staged DXVK/VKD3D under `bottles-data/` instead of a `root/.var/…` mirror of where they go | retired at `86d27d5` |
+| [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `recipes/available/bottles.yaml` | took that stage from `bottles-data/`, the `src:` half of the same workaround | retired at `86d27d5` |
 
 ---
 
@@ -298,7 +355,8 @@ there is nothing to report. A probe `.desktop` dropped into `recipes/available/`
 
 **`ci/checks/97-tier-c-ledger.sh`** (added in `e7f2bea`) — measured with `REPO_ROOT` pointed at this
 tree, it exits 0 with *"tests/boot/tier-c.json not present"*. There is no `tests/boot/`, no ledger
-and no `ci/release-notes.sh` here, so it would note-and-skip forever. Still not adopted.
+and no `ci/release-notes.sh` here, so it would note-and-skip forever. Still not adopted, and nor is
+its unit test, `tests/unit/test_tier_c_ledger.py` (added in `5627f2d`), which tests nothing we carry.
 
 **`ci/checks/80-unit.sh` was in this section and has left it**, which is the part worth recording.
 The reasoning was sound and is now obsolete, and those are different things. Measured at the
@@ -530,6 +588,10 @@ Checked in memory against the new code before bumping: all five of our overrides
 the new explicit `drop:` var recorded in the sidecar without complaint. But every boot route we run
 drives `slax-wine-test-*.iso`, so re-running them has to wait on this — which is why the bump sat
 on a branch rather than on `master` until `ba79ce0` landed.
+
+*(Later: `5627f2d` retired the path-shape rule altogether, closing upstream's #26. It had caught two
+things in its life, and both were false, #20 among them. See
+[Adopted at the `86d27d5` bump](#adopted-at-the-86d27d5-bump).)*
 
 ## In flight upstream at the `8adfca6` bump · **merged, taken at `337f7e7`**
 
@@ -801,7 +863,7 @@ Four commits, `3a44e8a..6bd59f1`, answering #24 and the issue it led to:
 | `6bd59f1` | their self-review of #23–#25: the boxes set `TMPDIR` for child processes too, "milliseconds" became "seconds" (the gate is 17 s), and the gate's three rules are written down in their `CONTRIBUTING.md` | **green**: gates, all four builds, TCG boot |
 
 **Held, then taken.** At the first look the tip was `7194e0b` and red. We waited rather than pin the
-last green commit or the red one — now a rule in [The lifecycle](#the-lifecycle) — and took
+last green commit or the red one — now a rule in [Moving the pin](#moving-the-pin) — and took
 `6bd59f1` once its run had finished with every job green.
 
 **What moved in our tree.** `ci/checks/80-unit.sh` is re-copied and still *Adapted*, one difference:
@@ -819,7 +881,7 @@ and leave 0 where they left 46, and the submodule stays pristine.
 `CONTRIBUTING.md` and `docs/00-overview/status.md` — nothing the build runs. The `3a44e8a` images and
 the boot evidence behind them stand unchanged.
 
-## Filed at the `6bd59f1` pin, building slax-bottles — [#26](https://github.com/Fullaxx/slax-kitchen/issues/26), the provenance guard refuses checkout-relative paths under a `root/` or `home/` directory · **open**
+## Filed at the `6bd59f1` pin, building slax-bottles — [#26](https://github.com/Fullaxx/slax-kitchen/issues/26), the provenance guard refuses checkout-relative paths under a `root/` or `home/` directory · **closed by `5627f2d`**
 
 **It stopped a real build, after the build.** Staging Bottles' DXVK/VKD3D the way every other stage
 here is laid out, as a mirror of the destination
@@ -876,9 +938,67 @@ the demo before building, leaving nothing behind.
 Removing the refusal outright was tried too. It fails four `vars` assertions in
 `test_provenance.py`, which is the argument the issue puts to the maintainer.
 
-**Worked around** by staging under `bottles-data/`. Both halves are marked
+**Worked around** by staging under `bottles-data/`. Both halves were marked
 `WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26`: `build.sh` at `BDATA=`, and
 `bottles.yaml` at the `src:`.
+
+**Closed by `5627f2d`, and retired when this branch took the `86d27d5` bump.** Upstream went
+further than the issue asked. There is no shape rule at all now, `append_recipe` refuses nothing,
+profile vars are checked before anything builds, and `finalize` refuses only strings under the
+directories this build really uses (see [Adopted at the `86d27d5` bump](#adopted-at-the-86d27d5-bump),
+which says nothing retires there: true on master, which never had this workaround).
+
+- **The stage mirrors its destination again**,
+  `bottles.files/root/.var/app/com.usebottles.bottles/data/bottles`. Both markers are gone, and both
+  rows above say *retired*.
+- **Checked before building**, against `86d27d5`'s `provenance.py` loaded in memory. The restored
+  path passes, and so does an in-image `/root/...` path. An absolute path into this checkout, and
+  one into the work tree, are still refused.
+- **Then built.** All three images applied and packed with no refusal, `finalize` included. The
+  slax-bottles sidecar records the new path with the same content digest the `bottles-data/` input
+  had, gains and loses no field, and names no build-machine path.
+- **Gate 96 §10 would not have let the bump through otherwise.** With one row put back to
+  *active*, it failed: "works around slax-kitchen#26, which 5627f2d closed and the pin (86d27d5)
+  contains".
+
+## Adopted at the `86d27d5` bump
+
+Three commits, `6bd59f1..86d27d5`. Upstream's CI on `86d27d5` was green in every job (gates, all four
+builds, the TCG boot) before anything here moved. `5627f2d` on its own had been red.
+
+| commit | what | here |
+|---|---|---|
+| `e7c0ac9` | their `CLAUDE.md`: nothing is committed or pushed until the user has inspected the work and asked, and approving a plan is not approving its commits | mirrored into ours at the user's call. Step 4 of [Moving the pin](#moving-the-pin) now stops where the commit would go, and this was the first bump handed over uncommitted |
+| `5627f2d` | **closes #26**: the provenance guard's path-shape rule is retired. It had caught two things in its life, and both were false, our #20 among them. Its replacement refuses only strings under the directories this build really uses: the work tree, the kitchen checkout, a non-generic `$HOME`, and, **new, the project checkout**, which a vendored kitchen like ours never had covered. Profile vars are checked before anything builds, at the start of `kitchen apply` | a build input: rebuilt |
+| `86d27d5` | refs #26: a build directory counts only where a path can begin, which fixes the false positives a short checkout (`/work`) gave `5627f2d` in CI | a build input: rebuilt |
+
+**What the new guard means here.** At every bump we used to check by hand that no sidecar carries a
+build-machine path. That check is now upstream's, in two places our build reaches:
+- `kitchen apply` checks the profile vars before anything is built (`lib/apply.py:3613`)
+- `kitchen pack` runs `finalize`, which checks the whole sidecar (`lib/pack.sh:228`)
+
+Both cover this checkout for the first time. Our three builds passing them is the proof that nothing
+we record names the builder, including the `drop` pattern and testkit's in-image marker and report
+paths. Nothing here had worked around the old guard, since at `8adfca6` we held rather than work
+around #20, so nothing retires.
+
+**The build, at `86d27d5`:** 7/8/10 steps and 21/21 assertions each. Sizes are 531,935,232 /
+538,425,344 / 538,437,632, identical to the `3a44e8a` images to the byte. Every file was compared
+with those images:
+
+| what | result |
+|---|---|
+| everything outside our four modules | byte-identical, except `/boot/efi.img` on the two GRUB images |
+| `/boot/efi.img` | `EFI/BOOT/BOOTX64.EFI` is identical. The FAT image differs in 60 bytes: the volume serial, and 56 timestamp bytes across 8 directory entries, nothing else. Two images built on the same day differ in 36 of those: the serial, and the create and write times. The other 24 are the create, access and write dates, because this build ran the next day |
+| our four modules | identical content, all 3,831 entries |
+| the sidecars | no field added or removed. What changed is the kitchen and project commits, the submodule pin, and the byte hashes of artifacts whose content is identical. testkit's marker keeps its leading slash |
+
+So the images did not change, the boot evidence stands, and the routes were not re-run.
+
+**Copied files:** none of the sixteen changed upstream, and all were re-cited. **Not adopted:**
+`tests/unit/test_tier_c_ledger.py`, which is new and tests a gate this repo deliberately does not
+carry. Upstream's three changed tests pass inside the pinned submodule and leave nothing in their
+`TMPDIR`, and the submodule stays pristine.
 
 ## Two findings were dropped before filing, in round one
 

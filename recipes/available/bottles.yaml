@@ -86,13 +86,8 @@ steps:
       # times"), even though the Flatpak carries its own runner. They sit in a bundle
       # rather than in rootcopy, so they cost no RAM until something reads them.
       # build.sh fetches, checks and unpacks them (BOTTLES_COMPONENTS in build.env).
-      #
-      # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26
-      # `src:` is bottles-data/, not a root/.var/... mirror of `dest:` like every other
-      # stage here: the engine refuses a local input whose checkout-relative path has a
-      # directory named `root` in it. build.sh's BDATA= is the other half.
       - dest: /root/.var/app/com.usebottles.bottles/data/bottles
-        src: ./bottles.files/bottles-data
+        src: ./bottles.files/root/.var/app/com.usebottles.bottles/data/bottles
 
       # Provenance: every ref and the commit that shipped. Written by build.sh.
       - dest: /opt/bottles

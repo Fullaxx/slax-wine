@@ -2,18 +2,31 @@
 
 Pointers, not rules, in the same form as slax-kitchen's own `CLAUDE.md`. Everything here lives
 somewhere else in the repo; this file only says **when to go and read it**. A rule copied into two
-places is how the two drift.
+places is how the two drift. The exceptions are about the session rather than the tree: what the
+user's words mean, and what a session may do on its own.
 
-## Before moving the slax-kitchen pin
+## Before committing or pushing anything
 
-Read [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *The lifecycle*, which says when a bump may land at
-all, then § *Local workarounds* and the stated differences in every file headed *Adapted from
-slax-kitchen*. Whatever upstream has since fixed is retired in the same bump, or kept with the
-reason written on its row.
+Don't, until the user has inspected the work and asked. Stop where the commit would go, with the
+work uncommitted, and hand it over: what changed, what you verified and how, and the commit message
+you would use. Approving a plan is not approving its commits, asking for one commit is not asking
+for the next, and a request to commit is not a request to push.
 
-Gate 96 §10 refuses a bump while an *active* row's issue is closed at the new pin. It only knows
-about workarounds that are marked and listed, which is what the next section is for; the headers
-are read by hand, because a difference kept for a reason of our own has no issue to close.
+The same rule as slax-kitchen's, from the same day: from 2026-09-19 the user inspects every change
+before it is committed.
+
+## When the user says "update the pin"
+
+That means four steps, not one, and only the last moves anything:
+
+1. review every new slax-kitchen commit
+2. work out how each one affects this repo
+3. retire any local workaround that an upstream fix has made redundant
+4. then update the pin, stopping where the commit would go
+
+Each is spelled out in [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *Moving the pin*. Read it before
+starting, every time, including when the request is worded differently ("bump", "move the pin", "take
+upstream").
 
 ## Before working around an upstream bug
 
