@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (tests/unit/test_ci_lib.py).
+# Copied verbatim from slax-kitchen @ 6bd59f14acbd861c3aa9fcfc2f2b7ea095f0cd3b (tests/unit/test_ci_lib.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """ci/lib.sh's file_size, and the size rule in 00-no-binaries that depends on it.
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (ci/checks/70-whitespace.sh).
+# Copied verbatim from slax-kitchen @ 6bd59f14acbd861c3aa9fcfc2f2b7ea095f0cd3b (ci/checks/70-whitespace.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Trailing whitespace, missing final newline, CRLF, tabs-vs-spaces in YAML.

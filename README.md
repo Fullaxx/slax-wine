@@ -66,7 +66,7 @@ change, never *how*.
 
 | bundle | recipe |
 |---|---|
-| `20-wine.sb` | [`wine`](docs/50-cookbook/wine.md) — install Wine, drop Chromium to pay for it |
+| `20-wine.sb` | [`wine`](docs/50-cookbook/wine.md) — install Wine 8.0 from bookworm main |
 | `21-wine-desktop.sb` | [`wine-desktop`](docs/50-cookbook/wine-desktop.md) — launcher, environment, menu cleanup |
 | `30-notepadpp.sb` | [`notepadpp`](docs/50-cookbook/notepadpp.md) — the swappable application layer |
 | — | [`slax-wine-iso`](docs/50-cookbook/slax-wine-iso.md) — boot defaults, ISO identity, checksum |

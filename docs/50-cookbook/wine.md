@@ -37,10 +37,11 @@ you find out when Wine will not start.
 **The removal is not in this recipe.** It was, until the `8adfca6` bump: `cc8a664` added a
 `lib/validate.py` rule that refuses a recipe mixing `bundle.remove` with anything that builds, so
 every profile now lists upstream's **`remove-bundle` first**, spelling out `drop:
-"^05-chromium\.sb$"` rather than inheriting that recipe's identical default. Ordering is still
-enforced — `check_plan_order` requires every removal to precede every `bundle.packages` across the
-whole plan, seeded from the journal so it holds across separate `kitchen apply` invocations — and
-this recipe still names its `from:` stack explicitly as belt-and-braces. See
+"^05-chromium\.sb$"` rather than inheriting that recipe's identical default. Ordering is enforced
+twice — `check_plan_order` requires every removal to precede every `bundle.packages` across the
+whole plan, seeded from the journal so it holds across separate `kitchen apply` invocations, and
+gate 96 §5(a3) refuses a shipped profile that lists the removal late — so this recipe takes the
+engine's default stack. It also named that stack explicitly until the `3a44e8a` bump. See
 [DECISIONS.md](../DECISIONS.md) D-3, and [UPSTREAM.md](../UPSTREAM.md) issue 1.
 
 Verified in the output: `98-dpkg-db.sb` declares `libpulse0`, and `20-wine.sb` ships the two

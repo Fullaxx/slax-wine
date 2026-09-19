@@ -16,9 +16,11 @@ build.env          version + base identity (both bases) + the Bottles pin -- the
 profiles/          five: slax-wine-bios, -uefi and slax-bottles ship; the two -test ones do not
 recipes/available/ six recipes: four for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
-ci/                twelve gates; six copied verbatim, five adapted, one ours
-tests/unit/        two tests: the .desktop trap that once cost both launchers (adapted), and the
-                   gate library that let a .exe and then a submodule bump through (verbatim)
+ci/                twelve gates; seven copied verbatim, four adapted, one ours
+tests/unit/        four tests: the .desktop trap that once cost both launchers (adapted), the
+                   gate library that let a .exe and then a submodule bump through (verbatim),
+                   gate 80 itself, which once let a test write into the commit running it
+                   (verbatim), and gate 96's pin read, which once answered for this repo (ours)
 vendor/            the engine, pinned by commit
 ```
 
@@ -153,8 +155,9 @@ an image whose binaries depend on files that left with the bundle. Measured here
 The failure is silent: the build succeeds, all gates pass, and the merged database is *correct* —
 it rightly does not claim `libpulse0`. You find out when Wine will not start.
 
-`wine.yaml` removes first **and** names the stack. Reported upstream; see
-[UPSTREAM.md](UPSTREAM.md) issue 1.
+Every profile removes first, and the engine refuses the other order, so `wine.yaml` takes the default
+stack. It named the stack as well until the `3a44e8a` bump; see [DECISIONS.md](DECISIONS.md) D-3,
+and [UPSTREAM.md](UPSTREAM.md) issue 1.
 
 ## Boot, and how `/etc/profile.d` reaches the desktop
 
@@ -216,7 +219,7 @@ A register, because every one of these cost time to find.
 
 | | |
 |---|---|
-| **`from:` default includes a bundle you may delete** | see above. Remove first *and* name the stack |
+| **`from:` default includes a bundle you may delete** | see above. Remove first: the engine refuses the other order, and gate 96 §5(a3) refuses a profile that lists the removal late |
 | **`Terminal=false` is mandatory on a `.desktop`** | `fbappselect` runs `ldd $binary \| grep libX11` and wraps in an xterm when empty. Debian's `/usr/bin/wine` is a shell script, so it always looks like a console program |
 | **`NoDisplay` does not hide anything in xlunch** | `xlunch_genquick` greps `^(Name\|Icon\|Exec\|Hidden\|Terminal)=` and tests `Hidden`. Use `Hidden=true`. *(A `NoDisplay`-only stub vanishes anyway — see the next row — but only because it ships no `Icon=`; add one and the tile returns. Upstream now calls that a defect and its stub sets `Hidden=true`.)* |
 | **An `Icon=` that does not resolve DELETES the entry** | `xlunch_genquick:52` ends each entry with `if [ -e "$Icon" ]`. The search covers only numeric size dirs under `hicolor`/`pixmaps`/`icons-gnome` and only appends `.png` — so `scalable/*.svg` and anything under `Adwaita/` are invisible, `$Icon` stays a bare string, and the launcher silently disappears. This cost slax-wine **both** its tiles. Use an absolute path, or verify with `xlunch_genquick 64 --desktop` |

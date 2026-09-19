@@ -1,6 +1,6 @@
 #!/bin/sh
 # stages: pre-commit pre-push ci
-# desc: build.env, the recipes, the profiles, the submodule pin, the copied files and the git tag all agree.
+# desc: build.env, the recipes, the profiles, the submodule pin, the copied files, the workaround ledger and the git tag all agree.
 #
 # This repo's own gate -- nothing upstream corresponds to it.
 #
@@ -37,7 +37,7 @@ TMP=$(mktemp -d) || { fail "cannot create a temp dir"; check_result; exit; }
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 ENVF="$REPO_ROOT/build.env"
-[ -f "$ENVF" ] || { note "build.env not present yet - skipping"; exit 0; }
+[ -f "$ENVF" ] || { fail "build.env is missing, and every section of this gate reads it"; check_result; exit; }
 
 # shellcheck source=/dev/null
 . "$ENVF"
@@ -176,7 +176,7 @@ CORE_A="$PROFDIR/slax-wine-bios.yaml"
 CORE_B="$PROFDIR/slax-wine-uefi.yaml"
 
 if [ ! -d "$REPO_ROOT/recipes/available" ]; then
-    note "recipes/available not present yet - orphan check skipped"
+    fail "recipes/available is missing, so the profiles have nothing of ours to build"
 elif [ ! -d "$PROFDIR" ]; then
     fail "profiles/ is missing, so no recipe is built by anything"
 else
@@ -301,12 +301,38 @@ fi
 # when it was written is how the rot it prevents gets back in through the side door.
 #
 # This is the invariant this gate's own `# desc:` line has always claimed to check.
+#
+# THE PIN IS READ FROM THE SUBMODULE AND NOWHERE ELSE. A bare `git -C vendor/slax-kitchen`
+# can answer for THIS repository instead, two ways, both measured:
+#
+#   a commit from a     git exports GIT_DIR to the hooks, and GIT_DIR beats -C. The pin read
+#   linked worktree     back as our own HEAD and sections 7 and 8 failed 24 times on a clean
+#                       tree, refusing the commit.
+#   an uninitialised    an empty directory, so discovery walks up and finds ours: `rev-parse
+#   submodule           HEAD` succeeded, the "not checked out" note below could never fire,
+#                       and every citation was compared with the wrong commit.
+#
+# So subgit() clears git's repository-local variables -- the names come from git, as in
+# 80-unit.sh, and in a subshell, because this gate's other git calls must KEEP them to see
+# the commit in progress -- and sub_ready() insists that the repository git then finds is
+# the submodule's own. Found while adding section 10, which reads the submodule's history
+# the same way; tests/unit/test_release_consistency.py drives both cases.
+_repo_env=$(git rev-parse --local-env-vars 2>/dev/null)
+subgit() { ( unset $_repo_env; git -C "$REPO_ROOT/vendor/slax-kitchen" "$@" ); }
+sub_ready() {
+    _subtop=$(subgit rev-parse --show-toplevel 2>/dev/null) || return 1
+    [ "$_subtop" = "$(cd "$REPO_ROOT/vendor/slax-kitchen" 2>/dev/null && pwd -P)" ]
+}
 if ! have git; then
     note "git not installed - provenance-header check skipped"
-elif ! git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse HEAD >/dev/null 2>&1; then
+elif [ -z "$_repo_env" ]; then
+    # Fail closed, as 80-unit.sh does: without the list the hook's repository stays in
+    # reach, and a pin read from there is a guess that looks like a measurement.
+    fail "git rev-parse --local-env-vars answered nothing, so the pin cannot be read from the submodule alone -- refusing to guess it"
+elif ! sub_ready; then
     note "vendor/slax-kitchen not checked out - provenance-header check skipped"
 else
-    PIN=$(git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse HEAD)
+    PIN=$(subgit rev-parse HEAD)
     : > "$TMP/hdr"
     for d in ci tests; do
         [ -d "$REPO_ROOT/$d" ] || continue
@@ -434,6 +460,86 @@ else
             fail "$rel: claims 'Copied verbatim' but differs from vendor/slax-kitchen/$up by $n line(s) -- re-copy it, or change the header to 'Adapted from' and say what differs"
         fi
     done < "$TMP/verbatim"
+fi
+
+# ---- 10. every workaround is on the ledger, and the pin has not fixed it -----------
+# docs/UPSTREAM.md "Local workarounds" lists every place this repo works around a
+# slax-kitchen bug, and the code marks each one `WORKAROUND <issue URL>`. This holds the
+# two in step, and makes the BUMP the moment a fixed workaround is noticed:
+#
+#   (a) every marker outside vendor/ and the Markdown has a row that is not retired, for
+#       the same issue and the same file;
+#   (b) every row that is not retired names a file that still carries its marker;
+#   (c) an ACTIVE row fails once the pin's history says "Closes #N" for its issue: retire
+#       the workaround in that bump, or mark the row "kept after fix" and say why.
+#
+# WHY A GATE. The lifecycle used to say a workaround carries its issue URL so that grep
+# finds it. The #23 workaround carried none, nothing noticed, and it was found at the next
+# bump only by reading its Adapted header. (c) reads the VENDORED history -- what the pin
+# actually contains, with no network -- and keys on the same "Closes #N" line the register
+# does. An issue closed without a fix has no such line, which is the right answer: its
+# workaround is still needed.
+LEDGER="$REPO_ROOT/docs/UPSTREAM.md"
+if [ ! -f "$LEDGER" ]; then
+    fail "docs/UPSTREAM.md is missing, and with it the workaround ledger"
+elif ! grep -qx '## Local workarounds' "$LEDGER"; then
+    fail "docs/UPSTREAM.md has no '## Local workarounds' section, which is the ledger section 10 checks"
+else
+    # Table rows -> "<issue> <file> <state>". A status the rule does not know becomes "?"
+    # and fails below, rather than being read as whichever state it most resembles.
+    awk -F'|' '
+        /^## /            { on = ($0 == "## Local workarounds"); next }
+        !on               { next }
+        $0 !~ /^\| *\[#/  { next }
+        {
+            n = $2; sub(/.*issues\//, "", n); sub(/\).*/, "", n)
+            f = $3; gsub(/[` ]/, "", f)
+            s = $5; sub(/^ +/, "", s)
+            st = "?"
+            if (s ~ /^active since /)  st = "active"
+            if (s ~ /^kept after fix/) st = "kept"
+            if (s ~ /^retired at /)    st = "retired"
+            print n, f, st
+        }' "$LEDGER" > "$TMP/rows"
+
+    # Markers -> "<issue> <file>". Tracked files only -- work/ and out/ hold whole root
+    # filesystems -- and not the Markdown, which talks ABOUT markers.
+    git -C "$REPO_ROOT" ls-files > "$TMP/tracked" 2>/dev/null || true
+    : > "$TMP/marks"
+    while IFS= read -r f; do
+        case "$f" in vendor/*|*.md) continue ;; esac
+        [ -f "$REPO_ROOT/$f" ] || continue
+        grep -oE 'WORKAROUND https://github\.com/Fullaxx/slax-kitchen/issues/[0-9]+' "$REPO_ROOT/$f" \
+          | sed "s|.*/||; s|\$| $f|" >> "$TMP/marks"
+    done < "$TMP/tracked"
+
+    while read -r n f st; do
+        [ -n "$n" ] || continue
+        case "$st" in
+            retired) : ;;
+            active|kept)                                                            # (b)
+                grep -qxF "$n $f" "$TMP/marks" || \
+                    fail "docs/UPSTREAM.md Local workarounds: #$n is $st in $f, but $f carries no WORKAROUND marker for it -- retire the row, or mark the code" ;;
+            *)  fail "docs/UPSTREAM.md Local workarounds: #$n ($f) -- a status begins 'active since', 'kept after fix' or 'retired at'" ;;
+        esac
+    done < "$TMP/rows"
+
+    while read -r n f; do                                                           # (a)
+        [ -n "$n" ] || continue
+        awk -v n="$n" -v f="$f" '$1 == n && $2 == f && $3 != "retired" { ok = 1 } END { exit !ok }' "$TMP/rows" || \
+            fail "$f: WORKAROUND for slax-kitchen#$n has no row in docs/UPSTREAM.md Local workarounds that is not retired -- add one, or remove the marker with the workaround"
+    done < "$TMP/marks"
+
+    if [ -n "${PIN:-}" ]; then                                                      # (c)
+        while read -r n f st; do
+            [ "$st" = active ] || continue
+            fix=$(subgit log -E -i --format=%h \
+                      --grep="^(closes|fixes|resolves) #$n([^0-9]|\$)" "$PIN" 2>/dev/null | tail -1)
+            if [ -n "$fix" ]; then
+                fail "$f: works around slax-kitchen#$n, which $fix closed and the pin (${PIN%"${PIN#???????}"}) contains -- retire the workaround in this bump, or mark its row 'kept after fix' and say why"
+            fi
+        done < "$TMP/rows"
+    fi
 fi
 
 check_result

@@ -1,6 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (ci/checks/95-status-vocab.sh): skips cleanly when
-# docs/50-cookbook does not exist yet, so the gates pass on a scaffolding-only tree.
+# Copied verbatim from slax-kitchen @ 6bd59f14acbd861c3aa9fcfc2f2b7ea095f0cd3b (ci/checks/95-status-vocab.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Every cookbook page declares one rung of the verification ladder, by name.
@@ -19,12 +18,7 @@
 . "$(dirname "$0")/../lib.sh"
 
 COOKBOOK="$REPO_ROOT/docs/50-cookbook"
-# ADAPTED: upstream fails here. This repo was gate-first -- the gates had to pass on a
-# near-empty tree before any recipe existed -- so a missing cookbook notes and skips.
-# The cost is real and worth knowing: delete docs/50-cookbook/ and this gate, plus
-# 90-doc-coverage and section 5 of 96-release-consistency, all go quiet together.
-# Once the tree is populated, consider restoring upstream's `|| fail`.
-[ -d "$COOKBOOK" ] || { note "docs/50-cookbook not present yet - skipping"; exit 0; }
+[ -d "$COOKBOOK" ] || fail "missing $COOKBOOK"
 
 # In ladder order. "artifact boot-verified" must be tried before "boot-verified".
 RUNGS="schema-valid gate-clean matrix-verified artifact-boot-verified boot-verified runtime-verified"

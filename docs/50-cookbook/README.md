@@ -4,7 +4,7 @@ One page per recipe. Each states what it does, what it measured, and what it can
 
 | recipe | what it does |
 |---|---|
-| [`wine`](wine.md) | install Wine 8.0 from bookworm main, and drop Chromium to pay for its size |
+| [`wine`](wine.md) | install Wine 8.0 from bookworm main |
 | [`wine-desktop`](wine-desktop.md) | launcher entry, environment defaults, and masking the browser we removed |
 | [`notepadpp`](notepadpp.md) | the swappable application layer — a Windows installer to run under Wine |
 | [`slax-wine-iso`](slax-wine-iso.md) | boot defaults, ISO identity, and a checksum beside the image |

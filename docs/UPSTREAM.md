@@ -77,8 +77,8 @@ is not runtime-verified.** A correct file in the right place is not a working fe
 
 ```
 find → verify → draft here → file upstream → record in the register
-     → work around locally, with the issue URL in a comment
-     → upstream fixes → bump the submodule pin → re-evaluate → remove the workaround
+     → work around locally: mark the code, add a row to Local workarounds
+     → upstream fixes → bump the submodule pin → gate 96 §10 names it → remove the workaround
 ```
 
 **The tail of that is now upstream's to define, not ours.** After our first round they wrote it
@@ -89,11 +89,45 @@ credited). Read those rather than this paragraph; what follows is only our side.
 
 Two rules make our end of it work:
 
-- **A local workaround carries the issue URL in a comment**, so the thing to delete when it is fixed
-  is findable with `grep -rn "slax-kitchen/issues"`.
+- **A local workaround is marked and listed.** The code carries `WORKAROUND <issue URL>` in a comment,
+  and [Local workarounds](#local-workarounds) below carries a row for it, both from the commit that
+  adds it.
 - **A pin bump is never automatic.** Every design decision in [ARCHITECTURE.md](ARCHITECTURE.md)
   reasons about specific engine behaviour, so a bump gets read as a diff before it is committed.
-  `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one.
+  `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one. **It lands only on a
+  commit whose upstream CI is green** — every job, builds and boot test included — and a red or
+  still-running one is waited out rather than pinned around. `7194e0b` was.
+
+The first rule used to read *"carries the issue URL in a comment, so it is findable with `grep`"*,
+and nothing checked it. The #23 workaround carried no URL, so the grep that was meant to find it
+could not; it was found at the next bump by reading its *Adapted* header instead. A convention that
+has to be remembered is not a check, so the rule now has a gate behind it.
+
+## Local workarounds
+
+Every place this repository works around a slax-kitchen bug, and what became of it. Gate 96 §10
+holds this table and the code in step:
+
+- every `WORKAROUND <issue URL>` comment outside `vendor/` and the Markdown has a row here that is
+  not retired, for the same issue and the same file — and every such row's file still carries it;
+- a row that is **active** fails the commit whose pin contains a `Closes #N` for its issue. Retire
+  the workaround in that same bump, or mark the row *kept after fix* and say why.
+
+The second half is what makes "re-evaluate" happen at the bump rather than whenever someone
+remembers. It reads the vendored history, so it needs no network, and it keys on the same `Closes`
+trailer the [register](#register) does. An issue closed *without* a fix has no such line, which is
+the right answer: its workaround is still needed.
+
+Status is one of three: `active since <pin>`, `kept after fix — <why>`, `retired at <pin>`. A
+retired row stays, so the next reader can see what we once carried and why it went.
+
+| Issue | File | What it does here | Status |
+|---|---|---|---|
+| [#23](https://github.com/Fullaxx/slax-kitchen/issues/23) | `ci/checks/80-unit.sh` | ran each unit test with git's repository-local variables cleared | retired at `3a44e8a` |
+| [#1](https://github.com/Fullaxx/slax-kitchen/issues/1) | `recipes/available/wine.yaml` | named the `from:` stack instead of taking the default | retired at `3a44e8a`; kept after the fix until then, [DECISIONS.md](DECISIONS.md) D-3 |
+| [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where upstream's at `8adfca6` answered `MISSING` | retired at `337f7e7` |
+| [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `build.sh` | stages DXVK/VKD3D under `bottles-data/` instead of a `root/.var/…` mirror of where they go | active since `6bd59f1` |
+| [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `recipes/available/bottles.yaml` | takes that stage from `bottles-data/`, the `src:` half of the same workaround | active since `6bd59f1` |
 
 ---
 
@@ -193,7 +227,8 @@ rather than deleting it.
 
 **#1 — partially fixed.** The in-plan case is genuinely closed, including across recipes. Three
 bypasses remain and are now [#11](https://github.com/Fullaxx/slax-kitchen/issues/11). This is why our
-explicit `from:` stays.
+explicit `from:` stays. *(Later: `997a9ab` closed #11, and the explicit `from:` stayed as
+belt-and-braces until the `3a44e8a` bump — see [Local workarounds](#local-workarounds).)*
 
 **#2 — fixed for the reported case**, with a latent divergence: the chroot merge lacks `merge_tree`'s
 "a real status resets fragments" rule, so an add-on numbered `00`–`04` would build against packages
@@ -487,7 +522,7 @@ the sidecar failing at pack time, which only a real build showed.
 
 **Their stated gap does not reach us.** A builder under some unusual prefix — their example is
 `/opt/somebuilder/artifacts` — is caught by neither half unless it is this build's own tree. Ours
-build under `/root/…` in the container and would run under `/home/…` on `bacon`; both are shapes.
+build under `/root/…` in the container and would run under `/home/…` on the KVM host; both are shapes.
 Checked in memory against the new code before bumping: all five of our overrides pass (`drop` ×3,
 `marker`, `report`), while `/home/…`, `~/…` and a path under our work tree are still flagged.
 
@@ -563,7 +598,7 @@ paths in it are `testkit`'s in-image vars, kept with their slash, and it contain
 path. The shipped sidecars contain no absolute path of any kind — in-image paths go through
 `in_image()` — so for them "no leak" is true but proves little, and is recorded as such.
 
-**The boot routes, re-run on `bacon` under KVM** — whose own checkout had meanwhile moved to
+**The boot routes, re-run on the KVM host** — whose own checkout had meanwhile moved to
 `337f7e7`, so the harness is the pinned engine's rather than an equivalent one. The ISO was checked
 by sha256 after transfer, since it is byte-for-byte the same size as the old one:
 
@@ -575,9 +610,9 @@ by sha256 after transfer, since it is byte-for-byte the same size as the old one
 | `--persistence` | boot 1 `absent, creating` + `synced`; boot 2 `present, written 2026-09-18T18:07:47Z` — the timestamp boot 1 wrote. 5 s per boot |
 
 Evidence is in `out/boot-tests/`; the `bcd4f00`-era set was kept beside it as
-`out/boot-tests-bcd4f00/`, on `bacon` too.
+`out/boot-tests-bcd4f00/`, on the KVM host too.
 
-## Filed at the `337f7e7` bump — [#23](https://github.com/Fullaxx/slax-kitchen/issues/23), a unit test that writes into the commit running it
+## Filed at the `337f7e7` bump — [#23](https://github.com/Fullaxx/slax-kitchen/issues/23), a unit test that writes into the commit running it · **closed by `3a44e8a`**
 
 Found while adopting `tests/unit/test_ci_lib.py`, the test that came with the `#22` fix, and it is
 a property of that test running inside a hook, not of the fix. Filed as #23 after one more claim
@@ -619,32 +654,172 @@ commit and a worktree commit each land with only the outer repo's own file in th
 fires exactly once, and no fixture commit reaches the outer branch. A deliberately broken test
 still fails the gate through the subshell.
 
-## Two findings were dropped before filing, in round one
+**Closed by `3a44e8a`, with the same mechanism** — cleared in the gate rather than in the tests,
+names from `git rev-parse --local-env-vars`, refuse when git answers nothing — so our workaround
+went at the next bump. Their commit settles the inference above: all four tests do build throwaway
+repositories, and two of them had been measuring the wrong repository under a hook, and passing.
 
-Recording them because disproved candidates are worth as much as findings.
+## Adopted at the `3a44e8a` bump
 
-**Static-binary provenance** — right on the facts, but already documented three times upstream
-(`docs/30-inventory/initramfs-userland.md`, `NOTICE.md`, and a tracked work item). Nothing to add.
+Two commits, `337f7e7..3a44e8a`, carrying one `Closes` trailer: **#23** by `3a44e8a`. The other,
+`d877143`, is a comment and a doc line — `lib/provenance.py` now says its path-shape guard is the
+belt and braces rather than the thing doing the work, and a machine's name left
+`docs/60-testing/qemu.md` — so the engine that builds our images did not change. Upstream's CI on
+`3a44e8a` was green before we took it, including `build debian-32bit-12.2.0` and their TCG boot
+test.
 
-**The `NoDisplay` chromium mask** — **our error, not a stale finding.** The mechanism half was right
-(`xlunch_genquick` never reads `NoDisplay`), the consequence we drew was wrong: the documented stub
-also omits `Icon=`, and the generator emits nothing when `[ -e "$Icon" ]` fails, so the tile does
-disappear. That claim had reached three shipped files here before it was caught. The lesson is the
-one already written above: **attack a finding before filing it**, and treat "I can see the mechanism"
-as a long way short of "I have seen the outcome".
+**The ledger's first live test.** Staging the new pin made gate 96 fail in three sections at once:
+§7 on all fifteen copied-file headers, §8 on all eight prose and permalink pins, and the new §10 on
+the one row it exists for — *"ci/checks/80-unit.sh: works around slax-kitchen#23, which 3a44e8a
+closed and the pin (3a44e8a) contains"*. That is the bump noticing a fixed workaround by itself,
+which is the whole reason [Local workarounds](#local-workarounds) exists.
 
-**And then we over-corrected, which is the second half of the same lesson.** Having established the
-tile does disappear, three of our files went on to say the `NoDisplay`-only stub therefore *works*.
-Upstream reached the opposite conclusion from the same mechanism and it is the better one: it works
-**by accident**, because the stub happens to ship no `Icon=`, and adding one line brings the tile
-back. `6ecf019` treats that as a defect — `remove-bundle.md`'s stub now sets `Hidden=true`, and
-`test_desktop_entries.py` fails `NoDisplay` without `Hidden`. Our own stub always carried both keys
-and was never affected; only the prose around it was wrong. Corrected at this bump in
-`recipes/available/wine-desktop.yaml`, `docs/50-cookbook/wine-desktop.md` and
-`docs/ARCHITECTURE.md`. Being right about a mechanism twice in a row is not the same as being right
-about what follows from it.
+**What moved in our tree.** Of fifteen copied files only `ci/checks/80-unit.sh` changed upstream.
+It is re-copied and still *Adapted*, now with one difference, the `# desc:` line. Our block went,
+and with it a `# shellcheck disable=SC2086` that was never needed: gate 30 runs `-S warning`, and
+SC2086 is only `info`. The other fourteen were re-cited after checking each source had zero upstream
+commits in the range.
 
-## Filed with slax-bottles — [#26](https://github.com/Fullaxx/slax-kitchen/issues/26), the provenance guard refuses checkout-relative paths under a `root/` or `home/` directory
+**Adopted: `tests/unit/test_unit_gate.py`**, verbatim, run by gate 80. It drives the gate against a
+throwaway repository poisoned the way a linked-worktree commit really is, and asserts on the victim
+— which is the regression test for the scrub we had meant to write ourselves. Tested before it was
+trusted: against our `337f7e7`-era gate it failed exactly one check, *"...and what it was
+protecting"*, because our refusal message lacked the words *"index in reach"*; against the re-copy
+it passes, and it passes inside the pinned submodule too (`python3 -B`, so no bytecode lands in
+`vendor/`).
+
+**One flaw in it, measured rather than read.** The probe it plants calls `mkdtemp(prefix="probe-")`
+and never removes the directory, so every run leaves two throwaway repositories of 184 KiB in
+`/tmp` — and gate 80 runs at every commit and every push. Thirty-two of exactly that shape were
+already in `/tmp` here before our first run, all dated 18:52–19:00 on 2026-09-18, the window in
+which `3a44e8a` was written. Not a reason to adapt the test; a small thing to report — filed as
+[#24](https://github.com/Fullaxx/slax-kitchen/issues/24), and it turned out wider than this test.
+
+**Retired: `wine.yaml`'s explicit `from:`**, the belt-and-braces kept after issue 1 was fixed and
+the ledger's other row. Its two reasons are answered in [DECISIONS.md](DECISIONS.md) D-3; the
+evidence is the build.
+
+**The build, at `3a44e8a`, without the list:**
+
+| image | steps | assertions | bytes | modules |
+|---|---|---|---|---|
+| bios | 7 | 21 / 21 | 531,935,232 | 9 |
+| uefi | 8 | 21 / 21 | 538,425,344 | 9 |
+| test | 10 | 21 / 21 | 538,437,632 | 9 |
+
+The sizes match the `337f7e7` images to the byte again. This time that was not left to stand for
+more than it is: every file of all three images was compared with the `337f7e7` builds before the
+build overwrote them.
+
+| what | result |
+|---|---|
+| everything outside our four modules: base bundles, kernel, initrd, every boot config | **byte-identical**, except `/boot/efi.img` on the two GRUB images |
+| `/boot/efi.img` | it holds one file, `EFI/BOOT/BOOTX64.EFI`, **identical** to the one in the `337f7e7` test ISO still on the KVM host. The FAT image around it differs in 36 bytes, the volume serial and sixteen timestamp fields, at exactly the offsets where two images of the *same* build differ |
+| `20-wine`, `21-wine-desktop`, `30-notepadpp`, `98-dpkg-db` | **identical content**: 3,831 entries by type, mode, owner, size, link target and sha256. The `.sb` files differ byte for byte only because the build stamps directory mtimes, as they already did between the three images of one build |
+
+So the image did not change, and the boot evidence recorded at the `337f7e7` bump stands for this
+one. The four routes were not re-run, and that is a conclusion from the comparison above rather than
+an omission. The sidecars record `kitchen.commit` `3a44e8a`, keep the test marker's leading slash,
+and contain no build-machine path. They also say `711ad6f-dirty`, truthfully: the images were built
+with this change in the tree, before its commit existed.
+
+**Retired: the empty-tree skips.** This repo was built gates-first, so four checks were taught to
+note-and-skip while their inputs did not exist yet, and nothing ever taught them to stop:
+
+| gate | used to skip when | now |
+|---|---|---|
+| 95 | `docs/50-cookbook/` is missing | fails. The skip was its **only** difference from upstream, so it is back to *Copied verbatim* and §9 holds it there |
+| 90 | `recipes/available/` is missing | fails, as upstream's does. It stays *Adapted* for its other differences |
+| 96 | `build.env` is missing, which skipped the **whole** gate | fails, then stops: every section reads it |
+| 96 §5 | `recipes/available/` is missing, which skipped the orphan check | fails |
+
+Measured in a scratch copy with each input deleted: every one of those exited 0 with a *"not present
+yet - skipping"* note before, and fails naming the input after. Gate 96 with no recipes was the
+exception: §4 already failed on the missing `wine-desktop.yaml`, so that change adds a second, more
+direct reason rather than closing a silent pass. **Gate 20's skip stays**, because it is upstream's
+own line — a missing `vendor/slax-kitchen` notes and skips there too.
+
+**Taken from `d877143`'s reasoning, not its code:** *a machine's name is not useful to anyone
+else*. This page named the machine that runs our KVM boot routes three times; it now says "the KVM
+host". The name told a reader nothing they could use, and the rest of this repository already
+describes what a host must have rather than which host it was.
+
+**The same class of bug as #23, in our own gate 96.** Found while writing §10, which reads the
+submodule's history with the same bare `git -C vendor/slax-kitchen` that §7 used for the pin. That
+call can answer for *this* repository. A commit from a linked worktree exports `GIT_DIR`, which
+beats `-C`: measured with a real worktree and the real hook, the commit was refused, with every
+citation "wrong" against a pin that was our own HEAD. An uninitialised submodule is an empty
+directory, so discovery walks up to us: the *not checked out* branch could never fire.
+
+The fix follows the shape of upstream's own for #23. The submodule's git runs with git's
+repository-local variables cleared, and only once the repository git finds is the submodule's own;
+it fails closed when git will not name the variables. `tests/unit/test_release_consistency.py`
+drives all three cases. It failed six checks against the unfixed gate and passes against the fixed
+one. Then the same worktree commit went through the real hook with all twelve gates green, and
+landed on its own branch with its full tree. That also shows upstream's #23 fix working end to end
+here, in the mode that did the most damage.
+
+## Filed at the `3a44e8a` bump — [#24](https://github.com/Fullaxx/slax-kitchen/issues/24), five unit tests leave their fixtures in `/tmp` · **closed by `6e4470e`**
+
+What started as `test_unit_gate.py`'s probe is five of upstream's fifteen unit tests. Each was
+measured on its own at `3a44e8a`, with `TMPDIR` pointed at an empty private directory so nothing
+else on the machine could add to the count:
+
+| test | left per run | size |
+|---|---|---|
+| `test_apply.py` | 22 | 516 KiB |
+| `test_dpkgdb.py` | 13 | 312 KiB |
+| `test_qemu_boot.py` | 5 | 36 KiB |
+| `test_release_assets.py` | 4 | 260 KiB |
+| `test_unit_gate.py` | 2 | 372 KiB |
+
+That is 46 entries and 1,496 KiB every time their unit gate runs, which is at every commit and every
+push. All of it is test fixtures: the directories the code under test creates are named `kitchen-*`,
+and none of those remained. On a development machine with the hooks installed, 2,337 of the named
+ones (29 MB) had accumulated over four days, on a `/tmp` that is not a tmpfs.
+
+The fix was tried before it was offered, which is the lesson of #20. The unit gate gives each test a
+`TMPDIR` of its own and removes it afterwards, the same shape as their #23 fix. In a clone at
+`3a44e8a` that took the leftovers from 46 to 0 with every test still passing, and a deliberately
+failing test still failed the gate.
+
+**Here:** of the five we carry only `test_unit_gate.py`, so our gate 80 leaves two 184 KiB
+directories per run. It is deliberately **not** worked around. That would mean a second difference
+in `80-unit.sh` and a row in [Local workarounds](#local-workarounds), for two small directories per
+commit, and upstream's fix will arrive with a pin bump either way. *(It arrived at the `6bd59f1`
+bump: gate 80 now leaves nothing — below.)*
+
+## Adopted at the `6bd59f1` bump
+
+Four commits, `3a44e8a..6bd59f1`, answering #24 and the issue it led to:
+
+| commit | what | upstream CI |
+|---|---|---|
+| `6e4470e` | **closes #24**. The unit gate gives each test a `TMPDIR` of its own and removes it; a failing test keeps its fixtures and prints the path. `test_unit_gate.py` gains the regression test, checked against six mutations | green |
+| `7194e0b` | **closes #25**, the by-hand half: the four leaking tests now clean up after themselves, and the gate's box became a **detector** — anything a *passing* test leaves turns the gate red, named | **red** |
+| `f3ff3a3` | the red, fixed: `test_apply.py:1096` built a tar directory with `TarInfo`'s default `0o644`, which nobody but root can empty. The detector was right; the same leftover had printed `Permission denied` in `6e4470e`'s green run, where nothing looked | green |
+| `6bd59f1` | their self-review of #23–#25: the boxes set `TMPDIR` for child processes too, "milliseconds" became "seconds" (the gate is 17 s), and the gate's three rules are written down in their `CONTRIBUTING.md` | **green**: gates, all four builds, TCG boot |
+
+**Held, then taken.** At the first look the tip was `7194e0b` and red. We waited rather than pin the
+last green commit or the red one — now a rule in [The lifecycle](#the-lifecycle) — and took
+`6bd59f1` once its run had finished with every job green.
+
+**What moved in our tree.** `ci/checks/80-unit.sh` is re-copied and still *Adapted*, one difference:
+upstream's `desc` still says "the recipe engine's pure logic", so ours stays. `test_unit_gate.py`
+is re-copied — §9 named it first, 137 lines stale. The other fourteen were re-cited after checking
+each had zero upstream commits; §7 named all sixteen headers and §8 all eight pins, and §10 had
+nothing to say, with no active workaround on the ledger.
+
+**The detector now polices our tests too**, so it was run against them the way `f3ff3a3` says it
+must be: through the gate and by hand, as root and as uid 65534 in a copy that user owns. All four
+pass and leave nothing, every way. Upstream's five changed tests pass inside the pinned submodule
+and leave 0 where they left 46, and the submodule stays pristine.
+
+**No rebuild.** The range touches `ci/checks/80-unit.sh`, `tests/unit/`, `CLAUDE.md`,
+`CONTRIBUTING.md` and `docs/00-overview/status.md` — nothing the build runs. The `3a44e8a` images and
+the boot evidence behind them stand unchanged.
+
+## Filed at the `6bd59f1` pin, building slax-bottles — [#26](https://github.com/Fullaxx/slax-kitchen/issues/26), the provenance guard refuses checkout-relative paths under a `root/` or `home/` directory · **open**
 
 **It stopped a real build, after the build.** Staging Bottles' DXVK/VKD3D the way every other stage
 here is laid out, as a mirror of the destination
@@ -704,3 +879,28 @@ Removing the refusal outright was tried too. It fails four `vars` assertions in
 **Worked around** by staging under `bottles-data/`. Both halves are marked
 `WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26`: `build.sh` at `BDATA=`, and
 `bottles.yaml` at the `src:`.
+
+## Two findings were dropped before filing, in round one
+
+Recording them because disproved candidates are worth as much as findings.
+
+**Static-binary provenance** — right on the facts, but already documented three times upstream
+(`docs/30-inventory/initramfs-userland.md`, `NOTICE.md`, and a tracked work item). Nothing to add.
+
+**The `NoDisplay` chromium mask** — **our error, not a stale finding.** The mechanism half was right
+(`xlunch_genquick` never reads `NoDisplay`), the consequence we drew was wrong: the documented stub
+also omits `Icon=`, and the generator emits nothing when `[ -e "$Icon" ]` fails, so the tile does
+disappear. That claim had reached three shipped files here before it was caught. The lesson is the
+one already written above: **attack a finding before filing it**, and treat "I can see the mechanism"
+as a long way short of "I have seen the outcome".
+
+**And then we over-corrected, which is the second half of the same lesson.** Having established the
+tile does disappear, three of our files went on to say the `NoDisplay`-only stub therefore *works*.
+Upstream reached the opposite conclusion from the same mechanism and it is the better one: it works
+**by accident**, because the stub happens to ship no `Icon=`, and adding one line brings the tile
+back. `6ecf019` treats that as a defect — `remove-bundle.md`'s stub now sets `Hidden=true`, and
+`test_desktop_entries.py` fails `NoDisplay` without `Hidden`. Our own stub always carried both keys
+and was never affected; only the prose around it was wrong. Corrected at this bump in
+`recipes/available/wine-desktop.yaml`, `docs/50-cookbook/wine-desktop.md` and
+`docs/ARCHITECTURE.md`. Being right about a mechanism twice in a row is not the same as being right
+about what follows from it.
