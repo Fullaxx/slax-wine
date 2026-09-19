@@ -1,6 +1,6 @@
 # Installing slax-wine
 
-## First: which of the two images
+## First: which image
 
 | | boots on | pick it when |
 |---|---|---|
@@ -18,6 +18,9 @@ everywhere the bios image does, for 6.2 MiB more. **If unsure, take it.**
 > decision below applies to both equally.
 >
 > The uefi image's value is booting the **ISO** on UEFI: optical media, or a virtual CD.
+
+The third image, **`slax-bottles-<ver>.iso`**, installs the same way. What differs is in
+[slax-bottles](#slax-bottles) below.
 
 ---
 
@@ -238,6 +241,25 @@ with no special setup. On the stick it ends up at:
 To give a FAT32 prefix more than the default 16 GB, press `Esc` at the boot menu, `Tab` to edit, and
 add `perchsize=48G`. **Do this before the first persistent boot** — the size is fixed when the
 container is created and can only ever be raised, never lowered.
+
+## slax-bottles
+
+`slax-bottles-<ver>.iso` goes onto a stick exactly as above: copy `slax/` across and run `bootinst`.
+Everything this page says about FAT32, ext4, `perchdir=` and `perchsize=` applies unchanged. What
+differs:
+
+| | slax-wine | slax-bottles |
+|---|---|---|
+| **machine** | 32-bit x86 with PAE, or any 64-bit x86 | **64-bit x86 only** ([software.md](docs/software.md)) |
+| **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | BIOS and UEFI. It is always built the way `slax-wine-uefi` is, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
+| **what persistence keeps** | the Wine prefix, `/root/.wine` | every bottle, under `/root/.var/app/com.usebottles.bottles/`. On an ext4 stick that is `slax/changes/1/root/.var/app/com.usebottles.bottles` |
+| **space** | the image's `slax/` is ~510 MiB | the image's `slax/` is ~1.2 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
+
+**Persistence, measured on this image:** two boots of `slax-bottles-test` on one ext4 perch disk
+under `kitchen test --persistence`. Boot 1 found no marker and wrote one into the union, and boot 2
+found it, both reaching `Live Kit done`. That is the writable layer every bottle is kept in. **Not
+tested:** a bottle itself surviving a reboot, a real stick, and the FAT32 container route. The same
+gaps as slax-wine's, plus the first.
 
 ## Why `dd` does not work
 

@@ -242,8 +242,17 @@ bundles mounted in order.
 
 `runtime-verified`, on a full desktop boot: the **Wine tile opens from the launcher** with no xterm
 wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches, there is **no
-Mono/Gecko prompt**, and the **browser is absent** from the launcher. Three of the four recipes claim
-this rung; `slax-wine-iso` does not, because the *effect* of removing `automount` was never checked.
+Mono/Gecko prompt**, and the **browser is absent** from the launcher. All four slax-wine recipes claim
+this rung. `slax-wine-iso` was the last, once the *effect* of removing `automount` was observed on
+both bootloaders ([its page](50-cookbook/slax-wine-iso.md)).
+
+**slax-bottles**, under TCG with no network device: all three boot routes reach `Live Kit done`, with
+`automount` absent from both bootloaders' command lines. Bottles opens from its wrapper, a bottle is
+created from only what the image ships, and `cmd /c ver` runs in it (`notepad.exe` too, on the first,
+hand-seeded run). Both of its
+recipes claim `runtime-verified`, and [bottles](50-cookbook/bottles.md) says which run measured what.
+Persistence on ext4 perch is observed on it too: `kitchen test --persistence` on `slax-bottles-test`,
+the marker written on boot 1 and found on boot 2.
 
 **Persistence, ext4 native perch: observed.** Two boots of `slax-wine-test` on one ext4 perch disk
 under `kitchen test --persistence` — boot 1 wrote a marker into the union and `sync`ed it, boot 2

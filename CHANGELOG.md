@@ -28,8 +28,11 @@ because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bot
   `30-bottles.sb` (890.8 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
   pinned by ostree commit in `BOTTLES_LOCK`, plus DXVK 3.1 and VKD3D-Proton 3.0.1, a launcher tile and
   `/etc/slax-bottles-release`. **Runtime-verified in QEMU with no network**: a bottle is created with
-  the bundled `sys-wine-11.0` runner, and `notepad.exe` runs in it. DXVK/VKD3D ship because, measured,
-  Bottles refuses to create a bottle offline without them.
+  the bundled `sys-wine-11.0` runner from only what the image ships, and `cmd /c ver` runs in it
+  (`notepad.exe` too, on the first run, when DXVK/VKD3D were unpacked by hand). DXVK/VKD3D ship
+  because, measured, Bottles refuses to create a bottle offline without them. Persistence observed
+  on ext4 perch: two boots of `slax-bottles-test` on one disk, the marker written on the first and
+  found on the second.
 - `slax-bottles-iso` (slax-bottles only): `automount` removed, volume id `SLAX-BOTTLES`, sha256
   beside the image. Two steps copied from `slax-wine-iso`, which is itself unchanged.
 - `profiles/slax-bottles.yaml` and `slax-bottles-test.yaml`; `build.sh --bottles`,
@@ -40,7 +43,7 @@ because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bot
   are generated rather than kept by hand: every build writes `out/<image>-<ver>.packages.tsv` from
   the image's own `98-dpkg-db.sb` (626 installed packages on slax-wine, 597 on slax-bottles), and
   slax-bottles also `out/slax-bottles-<ver>.flatpak.txt`.
-- `remove-bundle` — **upstream's** recipe, listed **first** by all three profiles. Drops
+- `remove-bundle` — **upstream's** recipe, listed **first** by every profile. Drops
   `05-chromium.sb` (81.7 MiB), which is what pays for Wine. Each profile spells out `drop:
   "^05-chromium\.sb$"` rather than inheriting the recipe's identical default, so a later pin cannot
   change what the image deletes without the change being visible here. The engine refuses any plan
@@ -72,8 +75,15 @@ because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bot
   x86-64 OVMF — measured, GRUB to `Live Kit done` in 6 s. But a `bootinst`-prepared stick uses
   `syslinux.efi`, a different loader in a different place, and **nobody has booted that**. The uefi
   image does not change it: its GRUB is an El Torito structure that never reaches a stick.
-- No Wine Mono or Wine Gecko, so .NET and embedded-HTML applications do not run. Debian packages
-  neither; the first-run prompt is suppressed rather than satisfied.
+- slax-wine has no Wine Mono or Wine Gecko, so .NET and embedded-HTML applications do not run.
+  Debian packages neither; the first-run prompt is suppressed rather than satisfied. (slax-bottles
+  ships both, as Flathub runtimes.)
+- **slax-bottles has only been run in QEMU**, under TCG. Real hardware is untested, and with it the
+  whole GPU path: DXVK 3.x needs a Vulkan 1.4 driver, the runtime's Mesa has one, and whether a real
+  GPU initialises under Slax's 6.1 kernel with no GPU firmware is unknown. A bottle surviving a
+  reboot is not tested either, though the writable layer it lives in is. Offline, its first-run
+  wizard cannot finish and offers "Skip Setup", which is expected. See
+  [docs/using-bottles.md](docs/using-bottles.md).
 - No GPU firmware, because stock Slax ships none — 3D under Wine falls back to software rendering.
 - No browser: `05-chromium.sb` is removed. It is gone from the xlunch launcher; the Fluxbox
   right-click menu still carries a "Web Browser" entry that offers to `apt install` one, because

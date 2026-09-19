@@ -1,5 +1,6 @@
 #!/bin/sh
-# Build the slax-wine ISO: fetch -> stage app -> unpack -> apply -> pack -> assert.
+# Build the slax-wine and slax-bottles ISOs: fetch -> stage app -> unpack -> apply -> pack ->
+# assert.
 #
 # Deliberately NOT `kitchen build`: it runs tests/structure/iso_assert.py with no
 # --volid, and that argument DEFAULTS to 'slax' (iso_assert.py:49 -- an argparse default,
@@ -440,7 +441,7 @@ build_variant() {
     # the one place that decides it.
     say "[$v] assert"
     volid=$(sed -n 's/^volid: *//p' "$work/.kitchen/pack.yaml" | head -1 | sed "s/^[\"']//;s/[\"']$//")
-    [ -n "$volid" ] || { echo "build.sh: [$v] no volid hint -- did slax-wine-iso.yaml run?" >&2; exit 1; }
+    [ -n "$volid" ] || { echo "build.sh: [$v] no volid hint -- did the profile's *-iso.yaml recipe run?" >&2; exit 1; }
 
     # The uefi image genuinely HAS an EFI El Torito entry, so its absence must stop being
     # asserted -- and its presence must start being. Getting this wrong in either

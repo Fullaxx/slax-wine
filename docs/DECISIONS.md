@@ -253,8 +253,9 @@ is chosen at `pack`.
 **Bottles cannot run on slax-wine's base.** It ships only as a Flatpak (its docs: *"We currently
 only offer Bottles as a flatpak package"*), its Flathub manifest is `"only-arches": ["x86_64"]`, and
 Debian packages it in no suite at all. slax-wine is 32-bit (why is an open question, see
-[Q-1](#q-1--why-is-slax-wine-32-bit)), so there is no way to put Bottles "on top of" it. slax-kitchen's pinned `sources.yaml` also carries
-`debian-64bit-12.2.0`, and `slax-bottles` is built on that.
+[Q-1](#q-1--why-is-slax-wine-32-bit)), so there is no way to put Bottles "on top of" it.
+slax-kitchen's pinned `sources.yaml` also carries `debian-64bit-12.2.0`, and `slax-bottles` is
+built on that.
 
 **And it carries no Debian Wine.** The obvious plan was slax-wine's recipes plus Bottles. It does
 not work: Bottles runs inside the Flatpak sandbox and uses its own runners, so it cannot see
@@ -340,8 +341,10 @@ by the maintainer's own experience of running them there.
 **What it costs, as measured so far** ([software.md](software.md) has the requirements side by side):
 
 - the image cannot run 64-bit Windows programs;
-- its kernel is Debian's `686-pae`, so it needs a CPU with PAE;
-- no 32-bit UEFI firmware can boot either image (D-8).
+- its kernel is Debian's `686-pae`, so it needs a CPU with PAE.
+
+(32-bit UEFI firmware is not on that list. No image here boots on it, slax-bottles included, because
+upstream ships no `bootia32.efi` (D-8), so it is not a cost of choosing 32-bit.)
 
 **How to answer it:**
 

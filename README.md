@@ -60,9 +60,9 @@ What works and what does not is **[docs/using-wine.md](docs/using-wine.md)**.
 
 ## How it is built
 
-Four recipes over [slax-kitchen](https://github.com/Fullaxx/slax-kitchen), pinned as a submodule.
-slax-kitchen is the engine — generic, and knowing nothing about Wine; the recipes here say *what* to
-change, never *how*.
+Six recipes over [slax-kitchen](https://github.com/Fullaxx/slax-kitchen), pinned as a submodule: four
+for slax-wine, two for slax-bottles. slax-kitchen is the engine — generic, and knowing nothing about
+Wine; the recipes here say *what* to change, never *how*.
 
 | bundle | recipe |
 |---|---|
@@ -71,6 +71,8 @@ change, never *how*.
 | `30-notepadpp.sb` | [`notepadpp`](docs/50-cookbook/notepadpp.md) — the swappable application layer |
 | — | [`slax-wine-iso`](docs/50-cookbook/slax-wine-iso.md) — boot defaults, ISO identity, checksum |
 | — | `uefi-bootable` — **upstream's**, applied only by the uefi profile. Adds a GRUB ESP; builds no bundle |
+| `20-flatpak.sb`, `30-bottles.sb` | [`bottles`](docs/50-cookbook/bottles.md) — **slax-bottles only**: flatpak, and Bottles with its runtimes, DXVK and VKD3D |
+| — | [`slax-bottles-iso`](docs/50-cookbook/slax-bottles-iso.md) — **slax-bottles only**: the same boot default and checksum, its own identity |
 
 Both images run upstream's `remove-bundle` first — it drops `05-chromium.sb`, named explicitly
 rather than inherited, and it has to come before anything that builds — then the same four recipes
@@ -82,6 +84,10 @@ lists it late.
 `30-notepadpp.sb` is meant to be replaced. Delete that one file from `/slax/modules/` on a stick and
 drop another in — no rebuild, no remaster. That is the whole point of the layering.
 
+slax-bottles has a profile of its own: `remove-bundle`, then `bottles`, `slax-bottles-iso` and
+`uefi-bootable`, on the 64-bit base. Gate 96 holds it to removal-first, but not to slax-wine's core
+list, because it is a different system rather than a third boot route to the same one.
+
 ## Status
 
 **runtime-verified.** On a full desktop boot: the **Wine** tile appears in the launcher and opens
@@ -91,6 +97,12 @@ there is **no** Wine Mono / Gecko download prompt, and the browser is gone from 
 **UEFI and both bootloaders are now measured too** — GRUB under OVMF and isolinux each boot to
 `Live Kit done`, and `automount` is confirmed gone from the kernel command line on both, against a
 control that shows the check can fail.
+
+**slax-bottles is runtime-verified in QEMU, offline:** Bottles opens when its `slax-bottles` wrapper
+(the tile's `Exec=`) is run, a bottle is created from only what the image ships, and Windows programs
+run in it. The tile is generated; a click on it has not been tested. BIOS, UEFI and the direct
+kernel route boot to `Live Kit done`. Real hardware, and a GPU, are untested
+([software.md](docs/software.md) says what that leaves open).
 
 **What is still unverified: the USB story.** The Wine `C:` drive surviving a reboot has been seen
 only on a **VM ext4 disk**, never on a stick; the FAT32 container route is untested entirely; and no

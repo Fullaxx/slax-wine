@@ -29,7 +29,7 @@ recipes:
   # LAST, because boot.uefi generates its GRUB menu by parsing isolinux.cfg, so it must
   # see slax-bottles-iso's automount removal. One image rather than a bios/uefi pair: the
   # uefi image is a strict superset (the BIOS El Torito entry is kept), and hardware that
-  # runs x86_64 Bottles is almost always UEFI-era. The 6.2 MiB ESP is small next to a 1 GiB
+  # runs x86_64 Bottles is almost always UEFI-era. The 6.2 MiB ESP is small next to a 1.2 GiB
   # image.
   - uefi-bootable
 output:

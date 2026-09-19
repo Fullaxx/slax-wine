@@ -26,8 +26,10 @@ image:
 **Measured, offline** (QEMU, no network device): Bottles 67.3 opens; the wizard ends in "Setup
 could not be completed", with Skip Setup; `bottles-cli new --bottle-name offline1 --environment
 application --runner sys-wine-11.0` creates a bottle; in it, `cmd /c ver` prints `Microsoft Windows
-10.0.19045`, and `notepad.exe` opens a window on the Slax desktop. Creating the bottle took about 19
-minutes under software emulation (no KVM). It has not been timed on real hardware.
+10.0.19045`. That held on every run, including on the shipped image with nothing added by hand;
+`notepad.exe` opening a window on the Slax desktop was checked on the first run. Creating a bottle
+took 19 minutes on one run and 24 on another, under software emulation (no KVM; the second shared
+the host with a build). It has not been timed on real hardware.
 
 **Without DXVK and VKD3D on disk, the same `bottles-cli new` fails** ("Missing essential components
 … tried 3 times"), even though the runner is present. That measurement is why they ship.
@@ -39,8 +41,11 @@ image**: every run so far was offline.
 ## Where things live
 
 Everything Bottles writes goes to `/root/.var/app/com.usebottles.bottles/`. On a plain boot that is
-RAM, and your bottles are gone at shutdown. **On a persistent stick they survive**, the same way
-slax-wine's `C:` drive does. [INSTALL.md](../INSTALL.md) covers setting up persistence. Budget the
+RAM, and your bottles are gone at shutdown. **With persistence on, they are in the writable layer
+that survives a reboot**, as slax-wine's `C:` drive is. That layer persisting is measured on this
+image (two boots on one ext4 perch disk, [INSTALL.md](../INSTALL.md#slax-bottles)); a bottle surviving
+a reboot, on a real stick, is not yet tested. [INSTALL.md](../INSTALL.md) covers setting up
+persistence. Budget the
 space: a fresh bottle measured **386 and 491 MiB** on two runs, before you install anything into it.
 
 ## Files outside the sandbox

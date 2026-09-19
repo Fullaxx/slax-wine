@@ -14,7 +14,7 @@ steps:
   # was turning a recipe that two shipped images already depend on into a template, to
   # save two short steps; the middle step differs anyway. Upstream's iso-identity was
   # considered too: it has no appid, and its fixed `preparer: slax-kitchen` would drop the
-  # Slax credit. Its sibling boot-cmdline appends `toram`, which is wrong for a 1 GiB
+  # Slax credit. Its sibling boot-cmdline appends `toram`, which is wrong for a 1.2 GiB
   # image. If these two steps ever change in slax-wine-iso.yaml, change them here too.
   #
   # Remove `automount`; do not negate it. fstab_create tests `grep -vq automount

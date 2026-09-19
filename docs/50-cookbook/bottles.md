@@ -1,12 +1,17 @@
 # `bottles` — Flatpak, and Bottles with everything it needs offline
 
-**Status: runtime-verified** — in QEMU, with **no network device**: Bottles 67.3 opens on the Slax
-desktop, `bottles-cli new` creates a bottle with the bundled runner, and in that bottle `cmd /c ver`
-prints `Microsoft Windows 10.0.19045` and `notepad.exe` opens a window. Measured twice: on the first
-build with DXVK/VKD3D added by hand, which is what showed they were needed, and on the shipped build
-with nothing added. Slax's launcher generator emits the **Bottles** tile and no browser tile.
-**Not yet verified:** a human clicking that tile, real hardware, and bottles surviving a reboot on a
-persistent stick.
+**Status: runtime-verified** — in QEMU, with **no network device**. Three runs, each on a fresh boot:
+
+| build | what was measured |
+|---|---|
+| the first, with DXVK/VKD3D unpacked by hand | Bottles 67.3 opens; `bottles-cli new` creates a bottle with the bundled runner; in it `cmd /c ver` prints `Microsoft Windows 10.0.19045` and `notepad.exe` opens a window |
+| the first to ship DXVK/VKD3D | the same bottle creation and `cmd /c ver`, with nothing added by hand |
+| the shipped build, after the self-review fixes | Bottles opens from the `slax-bottles` wrapper; `flatpak remotes` lists flathub; a new bottle runs `cmd /c ver` |
+
+Slax's launcher generator emits the **Bottles** tile and no browser tile. The writable layer bottles
+live in persists across a reboot: two boots of `slax-bottles-test` on one ext4 perch disk, under
+`kitchen test --persistence`. **Not yet verified:** a human clicking that tile, real hardware, and a
+bottle itself surviving a reboot on a stick.
 
 ```sh
 ./build.sh --bottles        # -> out/slax-bottles-1.0.0.iso

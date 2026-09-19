@@ -2,7 +2,9 @@
 
 `./build.sh` does the whole thing: fetch the base ISO, fetch and verify the Notepad++ installer,
 unpack, apply upstream's `remove-bundle` and then our four recipes, pack, and assert the result.
-This page is what has to be true *before* that works.
+For slax-bottles (`--bottles`) the same steps run on the 64-bit base, and the payload is the Bottles
+Flatpak installation plus DXVK/VKD3D, each pinned in `build.env`. This page is what has to be true
+*before* either works.
 
 ## Prerequisites
 
