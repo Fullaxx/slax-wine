@@ -147,15 +147,18 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
   bump found two kinds: belt-and-braces kept after the fix it guarded against, and skips that
   outlived the empty tree they were written for.
 
-**4. Move the pin.**
+**4. Move the pin, up to the commit.**
 
 - On a branch, fetch, check the target out in `vendor/slax-kitchen`, and stage it. Gate 96 then
   names what has to follow: §7 every header, §8 every pin and permalink, §9 any stale verbatim copy,
   §10 any fixed workaround.
-- Re-copy and re-cite, run every gate in tree and staged scope, and commit through the hook.
+- Re-copy and re-cite, and run every gate in tree scope.
 - Record the bump here as *Adopted at the `<pin>` bump*: the commits and their CI, what moved, what
   was retired, the proofs, and why there was or was not a rebuild.
-- Fast-forward `master` and delete the branch. **Pushing is a separate request.**
+- **Stop there, uncommitted,** and hand over what changed, what was verified and how, and the commit
+  message ([`CLAUDE.md`](../CLAUDE.md) § *Before committing or pushing anything*). When the user asks
+  for the commit it goes through the hook, then `master` is fast-forwarded and the branch deleted.
+  **A push is its own request.**
 
 ## Local workarounds
 
