@@ -337,7 +337,7 @@ multiarch — "a larger image and a different project". Nothing in that is measu
 **The hypothesis behind it, untested:** old win32 programs are more trouble on a 64-bit OS, going
 by the maintainer's own experience of running them there.
 
-**What it costs, as measured so far:**
+**What it costs, as measured so far** ([software.md](software.md) has the requirements side by side):
 
 - the image cannot run 64-bit Windows programs;
 - its kernel is Debian's `686-pae`, so it needs a CPU with PAE;

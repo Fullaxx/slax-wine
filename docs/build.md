@@ -156,6 +156,11 @@ Failing any of these fails the build:
   bundle. slax-bottles has **eight**: the same five, `20-flatpak`, `30-bottles` and the db
 - the uefi ISO has an EFI El Torito entry (`--expect-uefi`) and the bios ISO does not
 
+Beside each ISO the build writes `out/<image>-<ver>.packages.tsv`, every installed Debian package
+with its version, read from the image's own `98-dpkg-db.sb`; for slax-bottles also
+`out/slax-bottles-<ver>.flatpak.txt`, the Flatpak refs and components that shipped.
+[software.md](software.md) points at them instead of carrying the lists.
+
 `out/build-summary-<variant>.txt` records every number the docs quote, one file per variant. If one
 moves, something changed.
 

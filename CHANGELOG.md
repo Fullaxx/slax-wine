@@ -35,6 +35,11 @@ because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bot
 - `profiles/slax-bottles.yaml` and `slax-bottles-test.yaml`; `build.sh --bottles`,
   `--bottles-test`, `--all`, and `BOTTLES_RELOCK=1` for bumping the pin.
 - `docs/using-bottles.md`.
+- `docs/software.md`: what each ISO removes, adds and runs, and what it needs from the machine
+  (CPU, firmware, memory, GPU, storage), each figure marked measured or not. The exact versions
+  are generated rather than kept by hand: every build writes `out/<image>-<ver>.packages.tsv` from
+  the image's own `98-dpkg-db.sb` (626 installed packages on slax-wine, 597 on slax-bottles), and
+  slax-bottles also `out/slax-bottles-<ver>.flatpak.txt`.
 - `remove-bundle` — **upstream's** recipe, listed **first** by all three profiles. Drops
   `05-chromium.sb` (81.7 MiB), which is what pays for Wine. Each profile spells out `drop:
   "^05-chromium\.sb$"` rather than inheriting the recipe's identical default, so a later pin cannot

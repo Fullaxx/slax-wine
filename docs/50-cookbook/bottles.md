@@ -76,7 +76,10 @@ The runner was not the problem: the Flatpak carries `sys-wine-11.0`. Bottles'
 `os.listdir` on `data/bottles/{dxvk,vkd3d}`. With `dxvk-3.1` and `vkd3d-proton-3.0.1` unpacked there,
 the same command succeeded, and DXVK/VKD3D were linked into the new prefix. On the rebuilt image,
 which ships them, a clean boot with no network did the same: `bottles-cli new` succeeded in 19½
-minutes under TCG, and the fresh bottle is **386 MiB**.
+minutes under TCG, and the fresh bottle is **386 MiB**. The final shipped build (after the
+self-review fixes) was checked the same way: the tile is generated, Bottles opens from the
+`slax-bottles` wrapper, `flatpak remotes` lists flathub, and a new bottle runs `cmd /c ver`. That
+bottle came to **491 MiB**; the two figures are recorded as measured, not reconciled.
 
 Both come from the URLs Bottles' own components index names, at the index commit Bottles 67.3 pins
 (`bottlesdevs/components` `f63f670`): the newest *stable* entry of each. That index publishes md5
@@ -108,8 +111,8 @@ Not proven:
 
 - **Real hardware**, and with it any GPU path. Under emulation this is llvmpipe throughout.
 - **`-cpu max`**: there Bottles segfaulted in an AVX2 gather instruction. We read that as QEMU's AVX2
-  emulation under TCG rather than the image (the same image runs under `-cpu Nehalem`), but it
-  has not been checked on a real AVX2 CPU.
+  emulation under TCG rather than the image (the same image runs under `-cpu Nehalem`, and starts
+  under `-cpu qemu64`, x86-64-v1), but it has not been checked on a real AVX2 CPU.
 - **Persistence** of `/root/.var/app/com.usebottles.bottles` on a stick.
 - **The GUI's New Bottle dialog**: the bottle was created with `bottles-cli`, which calls the same
   manager.

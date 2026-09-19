@@ -3,7 +3,8 @@
 slax-bottles is 64-bit Slax with [Bottles](https://usebottles.com) baked in: the Flatpak, its
 GNOME runtime, and everything it needs to create a bottle **with no network**. It does not include
 slax-wine's Debian Wine or Notepad++. Bottles brings its own Wine
-([DECISIONS.md](DECISIONS.md) D-14).
+([DECISIONS.md](DECISIONS.md) D-14). Everything installed, and what the image needs from the
+machine, is [software.md](software.md).
 
 ## First run
 
@@ -40,7 +41,7 @@ image**: every run so far was offline.
 Everything Bottles writes goes to `/root/.var/app/com.usebottles.bottles/`. On a plain boot that is
 RAM, and your bottles are gone at shutdown. **On a persistent stick they survive**, the same way
 slax-wine's `C:` drive does. [INSTALL.md](../INSTALL.md) covers setting up persistence. Budget the
-space: a fresh bottle is **386 MiB** (measured) before you install anything into it.
+space: a fresh bottle measured **386 and 491 MiB** on two runs, before you install anything into it.
 
 ## Files outside the sandbox
 
@@ -93,6 +94,7 @@ gone at shutdown. A permanent update means a rebuild, which bumps the pin in `bu
 - **No `xdg-desktop-portal`.** It is not installed, and how Bottles' file choosers behave without
   it has not been tested. `bottles-cli` with a path (above) avoids the question.
 - **Real hardware is untested.** Every observation above is from QEMU. Under QEMU's `-cpu max`,
-  Bottles segfaulted in llvmpipe on an AVX2 instruction; with `-cpu Nehalem` it ran. We read that
-  as QEMU's TCG AVX2 emulation rather than a fault in the image, but it has not been confirmed on
-  real AVX2 hardware.
+  Bottles segfaulted in llvmpipe on an AVX2 instruction; with `-cpu Nehalem` it ran, and under
+  `-cpu qemu64` (x86-64-v1, no AVX at all) it starts too. We read the crash as QEMU's TCG AVX2
+  emulation rather than a fault in the image, but it has not been confirmed on real AVX2
+  hardware.

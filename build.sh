@@ -482,6 +482,35 @@ build_variant() {
     fi
     echo "  ok   modules: $got"
 
+    # ---- what is installed, from the image itself ----
+    # The package list the docs point at (docs/software.md) instead of carrying 600 lines
+    # that would go stale at the next bookworm point release. Read from 98-dpkg-db.sb --
+    # the database the booted image actually uses -- rather than from apt's output, and
+    # only `install ok installed`: upstream Slax leaves 9 removed-but-configured entries.
+    # `unsquashfs -d`, not `-cat`, which needs squashfs-tools 4.6.
+    pkgs="$OUT/$V_IMAGE-$VERSION.packages.tsv"
+    ptmp=$(mktemp -d "$WORK/.pkgs.XXXXXX")
+    unsquashfs -q -n -d "$ptmp/x" "$work/iso/slax/modules/98-dpkg-db.sb" \
+        var/lib/dpkg/status >/dev/null
+    {
+        printf 'package\tversion\tarchitecture\n'
+        awk '/^Package:/ { p = $2 } /^Version:/ { v = $2 } /^Architecture:/ { a = $2 }
+             /^Status:/ { s = $0 }
+             /^$/ { if (p != "" && s == "Status: install ok installed") print p "\t" v "\t" a
+                    p = ""; v = ""; a = ""; s = "" }
+             END { if (p != "" && s == "Status: install ok installed") print p "\t" v "\t" a }' \
+            "$ptmp/x/var/lib/dpkg/status" | LC_ALL=C sort
+    } > "$pkgs"
+    rm -rf "$ptmp"
+    npkgs=$(($(wc -l < "$pkgs") - 1))
+    [ "$npkgs" -gt 0 ] || { echo "build.sh: [$v] no installed packages read from 98-dpkg-db.sb" >&2; exit 1; }
+    # slax-bottles' Flatpak side: the same text the image carries at /opt/bottles/VERSION.
+    fpk=""
+    if [ "$V_PAYLOAD" = bottles ]; then
+        fpk="$OUT/$V_IMAGE-$VERSION.flatpak.txt"
+        cp "$BSTAGE/opt/bottles/VERSION" "$fpk"
+    fi
+
     say "[$v] summary"
     {
         echo "$V_TITLE"
@@ -515,6 +544,8 @@ build_variant() {
             "$(awk -v n="$isz" 'BEGIN{printf "%.1f", n/1048576}')"
         printf 'vs stock        %+d bytes\n' "$(( isz - V_SIZE ))"
         echo "sha256          $(cut -d' ' -f1 < "$out_iso.sha256")"
+        echo "packages        $npkgs installed, listed in ${pkgs#"$REPO_ROOT"/}"
+        [ -z "$fpk" ] || echo "flatpak         refs and components in ${fpk#"$REPO_ROOT"/}"
         echo
         echo "--- apply delta lines ---"
         grep -E 'delta:|built slax/modules|removed|installed:' "$applog" || true

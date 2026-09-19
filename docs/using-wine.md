@@ -1,6 +1,7 @@
 # Using Wine in slax-wine
 
-What works, what does not, and the two things that surprise people.
+What works, what does not, and the two things that surprise people. What is installed, and what
+the image needs from the machine, is [software.md](software.md).
 
 ## First run
 
