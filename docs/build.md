@@ -24,12 +24,14 @@ touches is narrower:
 | `git` | the submodule, and the provenance/tag checks in gate 96 |
 | `python3` ≥ 3.9 with `yaml` and `jsonschema` | the recipe engine itself |
 | `shellcheck`, `yamllint` | the commit gates only — not the build |
+| `flatpak` | **the slax-bottles variants only.** `build.sh` installs Bottles from Flathub into a staging dir with it. Not needed for slax-wine |
 
 On Debian/Ubuntu:
 
 ```sh
 sudo apt-get install squashfs-tools xorriso curl git python3 python3-yaml python3-jsonschema \
                      shellcheck yamllint
+sudo apt-get install flatpak      # only for --bottles / --bottles-test / --all
 ```
 
 ### Privilege
@@ -52,7 +54,24 @@ wraps that one step in `sudo -E`.
 
 The host must be able to run **i386** binaries, because `bundle.packages` runs `apt` and `dpkg`
 inside a 32-bit chroot. On x86-64 that is normally already true; on any other architecture it is not,
-and no amount of `qemu-user` configuration is tested here.
+and no amount of `qemu-user` configuration is tested here. slax-bottles' chroot is x86-64, so an
+x86-64 host covers both.
+
+The Bottles staging step needs **network access to Flathub**, and much more disk than its bundle
+suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by piece:
+
+| | |
+|---|---|
+| `recipes/available/bottles.files/` | **3.2 GB**, plus 79 MB of DXVK/VKD3D. The ostree repo and the deployed files share inodes |
+| the copy `bundle.files` makes under `work/` while it builds `30-bottles.sb` | **7.4 GB**. `copytree` does not preserve hardlinks, so every shared file is written twice. It is removed when the bundle is done |
+| `work/bottles/` | 0.4 GB unpacked base, plus the 0.9 GB bundle |
+| `out/slax-bottles-<ver>.iso` | 1.2 GB |
+
+The squashed bundle is small again (890.8 MiB) because mksquashfs stores identical files once. Flatpak
+runs its install triggers through `bwrap`, and on a host without user namespaces (a container, for
+instance) that prints `bwrap: Creating new namespace failed`. That is harmless: the triggers only
+rebuild caches under `exports/` that Slax never reads, and `build.sh` checks what matters, the
+deployed commits.
 
 ## Running it
 
@@ -63,6 +82,14 @@ cd slax-wine
                             #    out/slax-wine-uefi-1.0.0.iso
 ```
 
+slax-bottles is a separate image on the 64-bit base (see [DECISIONS.md](DECISIONS.md) D-14), so it
+is not part of the default:
+
+```sh
+./build.sh --bottles        # -> out/slax-bottles-1.0.0.iso
+./build.sh --all            # all three shipped images
+```
+
 Each variant is a full unpack + apply into its own `work/<variant>/`, because recipes are not
 idempotent — `apply` consults its journal and refuses a second application. So `--both` costs
 roughly twice the wall clock; use `--bios` while iterating.
@@ -71,6 +98,10 @@ roughly twice the wall clock; use `--bios` while iterating.
 |---|---|
 | `--bios` / `--uefi` / `--both` | which image(s). **`--both` is the default** — they are the release pair |
 | `--test` | build `slax-wine-test-<ver>.iso` instead: the same recipes plus `serial-console`, `testkit` and `uefi-bootable`, so both firmware paths can be driven from one image. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against. |
+| `--bottles` | build `slax-bottles-<ver>.iso`: 64-bit Slax with Bottles baked in, and no Debian Wine. Uses the 64-bit base and its own module list and size ceiling (`BOTTLES_*` in `build.env`) |
+| `--bottles-test` | its testkit image, `slax-bottles-test-<ver>.iso`: the counterpart of `--test` |
+| `--all` | bios, uefi and bottles: every shipped image |
+| `BOTTLES_RELOCK=1` | with an empty `recipes/available/bottles.files/`: install Flathub's **current** Bottles and print a fresh `BOTTLES_LOCK` to paste into `build.env`. How the pin is bumped |
 | `--keep-work` | leave `work/<variant>/` in place for inspection |
 | `--no-fetch` | skip *downloading* the base ISO (it is still verified). The application payload is fetched regardless if it is missing or its hash does not match |
 | `ISO_DIR=…` | reuse base ISOs you already have |
@@ -116,11 +147,13 @@ Failing any of these fails the build:
 
 - the base ISO's size and sha256 match `build.env`, which in turn matches the pinned
   `compat/sources.yaml`
-- the payload's sha256 matches `APP_SHA256`
-- **each** ISO's volume id is `SLAX-WINE` and each is under `MAX_ISO_MIB`
+- the payload's sha256 matches `APP_SHA256`, or for slax-bottles, every Flatpak ref is deployed at
+  its `BOTTLES_LOCK` commit and nothing unlisted is installed
+- **each** ISO's volume id is what its recipe set (`SLAX-WINE`, or `SLAX-BOTTLES`), and each is under
+  its ceiling (`MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
 - `/slax/modules/` contains **exactly** nine bundles — five stock survivors, our three, and the
   generated `98-dpkg-db.sb`. The same list for both variants, because `uefi-bootable` builds no
-  bundle
+  bundle. slax-bottles has **eight**: the same five, `20-flatpak`, `30-bottles` and the db
 - the uefi ISO has an EFI El Torito entry (`--expect-uefi`) and the bios ISO does not
 
 `out/build-summary-<variant>.txt` records every number the docs quote, one file per variant. If one

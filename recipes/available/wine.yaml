@@ -5,10 +5,11 @@ metadata:
   summary: Install Wine 8.0 from bookworm main, and drop Chromium to pay for its size
   tags: [bundle, packages, wine, size]
 compat:
-  # Debian and 32-bit only, and not a limit we intend to lift. The point of this image is
+  # Debian and 32-bit only, today. The point of this image, as it was set up, is
   # running 32-bit Windows binaries, which is what Debian's i386 wine32 + wine32-preloader
   # do. A 64-bit base would need wine64 plus i386 multiarch -- a larger image and a
-  # different project. See docs/DECISIONS.md.
+  # different project. That is an assumption, not a measurement: docs/DECISIONS.md
+  # Q-1 records it as an open question, and how it is to be answered.
   flavours: [debian]
   arch: [32bit]
   slax: ">=12.2.0 <13.0.0"

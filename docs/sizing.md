@@ -70,3 +70,52 @@ which copies the compressed bundles into RAM rather than an installed tree.
 And what would grow it: slax-kitchen's `firmware-refresh` adds **+90 MiB** for the GPU firmware stock
 Slax ships none of. Not applied here — Notepad++ needs no GPU — but a games variant will want it, and
 should budget ~600 MiB. See [DECISIONS.md](DECISIONS.md).
+
+## slax-bottles: where the 1241.7 MiB goes
+
+A different image on a different base ([DECISIONS.md](DECISIONS.md) D-14). Measured on the build
+that ships DXVK and VKD3D:
+
+| | bytes | MiB |
+|---|---|---|
+| stock `slax-64bit-debian-12.2.0.iso` | 435,853,312 | 415.7 |
+| − `05-chromium.sb` | −82,903,040 | −79.1 |
+| + `20-flatpak.sb` (flatpak and its dependency closure: 36 packages in its dpkg fragment) | +8,372,224 | +8.0 |
+| + `30-bottles.sb` (the Flatpak installation, DXVK, VKD3D, launcher) | +934,109,184 | +890.8 |
+| + `98-dpkg-db.sb` (generated at pack time) | +126,976 | +0.1 |
+| + `boot/efi.img` (the GRUB ESP, not a bundle) | +6,488,064 | +6.2 |
+| **slax-bottles 1.0.0** | **1,302,048,768** | **1241.7** |
+
+`BOTTLES_MAX_ISO_MIB=1304` is that plus 5%, the same margin slax-wine uses. DXVK 3.1 and
+VKD3D-Proton 3.0.1 account for **16.0 MiB** of the bundle: the build without them came to 874.8 MiB
+and 1225.7 MiB.
+
+### Inside `30-bottles.sb`
+
+The Flatpak tree is **3,211 MiB of distinct file data unpacked**, which xz squashes to about 875 MiB of the bundle.
+The ostree repo's objects are the same inodes as the deployed files, so this table counts them once.
+In the bundle they cost nothing extra either, but for a different reason: the copy made while
+building breaks the hardlinks (see [build.md](build.md)), and mksquashfs then stores identical files
+once. Per ref, measured on the staged tree by inode: "own" counts only the bytes no other
+ref shares.
+
+| ref | unpacked MiB | own MiB |
+|---|---|---|
+| `org.gnome.Platform//50` | 956.9 | 955.2 |
+| `com.usebottles.bottles//stable` (includes its own Wine 11.0) | 503.5 | 503.3 |
+| `org.freedesktop.Platform.Compat.i386//25.08` | 290.6 | 289.2 |
+| `org.winehq.Wine.gecko//stable-25.08` | 204.2 | 204.2 |
+| `org.winehq.Wine.mono//stable-25.08` | 180.5 | 180.5 |
+| `org.freedesktop.Platform.GL32.default` `//25.08` + `//25.08-extra` | 464 each | 92.8 + 92.9 |
+| `org.freedesktop.Platform.GL.default` `//25.08` + `//25.08-extra` | 440 each | 88.3 + 88.3 |
+| `org.freedesktop.Platform.codecs-extra` + `codecs_extra.i386` | 41.4 + 29.2 | 41.2 + 29.0 |
+
+### What could shrink it
+
+Nothing here has been tried. Each item is a lever with a known cost:
+
+- **Gecko and Mono, ~385 MiB unpacked.** Dropping them brings back slax-wine's position (D-4):
+  no .NET, and no embedded HTML.
+- **The `-extra` GL branches, ~180 MiB of their own.** Mesa builds with extra video codecs, installed
+  alongside the plain ones. Which one flatpak picks at runtime has not been measured.
+- **The GNOME runtime cannot go.** Bottles is a GTK 4 / libadwaita app built against it.

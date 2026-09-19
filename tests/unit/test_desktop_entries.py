@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Adapted from slax-kitchen @ 337f7e79b2c2a65d0217cfb976a6654be0876e52 (tests/unit/test_desktop_entries.py).
-# MIT, same author. ONE local change, marked LOCAL below: the fenced-block reader is
+# MIT, same author. TWO local changes, marked LOCAL below: the fenced-block reader is
 # imported from the VENDORED copy rather than a copy of our own, because this repo has
-# no ci/doc-yaml.py. See docs/UPSTREAM.md. Re-adapt on a submodule bump.
+# no ci/doc-yaml.py; and the walk over recipes/ skips gitignored build stages. See
+# docs/UPSTREAM.md. Re-adapt on a submodule bump.
 """A .desktop this repo writes must survive Slax's launcher generator.
 
 WHY THIS EXISTS. `xlunch_genquick`, in 03-desktop.sb, ends every entry with:
@@ -181,16 +182,37 @@ def recipe_files(desktop_path):
     return set()
 
 
+def _in_scope(paths):
+    """LOCAL CHANGE: drop gitignored paths, lib.sh's definition of "in scope".
+
+    build.sh stages fetched payloads under recipes/available/<name>.files/, and
+    bottles.files/ is a whole Flatpak installation: a few dozen .desktop files belonging
+    to Flathub's runtimes, none of which lands in /usr/share/applications, the only
+    directory xlunch reads. Upstream has no staged payloads, so its walk never met one.
+    Without git (an export), fall back to checking everything, which is stricter.
+    """
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", ROOT, "check-ignore", "--stdin"],
+                           input="\n".join(paths), capture_output=True, text=True)
+    except OSError:
+        return paths
+    if r.returncode not in (0, 1):
+        return paths
+    ignored = set(r.stdout.splitlines())
+    return [p for p in paths if p not in ignored]
+
+
 def test_desktop_files_shipped_by_recipes():
     """Real .desktop files under recipes/."""
+    found = []
     for dirpath, _d, names in os.walk(os.path.join(ROOT, "recipes")):
         for n in names:
-            if not n.endswith(".desktop"):
-                continue
-            p = os.path.join(dirpath, n)
-            rel = os.path.relpath(p, ROOT)
-            with open(p, encoding="utf-8") as fh:
-                check_entry(rel, fh.read(), recipe_files(rel))
+            if n.endswith(".desktop"):
+                found.append(os.path.relpath(os.path.join(dirpath, n), ROOT))
+    for rel in _in_scope(found):
+        with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
+            check_entry(rel, fh.read(), recipe_files(rel))
 
 
 def _walk_steps(doc):

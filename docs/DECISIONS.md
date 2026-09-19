@@ -225,3 +225,109 @@ dissolved when profiles became authoritative — `apply --profile` runs no tests
 is chosen at `pack`.
 
 **What would change this:** `kitchen test` gaining a `--volid` flag.
+
+## D-14 · slax-bottles: a second system on the 64-bit base, with no Debian Wine
+
+**Bottles cannot run on slax-wine's base.** It ships only as a Flatpak (its docs: *"We currently
+only offer Bottles as a flatpak package"*), its Flathub manifest is `"only-arches": ["x86_64"]`, and
+Debian packages it in no suite at all. slax-wine is 32-bit (why is an open question, see
+[Q-1](#q-1--why-is-slax-wine-32-bit)), so there is no way to put Bottles "on top of" it. slax-kitchen's pinned `sources.yaml` also carries
+`debian-64bit-12.2.0`, and `slax-bottles` is built on that.
+
+**And it carries no Debian Wine.** The obvious plan was slax-wine's recipes plus Bottles. It does
+not work: Bottles runs inside the Flatpak sandbox and uses its own runners, so it cannot see
+`/usr/bin/wine`, and a `20-wine` bundle would be 166 MiB that nothing uses. Our other recipes do
+not transfer either. `notepadpp` requires `wine-desktop`, which requires `wine`, so naming either
+one pulls in the 32-bit Wine. What does transfer is upstream's: `remove-bundle`, `uefi-bootable`,
+`serial-console` and `testkit`, all unchanged. From `slax-wine-iso` we copied two steps, the
+automount removal and the checksum, into `slax-bottles-iso`. We did not turn a recipe that two
+shipped images depend on into a template.
+
+So this is **a different system**, not a third boot route to the same one. Gate 96 §5(b), which
+holds bios and uefi to one recipe list, deliberately does not compare it. §5(a3) does hold it to
+removal-first.
+
+**One image, not a pair.** It is built uefi-bootable, which is a strict superset (D-8), and
+hardware that runs x86_64 Bottles is almost always UEFI-era.
+
+**What would change this:** an i386 build of Bottles (its Flathub manifest allows x86_64 only today),
+or a Debian package. Either would make "slax-wine plus Bottles" possible, and this entry moot.
+
+## D-15 · Bottles baked into the image, not installed on first run
+
+The alternative was shipping only `flatpak` plus a launcher that runs `flatpak install` on first
+use: a small ISO, but it needs a network, and without persistence it has to be repeated every boot.
+That is the opposite of what a live stick for Windows programs is for, so the whole installation
+ships in `30-bottles.sb`.
+
+**How it gets there.** `build.sh` installs Bottles from Flathub on the **host**, into a user
+installation that it points at `recipes/available/bottles.files/var/lib/flatpak`, and `bottles.yaml`
+copies that tree in. It is not installed in the build chroot: `flatpak install` runs its triggers
+through `bwrap`, and the chroot has an empty `/proc` and no user namespace. A user installation and
+the system one have the same layout, so the live system (everything runs as root) sees an ordinary
+system-wide install.
+
+**The pin.** A single sha256 cannot describe a Flatpak installation, so the pin is `BOTTLES_LOCK`
+in `build.env`: every ref the install pulls in (13 of them) with its ostree commit. `build.sh`
+deploys each one at its locked commit and checks the result in both directions: every locked ref
+is present at its commit, and nothing is installed that the lock does not name. Flathub does not keep
+old commits forever, so a pin can go stale. When it does, the build fails with a message saying so.
+It never quietly takes whatever is current.
+
+**What it costs.** The GNOME 50 runtime, 64- and 32-bit Mesa, the i386 compat runtime, codecs, and
+Wine Gecko and Mono take 3.2 GB unpacked. See [sizing.md](sizing.md) for the measured bundle. That
+last pair is a bonus over slax-wine: Flathub **does** package Gecko and Mono (D-4 says Debian does
+not), so .NET and embedded-HTML programs have a chance in a bottle that they do not have under
+slax-wine.
+
+**What does not ship.** `xdg-desktop-portal`, a `flatpak` Recommends, is dropped along with the
+others. Slax runs Fluxbox, not a portal-aware desktop. How much Bottles' file access misses it has
+not been measured; [using-bottles.md](using-bottles.md) gives the `flatpak override` that widens
+the sandbox.
+
+**Baking in the Flatpak was not enough; DXVK and VKD3D had to ship too.** Measured on the first
+build, with no network: Bottles opens, and its wizard offers "Skip Setup". But `bottles-cli new`
+then fails with *"Missing essential components … tried 3 times"*, although the Flatpak carries its
+own runner (`sys-wine-11.0`). Bottles' `components_check` requires a runner, a DXVK and a VKD3D,
+and it finds the last two by listing directories under its data dir. So `build.sh` fetches the
+newest stable of each from the URLs Bottles' own components index names (`dxvk-3.1`,
+`vkd3d-proton-3.0.1`, pinned by sha256 in `BOTTLES_COMPONENTS`), and `30-bottles.sb` ships them
+unpacked under `/root/.var/app/com.usebottles.bottles/data/bottles/`. With them present, the same
+command creates a bottle offline, and `notepad.exe` runs in it.
+
+**What would change this:** the ISO size mattering more than working offline. The first-run
+installer is a small recipe away.
+
+---
+
+## Open questions
+
+Choices this file does not record a reason for yet. An entry here is a question with a plan to
+answer it, not a decision, and it moves up as a `D-` entry once it is answered.
+
+## Q-1 · Why is slax-wine 32-bit?
+
+**Not answered.** slax-wine is built on `debian-32bit-12.2.0`, and nothing in this repository
+records why. `wine.yaml` and `build.env` carry the assumption in comments: the point is running 32-bit
+Windows programs with Debian's i386 `wine32`, and a 64-bit base would need `wine64` plus i386
+multiarch — "a larger image and a different project". Nothing in that is measured.
+
+**The hypothesis behind it, untested:** old win32 programs are more trouble on a 64-bit OS, going
+by the maintainer's own experience of running them there.
+
+**What it costs, as measured so far:**
+
+- the image cannot run 64-bit Windows programs;
+- its kernel is Debian's `686-pae`, so it needs a CPU with PAE;
+- no 32-bit UEFI firmware can boot either image (D-8).
+
+**How to answer it:**
+
+1. Build a matching **64-bit slax-wine** target: `debian-64bit-12.2.0`, `wine` + `wine64` +
+   `wine32:i386`. The engine supports the i386 multiarch through `bundle.packages`'
+   `apt.architectures`, and `wine.yaml` can carry both package lists behind `when: arch==…`.
+2. Pick a set of **old win32 binaries**, the ones the hypothesis is about.
+3. Run the same set on both images, and record per program whether it installs, starts, and works.
+
+The result either becomes a `D-` entry for 32-bit, with the measurement as its reason, or the
+reason to move slax-wine to 64-bit.

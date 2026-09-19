@@ -18,7 +18,23 @@ does, and the **ISO** additionally boots on UEFI firmware. It changes nothing ab
 GRUB lives in an El Torito ESP, which `bootinst` never copies, so both images fall back to the stock
 FAT-only `syslinux.efi` there. Both carry the same nine bundles.
 
+**And a third image, a different system: `slax-bottles-1.0.0.iso` (1241.7 MiB).** Built on
+`slax-64bit-debian-12.2.0.iso` (`61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70`),
+because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles runs its own. See
+[docs/DECISIONS.md](docs/DECISIONS.md) D-14 and D-15.
+
 ### Added
+- `bottles` (slax-bottles only). `flatpak` from bookworm as `20-flatpak.sb` (8.0 MiB), and as
+  `30-bottles.sb` (890.8 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
+  pinned by ostree commit in `BOTTLES_LOCK`, plus DXVK 3.1 and VKD3D-Proton 3.0.1, a launcher tile and
+  `/etc/slax-bottles-release`. **Runtime-verified in QEMU with no network**: a bottle is created with
+  the bundled `sys-wine-11.0` runner, and `notepad.exe` runs in it. DXVK/VKD3D ship because, measured,
+  Bottles refuses to create a bottle offline without them.
+- `slax-bottles-iso` (slax-bottles only): `automount` removed, volume id `SLAX-BOTTLES`, sha256
+  beside the image. Two steps copied from `slax-wine-iso`, which is itself unchanged.
+- `profiles/slax-bottles.yaml` and `slax-bottles-test.yaml`; `build.sh --bottles`,
+  `--bottles-test`, `--all`, and `BOTTLES_RELOCK=1` for bumping the pin.
+- `docs/using-bottles.md`.
 - `remove-bundle` — **upstream's** recipe, listed **first** by all three profiles. Drops
   `05-chromium.sb` (81.7 MiB), which is what pays for Wine. Each profile spells out `drop:
   "^05-chromium\.sb$"` rather than inheriting the recipe's identical default, so a later pin cannot

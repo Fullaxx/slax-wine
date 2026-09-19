@@ -1,0 +1,37 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax-bottles
+  summary: 64-bit Slax with Bottles baked in -- boots BIOS and UEFI, no browser
+base:
+  # 64-bit, unlike slax-wine's pair, because Bottles exists only as an x86_64 Flatpak.
+  # See docs/DECISIONS.md D-14.
+  flavour: debian
+  arch: 64bit
+  version: "12.2.0"
+recipes:
+  # A DIFFERENT SYSTEM from slax-wine-bios/-uefi, not a variant of them. There is no
+  # Debian Wine here: Bottles is sandboxed and brings its own runners, so it could not use
+  # it. ci/checks/96 section 5(b), which holds the bios and uefi core lists identical,
+  # deliberately does not compare this profile. Section 5(a3) does hold it to
+  # removal-first.
+  #
+  # REMOVAL FIRST, for the same reason as in the slax-wine profiles: a bundle is built
+  # against everything below it, so build 20-flatpak before dropping 05-chromium and apt
+  # could satisfy a dependency from a bundle that then leaves. `drop:` is spelled out
+  # rather than inherited -- a profile line that deletes something should say what.
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
+
+  - recipes/available/bottles.yaml
+  - recipes/available/slax-bottles-iso.yaml
+
+  # LAST, because boot.uefi generates its GRUB menu by parsing isolinux.cfg, so it must
+  # see slax-bottles-iso's automount removal. One image rather than a bios/uefi pair: the
+  # uefi image is a strict superset (the BIOS El Torito entry is kept), and hardware that
+  # runs x86_64 Bottles is almost always UEFI-era. The 6.2 MiB ESP is small next to a 1 GiB
+  # image.
+  - uefi-bootable
+output:
+  # Not used -- build.sh names the output from build.env. See slax-wine-bios.yaml.
+  name: "slax-bottles-{{version}}.iso"

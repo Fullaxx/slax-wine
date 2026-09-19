@@ -1,0 +1,186 @@
+apiVersion: slax-kitchen/v1
+kind: Recipe
+metadata:
+  name: bottles
+  summary: Flatpak, and Bottles with its runtimes baked in, so it runs with no network
+  tags: [bundle, packages, app, wine, flatpak]
+compat:
+  # 64-bit ONLY, and that is Flathub's decision, not ours: Bottles ships as a Flatpak and
+  # nothing else ("We currently only offer Bottles as a flatpak package"), and its
+  # flathub.json says `"only-arches": ["x86_64"]`. Debian has no bottles package in any
+  # suite. This is the whole reason slax-bottles is built on debian-64bit-12.2.0 while
+  # slax-wine stays on the 32-bit base. See docs/DECISIONS.md D-14.
+  #
+  # NO `requires:`, and in particular not wine.yaml. Bottles runs inside the Flatpak
+  # sandbox and brings its own runners; it cannot see the host's /usr/bin/wine, so a
+  # 20-wine bundle here would be 166 MiB that nothing uses.
+  flavours: [debian]
+  arch: [64bit]
+  slax: ">=12.2.0 <13.0.0"
+  privilege: chroot
+vars:
+  platform: 20-flatpak
+  bundle: 30-bottles
+steps:
+  # -- 1. flatpak itself ----------------------------------------------------------------
+  #
+  # 20- because it is this image's platform, the same slot 20-wine has in slax-wine: the
+  # fork band's 20-29 is this project's platform, 30-89 its applications (D-5).
+  #
+  # `from:` is named for the same reason as in wine.yaml (D-3): the engine default is
+  # "every bundle below this one", which includes 05-chromium until remove-bundle has
+  # run. The profile removes it first anyway; this keeps the stack explicit.
+  #
+  # Only `flatpak` is named. It Depends on bubblewrap, which is the one other thing the
+  # sandbox needs. `no_recommends` drops xdg-desktop-portal and friends: Slax runs Fluxbox,
+  # not a portal-aware desktop, and D-15 records what that costs.
+  - verb: bundle.packages
+    bundle: "{{platform}}"
+    from: [01-core, 01-firmware, 02-xorg, 03-desktop, 04-apps]
+    packages:
+      - flatpak
+    apt:
+      # Both restate engine defaults, kept explicit for the reason wine.yaml gives: an apt
+      # invocation that silently changed either would change what ships.
+      update: true
+      no_recommends: true
+
+  # -- 2. Bottles, its runtimes, and the desktop integration -----------------------------
+  #
+  # ONE bundle.files step, because a bundle name can be produced once.
+  #
+  # The payload is staged by build.sh, not committed and not installed in a chroot. That
+  # mirrors notepadpp: build.sh fetches, pins and verifies it, and this recipe copies it.
+  # It is not done in bundle.script because `flatpak install` runs its triggers through
+  # bwrap, and the build chroot has an empty /proc and no user namespace.
+  #
+  # build.sh installs into a USER installation (FLATPAK_USER_DIR) that it points at
+  # bottles.files/var/lib/flatpak. The on-disk layout of a user installation and of the
+  # system one at /var/lib/flatpak is the same, so the live system sees an ordinary
+  # system-wide install. Slax runs everything as root, so that is the installation
+  # `flatpak run` looks in.
+  #
+  # Symlinks survive: _place_files copies a directory with copytree(symlinks=True), and
+  # flatpak's deploy tree is held together by `active` and `current` links. HARDLINKS DO
+  # NOT: the ostree repo's objects are hardlinks to the deployed files, so the 3.2 GB
+  # stage becomes a 7.4 GB copy under work/ while the bundle is built. mksquashfs then
+  # finds the identical files by content and stores each once, which is why shipping
+  # both the repo and the deploy costs almost nothing in the .sb. The repo stays because
+  # `flatpak info`, `list`, `update` and `uninstall` all read it.
+  #
+  # The flathub remote stays in repo/config, together with its GPG key. Offline it does
+  # nothing. Online it lets `flatpak update` work without anyone having to find the
+  # flatpakrepo URL first.
+  - verb: bundle.files
+    bundle: "{{bundle}}"
+    files:
+      - dest: /var/lib/flatpak
+        src: ./bottles.files/var/lib/flatpak
+
+      # DXVK and VKD3D, pre-seeded where Bottles looks for them: under the Flatpak's
+      # XDG_DATA_HOME, which for root is /root/.var/app/<id>/data. MEASURED: offline,
+      # bottle creation fails without them ("Missing essential components ... tried 3
+      # times"), even though the Flatpak carries its own runner. They sit in a bundle
+      # rather than in rootcopy, so they cost no RAM until something reads them.
+      # build.sh fetches, checks and unpacks them (BOTTLES_COMPONENTS in build.env).
+      #
+      # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26
+      # `src:` is bottles-data/, not a root/.var/... mirror of `dest:` like every other
+      # stage here: the engine refuses a local input whose checkout-relative path has a
+      # directory named `root` in it. build.sh's BDATA= is the other half.
+      - dest: /root/.var/app/com.usebottles.bottles/data/bottles
+        src: ./bottles.files/bottles-data
+
+      # Provenance: every ref and the commit that shipped. Written by build.sh.
+      - dest: /opt/bottles
+        src: ./bottles.files/opt/bottles
+
+      # -- the launcher ----------------------------------------------------------------
+      # Every .desktop Exec goes through this wrapper, as slax-wine's does. The .desktop
+      # entry sets Terminal=false, so a bare `flatpak run` that fails shows NOTHING; each
+      # check below says why instead. Only the first is reachable by `noload=`: booted
+      # with noload=20-flatpak.sb, this bundle -- wrapper, tile and all -- is still there
+      # and flatpak is not. noload=30-bottles.sb removes the wrapper and the tile along
+      # with Bottles, so there is nothing to click. The second check is for a persistent
+      # stick on which Bottles has been uninstalled.
+      - dest: /usr/local/bin/slax-bottles
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Run Bottles from the Flatpak baked into this image. See /etc/slax-bottles-release.
+          APP=com.usebottles.bottles
+          fail() {
+              echo "slax-bottles: $1" >&2
+              if command -v xmessage >/dev/null 2>&1; then
+                  xmessage -center "$1" 2>/dev/null || true
+              fi
+              exit 1
+          }
+          command -v flatpak >/dev/null 2>&1 \
+              || fail "Flatpak is not installed in this session.
+          If you booted with noload=20-flatpak.sb, reboot without it."
+          flatpak info "$APP" >/dev/null 2>&1 \
+              || fail "Bottles is not installed in this session.
+          If it was uninstalled, reinstall it online with:
+            flatpak install flathub com.usebottles.bottles"
+          exec flatpak run --branch=stable --arch=x86_64 --command=bottles "$APP" "$@"
+
+      # Icon= IS AN ABSOLUTE PATH, the same trap and the same fix as wine-desktop's Wine
+      # tile. xlunch_genquick searches only numeric size directories and only appends
+      # ".png". Flatpak exports the Bottles icon ONLY as scalable SVG, so a bare
+      # `Icon=com.usebottles.bottles` would match nothing, and :52's `[ -e "$Icon" ]` would
+      # drop the tile. The path goes through exports/, which flatpak keeps pointing at the
+      # active deploy, so an update does not break it.
+      #
+      # The SVG depends on imlib2's svg.so loader, as the Wine tile's does. The file is
+      # NOT the flatpak's own exported .desktop: that one sits under exports/, which
+      # xlunch never reads, and its Exec has @@u field codes that fbappselect would pass
+      # through literally.
+      #
+      # Terminal=false is load-bearing: fbappselect runs `ldd` on the Exec target, and a
+      # shell script reports no libX11, so it would wrap Bottles in an xterm.
+      - dest: /usr/share/applications/5bottles.desktop
+        mode: "0644"
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Bottles
+          GenericName=Windows Program Manager
+          Comment=Run Windows programs in Wine prefixes
+          Exec=slax-bottles
+          TryExec=slax-bottles
+          Icon=/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps/com.usebottles.bottles.svg
+          Terminal=false
+          Categories=System;Emulator;
+
+      # -- mask the browser we removed -----------------------------------------------
+      # remove-bundle deletes 05-chromium.sb, but 5chromium.desktop lives in 03-desktop.sb
+      # and survives it. In slax-wine this stub ships in 21-wine-desktop. That recipe is
+      # not in this image, so the stub is here, byte for byte the same. Hidden=true is the
+      # key xlunch reads, and there is deliberately NO Icon= line: see wine-desktop.yaml
+      # for why adding one would bring the tile back.
+      - dest: /usr/share/applications/5chromium.desktop
+        mode: "0644"
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Web Browser (not included)
+          Exec=/bin/true
+          Terminal=false
+          NoDisplay=true
+          Hidden=true
+
+      # -- provenance ------------------------------------------------------------------
+      # os-release-shaped, static facts only, the same rule as /etc/slax-wine-release.
+      # ci/checks/96-release-consistency.sh section 4 checks these literals against
+      # build.env, so the image cannot claim a version it was not built as.
+      - dest: /etc/slax-bottles-release
+        mode: "0644"
+        content: |
+          NAME="slax-bottles"
+          VERSION="1.0.0"
+          BASE_ISO="slax-64bit-debian-12.2.0.iso"
+          BASE_SHA256="61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70"
+          BOTTLES_VERSION="67.3"
+          BOTTLES_SOURCE="Flathub com.usebottles.bottles//stable"
+          HOME_URL="https://github.com/Fullaxx/slax-wine"

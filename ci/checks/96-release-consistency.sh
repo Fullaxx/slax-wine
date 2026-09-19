@@ -52,6 +52,10 @@ echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' \
 want_target="$BASE_FLAVOUR-$BASE_ARCH-$BASE_VERSION"
 [ "$BASE_TARGET" = "$want_target" ] \
     || fail "build.env: BASE_TARGET '$BASE_TARGET' != '$want_target' built from its parts"
+# slax-bottles has a base of its own, held to the same rule.
+want_target="$BOTTLES_BASE_FLAVOUR-$BOTTLES_BASE_ARCH-$BOTTLES_BASE_VERSION"
+[ "$BOTTLES_BASE_TARGET" = "$want_target" ] \
+    || fail "build.env: BOTTLES_BASE_TARGET '$BOTTLES_BASE_TARGET' != '$want_target' built from its parts"
 
 # ---- 2b. the app version is not left behind ----------------------------------------
 # APP_VERSION is not decorative: build.sh writes it into /opt/notepadpp/VERSION inside
@@ -79,14 +83,22 @@ else
     # (malformed sources.yaml, a scalar where a mapping was expected) wrote to stderr,
     # left stdout empty, and the gate reported green -- silently skipping the one
     # cross-check that earns this gate its keep.
-    if ! python3 - "$SRC" "$BASE_TARGET" "$BASE_ISO" "$BASE_SHA256" "$BASE_SIZE" \
+    # TWICE: slax-wine's 32-bit base and slax-bottles' 64-bit one. `set --` rather than
+    # a loop over names, so each call names its four values literally.
+    for base in BASE BOTTLES_BASE; do
+    if [ "$base" = BASE ]; then
+        set -- "$BASE_TARGET" "$BASE_ISO" "$BASE_SHA256" "$BASE_SIZE"
+    else
+        set -- "$BOTTLES_BASE_TARGET" "$BOTTLES_BASE_ISO" "$BOTTLES_BASE_SHA256" "$BOTTLES_BASE_SIZE"
+    fi
+    if ! python3 - "$SRC" "$base" "$@" \
             > "$TMP/base" 2> "$TMP/base.err" <<'PY'
 import sys
 try:
     import yaml
 except ImportError:
     print("NOTE python3-yaml not installed - base cross-check skipped"); sys.exit(0)
-src, target, iso, sha, size = sys.argv[1:6]
+src, var, target, iso, sha, size = sys.argv[1:7]
 doc = yaml.safe_load(open(src))
 if not isinstance(doc, dict):
     print(f"FAIL {src} is not a YAML mapping"); sys.exit(0)
@@ -95,7 +107,7 @@ if not isinstance(targets, dict):
     print(f"FAIL {src} has no 'targets' mapping"); sys.exit(0)
 t = targets.get(target)
 if t is None:
-    print(f"FAIL build.env: BASE_TARGET {target!r} is not a target in the pinned sources.yaml")
+    print(f"FAIL build.env: {var}_TARGET {target!r} is not a target in the pinned sources.yaml")
     sys.exit(0)
 if not isinstance(t, dict):
     print(f"FAIL {src}: target {target!r} is {type(t).__name__}, not a mapping"); sys.exit(0)
@@ -113,6 +125,7 @@ PY
             NOTE\ *) note "${line#NOTE }" ;;
         esac
     done < "$TMP/base"
+    done
 fi
 
 # ---- 4. the image cannot lie about itself ------------------------------------------
@@ -130,6 +143,24 @@ else
         || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_ISO does not match build.env"
     line_present "$WD" "BASE_SHA256=\"$BASE_SHA256\"" \
         || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_SHA256 does not match build.env"
+fi
+
+# The same for slax-bottles, whose release file is written by bottles.yaml. The Bottles
+# version has a line of its own (BOTTLES_SOURCE carries the prose), so it is checked the
+# way every other line here is -- whole-line, fixed-string. An earlier draft grepped for a
+# prefix of one combined line, which is exactly the loosening this file's header forbids.
+BY="$REPO_ROOT/recipes/available/bottles.yaml"
+if [ ! -f "$BY" ]; then
+    fail "recipes/available/bottles.yaml is missing, so /etc/slax-bottles-release is unchecked"
+else
+    line_present "$BY" "VERSION=\"$VERSION\"" \
+        || fail "bottles.yaml: /etc/slax-bottles-release VERSION does not match build.env ($VERSION)"
+    line_present "$BY" "BASE_ISO=\"$BOTTLES_BASE_ISO\"" \
+        || fail "bottles.yaml: /etc/slax-bottles-release BASE_ISO does not match BOTTLES_BASE_ISO"
+    line_present "$BY" "BASE_SHA256=\"$BOTTLES_BASE_SHA256\"" \
+        || fail "bottles.yaml: /etc/slax-bottles-release BASE_SHA256 does not match BOTTLES_BASE_SHA256"
+    line_present "$BY" "BOTTLES_VERSION=\"$BOTTLES_VERSION\"" \
+        || fail "bottles.yaml: /etc/slax-bottles-release BOTTLES_VERSION does not match build.env ($BOTTLES_VERSION)"
 fi
 
 # ---- 5. no orphan recipes, and the two shipped profiles must not drift --------------
@@ -191,9 +222,14 @@ else
     # compares recipes/available/ paths -- cannot see it: the two shipped profiles could
     # disagree about whether the browser is removed at all and (b) would stay green. Drop it and the image silently gains 82 MiB
     # and a three-year-old browser; list it late and check_plan_order refuses the build.
-    for prof in "$CORE_A" "$CORE_B"; do
-        [ -f "$prof" ] || continue
+    # slax-bottles is held to removal-first too. It is NOT part of (b): it is a different
+    # system, not a third boot route to the same one.
+    for prof in "$CORE_A" "$CORE_B" "$PROFDIR/slax-bottles.yaml"; do
         rel=${prof#"$REPO_ROOT"/}
+        # A shipped profile that is missing cannot be checked, and "cannot be checked" is
+        # a failure here, not a skip (8e33450 retired the others). bios and uefi also fail
+        # in (b) below; slax-bottles has no other check that would notice.
+        [ -f "$prof" ] || { fail "$rel is missing, so its removal order is unchecked"; continue; }
         # Both spellings: the bare `- remove-bundle` and the object form
         # `- name: remove-bundle`, which is what these profiles actually use so that
         # `drop:` is stated rather than inherited. Matching only one would make this
@@ -307,16 +343,35 @@ if [ -z "${PIN:-}" ]; then
 else
     short=${PIN%"${PIN#???????}"}
 
-    # (a) permalinks into their tree, anywhere but vendor/
-    grep -rnoE 'slax-kitchen/(blob|tree)/[0-9a-f]{7,40}' \
-         --include='*.md' "$REPO_ROOT" 2>/dev/null \
-      | grep -v '/vendor/' > "$TMP/links" || true
+    # The markdown in scope, listed ONCE for (a) and (b): what git tracks plus what it would
+    # track (untracked, not ignored) -- ci/lib.sh's own definition of "in scope", and the
+    # same call section 10 makes. vendor/ drops out by itself, because a submodule is one
+    # gitlink entry, not files. A walk of the disk also read the gitignored build stages:
+    # recipes/available/bottles.files/ holds Flathub's runtimes, 64 .md files that are not
+    # ours, 11 of them dangling symlinks.
+    #
+    # git's exit status is checked rather than piped away: a list that failed to build
+    # would otherwise read as "no markdown, so nothing stale", which is a pass.
+    if git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard -- '*.md' \
+            > "$TMP/mds0" 2> "$TMP/mds.err"; then
+        tr '\0' '\n' < "$TMP/mds0" | sed "s|^|$REPO_ROOT/|" > "$TMP/mds"
+    else
+        fail "section 8: git ls-files failed, so no markdown was checked: $(tr '\n' ' ' < "$TMP/mds.err")"
+        : > "$TMP/mds"
+    fi
+
+    # (a) permalinks into their tree, in the markdown listed above
+    : > "$TMP/links"
+    while IFS= read -r md; do
+        [ -n "$md" ] || continue
+        grep -HnoE 'slax-kitchen/(blob|tree)/[0-9a-f]{7,40}' "$md" >> "$TMP/links" 2>/dev/null || true
+    done < "$TMP/mds"
     while IFS= read -r hit; do
         [ -n "$hit" ] || continue
         got=${hit##*/}
         case "$PIN" in
             "$got"*) : ;;
-            # grep -r was handed "$REPO_ROOT", so ${hit%%:*} is an ABSOLUTE path; strip it
+            # The list holds ABSOLUTE paths, so ${hit%%:*} is one; strip it
             # to repo-relative like every other message in this gate. (The first version
             # printed /root/code/... -- a build-machine path in a gate about citations.)
             *) fail "$(printf '%s' "${hit%%:*}" | sed "s|^$REPO_ROOT/||"): permalink cites slax-kitchen @ $got but the pin is $short... (${hit#*:} -- point it at the engine this release ships)" ;;
@@ -326,7 +381,7 @@ else
     # (b) "pinned at `<hex>`" in prose. Newline-tolerant, because CHANGELOG.md wraps
     # between the words and the hex -- the first draft of this check missed it for
     # exactly that reason and would have passed the stale line it was written to catch.
-    find "$REPO_ROOT" -name '*.md' -not -path '*/vendor/*' -print > "$TMP/mds" 2>/dev/null || true
+    # Reads the markdown list built above.
     while IFS= read -r md; do
         [ -n "$md" ] || continue
         rel=${md#"$REPO_ROOT"/}

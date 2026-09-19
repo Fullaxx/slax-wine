@@ -7,7 +7,8 @@
 # sets SLAX-WINE, so every build would fail its own test. The other two historical objections are gone --
 # `apply --profile` runs no tests, and the output name is chosen at pack.
 #
-#   ./build.sh [--bios|--uefi|--both] [--keep-work] [--no-fetch]
+#   ./build.sh [--bios|--uefi|--both|--test|--bottles|--bottles-test|--all]
+#              [--keep-work] [--no-fetch]
 #
 # TWO IMAGES, and --both is the default because they are the release pair:
 #   slax-wine-bios-<ver>.iso   stock bootloader. BIOS only.
@@ -24,9 +25,16 @@
 #           image. NOT shipped and NOT part of --both; it is the artifact `kitchen test
 #           --persistence` is run against. See profiles/slax-wine-test.yaml.
 #
+#   --bottles       builds slax-bottles-<ver>.iso: a DIFFERENT system on the 64-bit base,
+#                   Bottles from Flathub and no Debian Wine. Not part of --both, which
+#                   stays the slax-wine release pair. See profiles/slax-bottles.yaml.
+#   --bottles-test  its testkit image, the counterpart of --test.
+#   --all           bios, uefi and bottles: every shipped image.
+#
 # --no-fetch skips DOWNLOADING the base ISO; it is still verified, and it does NOT cover
 # the application payload, which is fetched whenever it is absent or its hash does not
-# match. Fully offline therefore needs a warm isos/ AND a good notepadpp.files/.
+# match. Fully offline therefore needs a warm isos/ AND a good notepadpp.files/ -- and,
+# for the bottles variants, a bottles.files/ that already matches BOTTLES_LOCK.
 #   ISO_DIR=/path/to/isos ./build.sh      # reuse ISOs you already have
 #
 # Only the apply step is elevated. bundle.packages needs a real chroot (CAP_SYS_CHROOT +
@@ -51,6 +59,7 @@ ISO_DIR=${ISO_DIR:-$REPO_ROOT/isos}
 WORK=${WORK:-$REPO_ROOT/work}
 OUT=${OUT:-$REPO_ROOT/out}
 STAGE="$REPO_ROOT/recipes/available/notepadpp.files"
+BSTAGE="$REPO_ROOT/recipes/available/bottles.files"
 
 # The expected /slax/modules contents. iso_assert.py has --require but no --forbid, and
 # "chromium is gone" is half the size claim, so assert the list exactly -- that also
@@ -58,6 +67,8 @@ STAGE="$REPO_ROOT/recipes/available/notepadpp.files"
 # 98-dpkg-db.sb, which lib/pack.sh generates from the status fragments our bundles ship.
 # Forgetting that last one is the easy way to fail the build on its own output.
 WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp.sb 98-dpkg-db.sb"
+# slax-bottles: the same five stock survivors, flatpak, Bottles, and the generated db.
+BOTTLES_WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-flatpak.sb 30-bottles.sb 98-dpkg-db.sb"
 
 KEEP_WORK=0; NO_FETCH=0; VARIANTS="bios uefi"
 while [ $# -gt 0 ]; do
@@ -69,6 +80,9 @@ while [ $# -gt 0 ]; do
         # the serial console and carries a persistence marker. It exists so
         # `kitchen test --persistence` has something of OURS to assert against.
         --test)      VARIANTS="test"; shift ;;
+        --bottles)       VARIANTS="bottles"; shift ;;
+        --bottles-test)  VARIANTS="bottles-test"; shift ;;
+        --all)           VARIANTS="bios uefi bottles"; shift ;;
         --keep-work) KEEP_WORK=1; shift ;;
         --no-fetch)  NO_FETCH=1; shift ;;
         *) echo "build.sh: unknown option $1" >&2; exit 2 ;;
@@ -101,15 +115,56 @@ give_back_work() {
     exit 2
 }
 
-# ---- 1. the base ISO ---------------------------------------------------------------
+# ---- per-variant facts ---------------------------------------------------------------
+# Everything that differs between images, in one place. bios, uefi and test are the
+# slax-wine system and keep exactly the values this script always had. bottles and
+# bottles-test are slax-bottles: another base, another payload, another module list.
+# The image's NAME comes from here too -- slax-bottles-<ver>.iso, not slax-wine-bottles.
+variant_config() {
+    case "$1" in
+        bios|uefi|test)
+            V_IMAGE="slax-wine-$1"
+            V_TARGET=$BASE_TARGET; V_ISO=$BASE_ISO; V_SIZE=$BASE_SIZE; V_SHA=$BASE_SHA256
+            V_WANT=$WANT_MODULES; V_MAX=$MAX_ISO_MIB; V_PAYLOAD=notepadpp
+            V_OWN="20-wine 21-wine-desktop 30-notepadpp 98-dpkg-db"
+            V_APP="$APP_NAME $APP_VERSION"
+            # The summary's first line, as it has always read for slax-wine.
+            V_TITLE="slax-wine $VERSION ($1)"
+            # The application id slax-wine has always carried. Kept byte-for-byte: it is
+            # in the PVD of two images already described by their docs.
+            V_APPID="slax-wine $VERSION $1 (base $BASE_ISO)" ;;
+        bottles|bottles-test)
+            V_IMAGE="slax-$1"
+            V_TARGET=$BOTTLES_BASE_TARGET; V_ISO=$BOTTLES_BASE_ISO
+            V_SIZE=$BOTTLES_BASE_SIZE; V_SHA=$BOTTLES_BASE_SHA256
+            V_WANT=$BOTTLES_WANT_MODULES; V_MAX=$BOTTLES_MAX_ISO_MIB; V_PAYLOAD=bottles
+            V_OWN="20-flatpak 30-bottles 98-dpkg-db"
+            V_APP="$BOTTLES_APP $BOTTLES_VERSION (Flathub $BOTTLES_BRANCH)"
+            V_TITLE="slax-bottles $VERSION ($1)"
+            V_APPID="slax-bottles $VERSION${1#bottles} (base $BOTTLES_BASE_ISO)" ;;
+        *) echo "build.sh: unknown variant $1" >&2; exit 2 ;;
+    esac
+    V_PROFILE="$REPO_ROOT/profiles/$V_IMAGE.yaml"
+}
+
+# ---- 1. the base ISO(s) ------------------------------------------------------------
 # `kitchen fetch` verifies size+sha256 first and prints "already verified" without
 # downloading, so this doubles as the verify step when the file is already here.
-say "base ISO"
+# Once per DISTINCT base: --all needs both the 32-bit and the 64-bit one.
 mkdir -p "$ISO_DIR" "$OUT"
-[ "$NO_FETCH" = 1 ] || "$K" fetch "$BASE_TARGET" -o "$ISO_DIR"
-"$K" fetch "$BASE_TARGET" -o "$ISO_DIR" --verify-only
+TARGETS=""; PAYLOADS=""
+for v in $VARIANTS; do
+    variant_config "$v"
+    case " $TARGETS " in *" $V_TARGET "*) ;; *) TARGETS="$TARGETS $V_TARGET" ;; esac
+    case " $PAYLOADS " in *" $V_PAYLOAD "*) ;; *) PAYLOADS="$PAYLOADS $V_PAYLOAD" ;; esac
+done
+for t in $TARGETS; do
+    say "base ISO: $t"
+    [ "$NO_FETCH" = 1 ] || "$K" fetch "$t" -o "$ISO_DIR"
+    "$K" fetch "$t" -o "$ISO_DIR" --verify-only
+done
 
-# ---- 2. the application payload ----------------------------------------------------
+# ---- 2a. the application payload: Notepad++ ----------------------------------------
 # Fetched and verified rather than committed. Not because committing is forbidden --
 # .exe is not a forbidden extension and GitHub's limit is 100 MB -- but because
 # slax-arcade needs the same mechanism for software that cannot be published at all, and
@@ -117,35 +172,229 @@ mkdir -p "$ISO_DIR" "$OUT"
 #
 # Staged under a stable name so updating the app is two edits in build.env and nothing
 # in the recipe, the wrapper or the .desktop entry.
-say "application payload: $APP_NAME $APP_VERSION"
-mkdir -p "$STAGE/opt/notepadpp"
-APP_FILE="$STAGE/opt/notepadpp/npp-installer.exe"
-if [ -f "$APP_FILE" ] && [ "$(sha256sum "$APP_FILE" | cut -d' ' -f1)" = "$APP_SHA256" ]; then
-    echo "  ok   npp-installer.exe (already verified)"
-else
-    rm -f "$APP_FILE"
-    curl -fsSL "$APP_URL" -o "$APP_FILE"
-    got=$(sha256sum "$APP_FILE" | cut -d' ' -f1)
-    if [ "$got" != "$APP_SHA256" ]; then
+stage_notepadpp() {
+    say "application payload: $APP_NAME $APP_VERSION"
+    mkdir -p "$STAGE/opt/notepadpp"
+    APP_FILE="$STAGE/opt/notepadpp/npp-installer.exe"
+    if [ -f "$APP_FILE" ] && [ "$(sha256sum "$APP_FILE" | cut -d' ' -f1)" = "$APP_SHA256" ]; then
+        echo "  ok   npp-installer.exe (already verified)"
+    else
         rm -f "$APP_FILE"
-        echo "build.sh: $APP_URL sha256 $got != build.env $APP_SHA256" >&2
-        exit 1
+        curl -fsSL "$APP_URL" -o "$APP_FILE"
+        got=$(sha256sum "$APP_FILE" | cut -d' ' -f1)
+        if [ "$got" != "$APP_SHA256" ]; then
+            rm -f "$APP_FILE"
+            echo "build.sh: $APP_URL sha256 $got != build.env $APP_SHA256" >&2
+            exit 1
+        fi
+        echo "  ok   npp-installer.exe ($(stat -c%s "$APP_FILE") bytes, sha256 verified)"
     fi
-    echo "  ok   npp-installer.exe ($(stat -c%s "$APP_FILE") bytes, sha256 verified)"
-fi
-# Provenance beside the payload, so the ISO is self-describing even though the filename
-# is deliberately version-free.
-cat > "$STAGE/opt/notepadpp/VERSION" <<PROV
+    # Provenance beside the payload, so the ISO is self-describing even though the
+    # filename is deliberately version-free.
+    cat > "$STAGE/opt/notepadpp/VERSION" <<PROV
 $APP_NAME $APP_VERSION
 upstream: $APP_URL
 sha256:   $APP_SHA256
 PROV
+}
+
+# ---- 2b. the application payload: Bottles ------------------------------------------
+# A Flatpak installation, staged on the HOST and copied in by bottles.yaml's
+# bundle.files. Not installed in the build chroot: `flatpak install` runs its triggers
+# through bwrap, and the chroot has an empty /proc and no user namespace.
+#
+# FLATPAK_USER_DIR points a --user installation at bottles.files/var/lib/flatpak. That
+# layout is the same as the system installation at /var/lib/flatpak, which is where
+# the live system (all root) looks.
+#
+# The pin is BOTTLES_LOCK in build.env: every ref, and the commit it has to be. A hash of a
+# single file, as notepadpp uses, cannot express that, so the check is ref-by-ref against
+# `flatpak info --show-commit`, in both directions: every locked ref is present at its
+# commit, and nothing is present that the lock does not name.
+FLATHUB_REPO=https://dl.flathub.org/repo/flathub.flatpakrepo
+FPDIR="$BSTAGE/var/lib/flatpak"
+# LC_ALL=C because two of the checks below read flatpak's labels ("Version:",
+# "Subdirectories:"), and flatpak translates them.
+fp() { LC_ALL=C FLATPAK_USER_DIR="$FPDIR" flatpak --user "$@"; }
+
+# The lock as "ref commit" lines, blank lines dropped.
+bottles_lock() { printf '%s\n' "$BOTTLES_LOCK" | sed -e 's/^[[:space:]]*//' -e '/^$/d'; }
+
+# BOTTLES_LANGUAGES ("de;en") as flatpak prints a .Locale ref's subdirectories ("/de /en").
+want_subdirs() {
+    printf '%s\n' "$BOTTLES_LANGUAGES" | tr ';' '\n' | sed -e '/^$/d' -e 's|^|/|' | sort | tr '\n' ' ' | sed 's/ $//'
+}
+
+# Prints one line per disagreement. Silent means the stage matches build.env exactly.
+bottles_drift() {
+    [ -d "$FPDIR/repo" ] || { echo "no installation at $FPDIR"; return 0; }
+    # The locale subset ships too. Left unset, flatpak derives it from the BUILD HOST's
+    # locale -- which is how the first stage came out "en" without anyone choosing it, and
+    # how a host with another LANG would have shipped something else under the same lock.
+    lang=$(fp config --get languages 2>/dev/null || true)
+    [ "$lang" = "$BOTTLES_LANGUAGES" ] \
+        || echo "languages: have ${lang:-nothing}, build.env says $BOTTLES_LANGUAGES"
+    bottles_lock | while read -r ref commit; do
+        got=$(fp info --show-commit "$ref" 2>/dev/null || true)
+        [ "$got" = "$commit" ] || echo "$ref: have ${got:-nothing}, lock says $commit"
+        case "$ref" in
+            *.Locale/*)
+                sub=$(fp info "$ref" 2>/dev/null | sed -n 's/^ *Subdirectories: *//p' \
+                      | tr ' ' '\n' | sed '/^$/d' | sort | tr '\n' ' ' | sed 's/ $//')
+                [ "$sub" = "$(want_subdirs)" ] \
+                    || echo "$ref: deploys ${sub:-nothing}, BOTTLES_LANGUAGES wants $(want_subdirs)" ;;
+        esac
+    done
+    fp list --all --columns=ref 2>/dev/null | while read -r r; do
+        [ -n "$r" ] || continue
+        full=$(fp info -r "$r" 2>/dev/null || echo "$r")
+        bottles_lock | awk -v r="$full" '$1 == r { f = 1 } END { exit !f }' \
+            || echo "$full: installed but not in BOTTLES_LOCK (unpinned)"
+    done
+}
+
+stage_bottles() {
+    say "application payload: $BOTTLES_APP $BOTTLES_VERSION"
+    # RELOCK only means something on an EMPTY stage. On a warm one, `flatpak install`
+    # keeps what is already there, so the "fresh" lock printed below would be the old one.
+    if [ -n "${BOTTLES_RELOCK:-}" ] && [ -d "$FPDIR/repo" ]; then
+        echo "build.sh: BOTTLES_RELOCK needs an empty stage, or it prints the lock you have." >&2
+        echo "  rm -rf $BSTAGE && BOTTLES_RELOCK=1 ./build.sh --bottles" >&2
+        exit 2
+    fi
+    if [ -z "${BOTTLES_RELOCK:-}" ] && [ -z "$(bottles_drift)" ]; then
+        echo "  ok   $(bottles_lock | wc -l) refs (already at their locked commits)"
+    else
+        command -v flatpak >/dev/null 2>&1 || {
+            echo "build.sh: the bottles variants need flatpak on the build host" >&2
+            echo "  (Debian/Ubuntu: apt install flatpak)" >&2
+            exit 2
+        }
+        mkdir -p "$FPDIR"
+        fp remote-add --if-not-exists flathub "$FLATHUB_REPO"
+        fp config --set languages "$BOTTLES_LANGUAGES"
+        # Triggers run through bwrap and FAIL on a host without user namespaces (a
+        # container, say): "bwrap: Creating new namespace failed". They only rebuild
+        # desktop-file and icon caches under exports/, which Slax's launcher never reads,
+        # and flatpak treats the failure as a warning. The commit check below is what
+        # decides whether this stage is good.
+        #
+        # Guarded by `info` rather than trusting install's exit status for a ref that is
+        # already there: under `set -eu` that status is the whole build.
+        fp info "$BOTTLES_APP//$BOTTLES_BRANCH" >/dev/null 2>&1 \
+            || fp install -y --noninteractive flathub "$BOTTLES_APP//$BOTTLES_BRANCH"
+        if [ -n "${BOTTLES_RELOCK:-}" ]; then
+            echo; echo "BOTTLES_RELOCK: paste this into build.env as BOTTLES_LOCK, and set"
+            echo "BOTTLES_VERSION=$(fp info "$BOTTLES_APP" | sed -n 's/^ *Version: *//p')"
+            echo 'BOTTLES_LOCK="'
+            for r in $(fp list --all --columns=ref); do
+                printf '  %s %s\n' "$(fp info -r "$r")" "$(fp info --show-commit "$r")"
+            done | sort
+            echo '"'
+            exit 0
+        fi
+        # Walk every ref to its locked commit. A no-op for a ref that is already there;
+        # the install above takes Flathub's CURRENT commit, which is exactly what the lock
+        # exists to refuse. --no-related --no-deps because the lock names every ref itself:
+        # left to its defaults, re-pinning one ref may also move its related refs (the
+        # .Locale, the GL extensions) to whatever Flathub has now.
+        bottles_lock | while read -r ref commit; do
+            have=$(fp info --show-commit "$ref" 2>/dev/null || true)
+            [ "$have" = "$commit" ] && continue
+            if { [ -n "$have" ] || fp install -y --noninteractive --no-related --no-deps flathub "$ref"; } \
+                && fp update -y --noninteractive --no-related --no-deps --commit="$commit" "$ref"; then
+                continue
+            fi
+            echo "build.sh: cannot deploy $ref at $commit." >&2
+            echo "  Flathub may no longer carry that commit. Bump the pin:" >&2
+            echo "  rm -rf $BSTAGE && BOTTLES_RELOCK=1 ./build.sh --bottles" >&2
+            exit 1
+        done || exit 1
+        drift=$(bottles_drift)
+        if [ -n "$drift" ]; then
+            echo "build.sh: the Bottles stage does not match build.env:" >&2
+            printf '%s\n' "$drift" | sed 's/^/  /' >&2
+            echo "  A changed BOTTLES_LANGUAGES needs a fresh stage: rm -rf $BSTAGE" >&2
+            exit 1
+        fi
+        # A cache of remote summaries. Not content, and it would make two builds of the
+        # same lock differ.
+        rm -rf "$FPDIR/repo/tmp/cache"
+        echo "  ok   $(bottles_lock | wc -l) refs deployed at their locked commits"
+    fi
+    # BOTTLES_VERSION is written into the image (/etc/slax-bottles-release, via gate 96's
+    # check of bottles.yaml) and into /opt/bottles/VERSION, so it has to be the version
+    # the locked commit actually is -- which only the stage can say. The same rule as
+    # gate 96 section 2b for Notepad++: a version nothing checks is a suggestion.
+    ver=$(fp info "$BOTTLES_APP//$BOTTLES_BRANCH" 2>/dev/null | sed -n 's/^ *Version: *//p')
+    if [ "$ver" != "$BOTTLES_VERSION" ]; then
+        echo "build.sh: build.env says BOTTLES_VERSION=$BOTTLES_VERSION, but the locked" >&2
+        echo "  $BOTTLES_APP commit is version ${ver:-unknown}" >&2
+        exit 1
+    fi
+    stage_bottles_components
+    mkdir -p "$BSTAGE/opt/bottles"
+    {
+        echo "$BOTTLES_APP $BOTTLES_VERSION"
+        echo "upstream: Flathub ($FLATHUB_REPO), branch $BOTTLES_BRANCH"
+        echo "refs, each at the commit that shipped:"
+        bottles_lock | sed 's/^/  /'
+        echo "components, unpacked into Bottles' data directory (category name url sha256):"
+        printf '%s\n' "$BOTTLES_COMPONENTS" | sed -e 's/^[[:space:]]*//' -e '/^$/d' -e 's/^/  /'
+    } > "$BSTAGE/opt/bottles/VERSION"
+}
+
+# DXVK and VKD3D, which Bottles refuses to create a bottle without, and downloads on
+# first use. See BOTTLES_COMPONENTS in build.env for the measurement that put them here.
+# The tarballs are kept in bottles.files/.cache/, outside everything bottles.yaml copies,
+# so a warm stage needs no network. Each one is unpacked fresh on every run: a
+# half-extracted directory from an interrupted build must never ship.
+#
+# WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26
+# Staged under bottles-data/, NOT under a root/.var/... mirror of its destination, which
+# is how every other stage here is laid out. provenance.py checks a local input's
+# checkout-relative path with HOSTISH, whose unanchored `/root/` matches the directory
+# name `root` inside our own checkout, and apply.py refuses the recipe -- after its
+# bundles are built. bottles.yaml's `src:` for this tree is the other half.
+BDATA="$BSTAGE/bottles-data"
+stage_bottles_components() {
+    mkdir -p "$BSTAGE/.cache"
+    rm -rf "$BDATA"
+    printf '%s\n' "$BOTTLES_COMPONENTS" | sed -e 's/^[[:space:]]*//' -e '/^$/d' |
+    while read -r cat name url sha; do
+        tgz="$BSTAGE/.cache/${url##*/}"
+        if [ ! -f "$tgz" ] || [ "$(sha256sum "$tgz" | cut -d' ' -f1)" != "$sha" ]; then
+            rm -f "$tgz"
+            curl -fsSL "$url" -o "$tgz"
+            got=$(sha256sum "$tgz" | cut -d' ' -f1)
+            if [ "$got" != "$sha" ]; then
+                rm -f "$tgz"
+                echo "build.sh: $url sha256 $got != build.env $sha" >&2
+                exit 1
+            fi
+        fi
+        mkdir -p "$BDATA/$cat"
+        tar -xzf "$tgz" -C "$BDATA/$cat" --no-same-owner
+        # The tarball's top directory IS the name Bottles lists, so it has to match
+        # exactly. That is what a build.env typo would get wrong without complaint.
+        [ -d "$BDATA/$cat/$name" ] || {
+            echo "build.sh: ${url##*/} did not unpack to $cat/$name" >&2
+            exit 1
+        }
+        echo "  ok   $cat/$name (sha256 verified)"
+    done || exit 1
+}
+
+for p in $PAYLOADS; do
+    "stage_$p"
+done
 
 # ---- 3..7, once per variant --------------------------------------------------------
-# Two images, one build: same base, same core four recipes, same nine bundles. The UEFI
-# profile adds `uefi-bootable` as a fifth recipe and nothing else. Everything below is
-# shared, which is the point -- a difference between the two images can only come from
-# that one recipe.
+# slax-wine's two shipped images are one build: same base, same core four recipes, same
+# nine bundles. The UEFI profile adds `uefi-bootable` as a fifth recipe and nothing else,
+# so a difference between those two can only come from that one recipe. slax-bottles is
+# a different system on another base; variant_config above is the only place the
+# variants differ, and everything below is shared by all of them.
 #
 # Each variant gets its OWN work tree under work/, because recipes are not idempotent:
 # apply consults its journal and refuses a second application, so the trees cannot be
@@ -153,16 +402,17 @@ PROV
 # scratch dir (mkdtemp beside ctx.work) inside an already-gitignored directory.
 build_variant() {
     v=$1
-    profile="$REPO_ROOT/profiles/slax-wine-$v.yaml"
+    variant_config "$v"
+    profile=$V_PROFILE
     work="$WORK/$v"
-    out_iso="$OUT/slax-wine-$v-$VERSION.iso"
+    out_iso="$OUT/$V_IMAGE-$VERSION.iso"
     applog="$OUT/apply-$v.log"
     sum="$OUT/build-summary-$v.txt"
     [ -f "$profile" ] || { echo "build.sh: no such profile: $profile" >&2; exit 2; }
 
     say "[$v] unpack"
     rm -rf "$work"
-    "$K" unpack "$ISO_DIR/$BASE_ISO" -o "$work" --force
+    "$K" unpack "$ISO_DIR/$V_ISO" -o "$work" --force
 
     # The profile is authoritative: it carries the ordered recipe list, so there is
     # exactly one place that says what this image is.
@@ -185,7 +435,7 @@ build_variant() {
     # and pack.sh reads it, switching to the xorriso backend on its own.
     say "[$v] pack"
     "$K" pack -s "$work/iso" -o "$out_iso" \
-        --appid "slax-wine $VERSION $v (base $BASE_ISO)" --force
+        --appid "$V_APPID" --force
 
     # Read the volid back out of the pack hints rather than hardcoding it; the recipe is
     # the one place that decides it.
@@ -211,18 +461,19 @@ build_variant() {
     if grep -qE '^[[:space:]]*-[[:space:]]*uefi-bootable[[:space:]]*$' "$profile"; then
         uefi_flag="--expect-uefi"
     fi
+    # --require is derived from V_OWN: the bundles this project builds for the variant.
+    req=""
+    for b in $V_OWN; do req="$req --require /slax/modules/$b.sb"; done
     # shellcheck disable=SC2086
-    python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$MAX_ISO_MIB" $uefi_flag \
-        --require /slax/modules/20-wine.sb \
-        --require /slax/modules/21-wine-desktop.sb \
-        --require /slax/modules/30-notepadpp.sb \
-        --require /slax/modules/98-dpkg-db.sb
+    python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$V_MAX" $uefi_flag $req
 
-    # WANT_MODULES is shared deliberately: uefi-bootable builds NO bundle, it writes one
-    # boot/efi.img. If this ever differs between the variants, something is wrong.
+    # WANT_MODULES is shared by bios, uefi and test deliberately: uefi-bootable builds NO
+    # bundle, it writes one boot/efi.img. If that ever differs between them, something is
+    # wrong. The bottles variants carry their own list (BOTTLES_WANT_MODULES).
     got=$(xorriso -indev "$out_iso" -lsl /slax/modules/ -- 2>/dev/null \
           | sed -n "s/.*'\\(.*\\.sb\\)'\$/\\1/p" | sort | tr '\n' ' ')
-    want=$(printf '%s ' $WANT_MODULES)
+    # shellcheck disable=SC2086
+    want=$(printf '%s ' $V_WANT)
     if [ "$got" != "$want" ]; then
         echo "build.sh: [$v] /slax/modules is not what was expected" >&2
         echo "  want: $want" >&2
@@ -233,13 +484,13 @@ build_variant() {
 
     say "[$v] summary"
     {
-        echo "slax-wine $VERSION ($v)"
-        echo "profile         profiles/slax-wine-$v.yaml"
-        echo "base            $BASE_ISO ($BASE_SHA256)"
+        echo "$V_TITLE"
+        echo "profile         profiles/$V_IMAGE.yaml"
+        echo "base            $V_ISO ($V_SHA)"
         echo "slax-kitchen    $(git -C "$REPO_ROOT/vendor/slax-kitchen" rev-parse --short HEAD)"
-        echo "app             $APP_NAME $APP_VERSION"
+        echo "app             $V_APP"
         echo
-        for b in 20-wine 21-wine-desktop 30-notepadpp 98-dpkg-db; do
+        for b in $V_OWN; do
             f="$work/iso/slax/modules/$b.sb"
             [ -f "$f" ] || continue
             sz=$(stat -c%s "$f")
@@ -262,7 +513,7 @@ build_variant() {
         isz=$(stat -c%s "$out_iso")
         printf 'ISO             %s bytes  %.1f MiB\n' "$isz" \
             "$(awk -v n="$isz" 'BEGIN{printf "%.1f", n/1048576}')"
-        printf 'vs stock        %+d bytes\n' "$(( isz - BASE_SIZE ))"
+        printf 'vs stock        %+d bytes\n' "$(( isz - V_SIZE ))"
         echo "sha256          $(cut -d' ' -f1 < "$out_iso.sha256")"
         echo
         echo "--- apply delta lines ---"

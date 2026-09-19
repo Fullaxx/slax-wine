@@ -37,6 +37,24 @@ take the UEFI one.
 Neither boots on **32-bit UEFI firmware** — no `bootia32.efi` exists anywhere upstream. That is rare
 (some older Atom tablets) and it is a fact about the firmware, not about this 32-bit system.
 
+## And a third: slax-bottles
+
+`./build.sh --bottles` builds **`slax-bottles-<ver>.iso`**, a separate image: **64-bit** Slax with
+[Bottles](https://usebottles.com) 67.3 baked in, so it creates bottles and runs Windows programs
+**with no network**. It is not slax-wine plus Bottles. Bottles ships only as an x86_64 Flatpak, and it
+runs sandboxed with its own Wine, so it can use neither our 32-bit base nor our Debian Wine
+([DECISIONS.md](docs/DECISIONS.md) D-14).
+
+| | |
+|---|---|
+| base | `slax-64bit-debian-12.2.0.iso` |
+| Bottles | 67.3 from Flathub, with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono; every ref pinned by commit |
+| offline extras | DXVK 3.1 and VKD3D-Proton 3.0.1, without which Bottles will not create a bottle offline (measured) |
+| no browser | `05-chromium.sb` removed, as in slax-wine |
+| size | **1241.7 MiB**. It boots BIOS and UEFI, like `slax-wine-uefi` |
+
+Using it: **[docs/using-bottles.md](docs/using-bottles.md)**.
+
 Installing it to a USB stick so the Wine prefix survives a reboot is **[INSTALL.md](INSTALL.md)**.
 What works and what does not is **[docs/using-wine.md](docs/using-wine.md)**.
 
@@ -87,10 +105,11 @@ reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
 | to build it | [docs/build.md](docs/build.md) |
 | to put it on a stick, with persistence | [INSTALL.md](INSTALL.md) |
 | to use Wine, and what is missing | [docs/using-wine.md](docs/using-wine.md) |
+| to use Bottles on slax-bottles | [docs/using-bottles.md](docs/using-bottles.md) |
 | how it all works | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | why it looks like that | [docs/DECISIONS.md](docs/DECISIONS.md) |
 | how we raise engine problems upstream | [docs/UPSTREAM.md](docs/UPSTREAM.md) |
-| where the 507 MiB goes | [docs/sizing.md](docs/sizing.md) |
+| where the 507 MiB (and slax-bottles' 1241.7 MiB) goes | [docs/sizing.md](docs/sizing.md) |
 | which Slax each release is built on | [docs/base-versions.md](docs/base-versions.md) |
 | what redistributing the ISO obliges | [NOTICE.md](NOTICE.md) |
 
@@ -101,7 +120,9 @@ project customizes *his*; without it there is nothing here. There is a donate li
 [slax.org](https://www.slax.org).
 
 **Wine** is the [WineHQ project](https://www.winehq.org); **Notepad++** is
-[Don Ho's](https://notepad-plus-plus.org). Neither is modified here.
+[Don Ho's](https://notepad-plus-plus.org); **Bottles** is
+[the Bottles developers'](https://github.com/bottlesdevs/Bottles), redistributed as Flathub built it.
+None is modified here.
 
 MIT for this repository's own recipes, scripts and docs — see [LICENSE](LICENSE). Everything inside
 a built ISO carries its own licence, and [NOTICE.md](NOTICE.md) sets out the boundary and the

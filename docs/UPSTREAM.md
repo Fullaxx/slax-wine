@@ -252,7 +252,14 @@ imports that module's `fences()` to read documented blocks. We do **not** copy i
 straight out of `vendor/slax-kitchen/ci/`. Upstream's stated reason for sharing the extractor was
 *"ONE extractor, not two"*, and importing theirs satisfies that more exactly than copying would —
 gate 20 holds `vendor/` byte-pristine, so drift is impossible by construction rather than by
-discipline. It is the one local change in that file, marked `LOCAL CHANGE` at the import.
+discipline. That is one of the file's two local changes, marked `LOCAL CHANGE` at the import.
+
+The second came with slax-bottles: the walk over `recipes/` now skips **gitignored** paths, which is
+`ci/lib.sh`'s own definition of "in scope". `build.sh` stages a whole Flatpak installation under
+`recipes/available/bottles.files/`, and that tree holds a dozen `.desktop` files from Flathub's
+runtimes, which the unmodified test failed on. None of them reaches `/usr/share/applications`, the
+only directory xlunch reads. Upstream stages no payloads under `recipes/`, so it cannot meet this, and
+there is nothing to report. A probe `.desktop` dropped into `recipes/available/` still fails the test.
 
 **`ci/checks/97-tier-c-ledger.sh`** (added in `e7f2bea`) — measured with `REPO_ROOT` pointed at this
 tree, it exits 0 with *"tests/boot/tier-c.json not present"*. There is no `tests/boot/`, no ledger
@@ -636,3 +643,64 @@ and was never affected; only the prose around it was wrong. Corrected at this bu
 `recipes/available/wine-desktop.yaml`, `docs/50-cookbook/wine-desktop.md` and
 `docs/ARCHITECTURE.md`. Being right about a mechanism twice in a row is not the same as being right
 about what follows from it.
+
+## Filed with slax-bottles — [#26](https://github.com/Fullaxx/slax-kitchen/issues/26), the provenance guard refuses checkout-relative paths under a `root/` or `home/` directory
+
+**It stopped a real build, after the build.** Staging Bottles' DXVK/VKD3D the way every other stage
+here is laid out, as a mirror of the destination
+(`bundle.files` `src: ./bottles.files/root/.var/app/com.usebottles.bottles/data/bottles`), got:
+
+```
+error: bottles.yaml: provenance would record a path on the build machine:
+  steps[1].local_inputs[1].path: 'recipes/available/bottles.files/root/.var/app/com.usebottles.bottles/data/bottles'
+```
+
+That came after `20-flatpak.sb` and the 890 MiB `30-bottles.sb` had been built (about 12 minutes
+of `mksquashfs` over a 7.4 GB copy).
+
+**Read.**
+
+- `local_input()` records `root_relative()` (`provenance.py:199-207` at `6bd59f1`), which is
+  always relative to the kitchen or project checkout, never absolute and never `..`.
+- `hostish_values()` checks it with `HOSTISH` (`:142`), and `HOSTISH`'s `/root/`, `/home/`,
+  `/Users/`, `~/` and `\\` alternatives are unanchored. So every hit on a `local_inputs` path is a
+  directory inside the checkout that happens to have one of those names.
+- An earlier version of this section named `HOSTISH_SHAPE`, which is the `vars` rule; that was
+  wrong.
+- Slax runs everything as root, so `/root` is where every image's user data goes, and a staging
+  mirror of it always contains `root/`.
+
+**Demonstrated end to end** in a clone at `6bd59f1`, with a three-line recipe shipping one file to
+`/root/.config/demo`:
+
+- the refusal comes after `40-root-demo.sb` is built;
+- the bundle stays in `slax/modules/`;
+- `kitchen status` says "nothing applied yet";
+- `kitchen pack` ships the bundle with `recipes: []` in its provenance.
+
+A staging dir that ends *at* `root` passes, because the pattern needs `/root/`, so a shallow test
+misses it.
+
+**Attacked.**
+
+- `provenance.py:39-45`, new at `6bd59f1`, calls the guard deliberate ("BELT AND BRACES") and says
+  its only catch was #20's false positive. This is the second catch, and it is false too.
+- `release-verify.py` and `97-tier-c-ledger.sh` rely on `HOSTISH`, so a fix cannot simply relax the
+  regex.
+
+**Two fixes, tried in the clone:**
+
+- **(A)** judges a `root_relative()` location as checkout-relative: refused only if absolute or `..`.
+- **(D)** refuses at `Ctx.prov()`, when a value is recorded, instead of in `append_recipe` after the
+  recipe has run.
+
+With both, all 15 of their unit tests pass. The demo applies and is recorded. Forged absolute and
+`..` inputs, an absolute `iso_name`, and a host path inside prose are still refused. D alone refuses
+the demo before building, leaving nothing behind.
+
+Removing the refusal outright was tried too. It fails four `vars` assertions in
+`test_provenance.py`, which is the argument the issue puts to the maintainer.
+
+**Worked around** by staging under `bottles-data/`. Both halves are marked
+`WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/26`: `build.sh` at `BDATA=`, and
+`bottles.yaml` at the `src:`.

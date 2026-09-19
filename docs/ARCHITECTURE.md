@@ -8,13 +8,13 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 
 ## The shape of the thing
 
-slax-wine owns no engine code. It is four recipes, three profiles, a build script and twelve gates,
+slax-wine owns no engine code. It is six recipes, five profiles, a build script and twelve gates,
 laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
 
 ```
-build.env          version + base identity -- the single source of truth
-profiles/          three: -bios and -uefi ship, -test is built to be asserted against
-recipes/available/ four recipes
+build.env          version + base identity (both bases) + the Bottles pin -- the single source of truth
+profiles/          five: slax-wine-bios, -uefi and slax-bottles ship; the two -test ones do not
+recipes/available/ six recipes: four for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
 ci/                twelve gates; six copied verbatim, five adapted, one ours
 tests/unit/        two tests: the .desktop trap that once cost both launchers (adapted), and the
@@ -50,6 +50,21 @@ Ordering is load-bearing: `uefi-bootable` generates its GRUB menu by *parsing* `
 must run after `slax-wine-iso`, which edits that file. Its pack hint (`uefi`) is a different key from
 `slax-wine-iso`'s (`volid`, `appid`, `checksums`), so the two cannot overwrite one another.
 
+### A third image, a different system: slax-bottles
+
+`slax-bottles` is **not** a variant of the pair above. Bottles exists only as an x86_64 Flatpak, so
+it is built on `debian-64bit-12.2.0`, and it carries **no Debian Wine**: Bottles runs sandboxed with
+its own runners and could not use ours ([DECISIONS.md](DECISIONS.md) D-14). Its profile is
+`remove-bundle`, [`bottles`](50-cookbook/bottles.md), [`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md),
+`uefi-bootable`, which gives eight bundles: the five stock survivors, `20-flatpak`, `30-bottles` and
+`98-dpkg-db`.
+
+What it shares with slax-wine is the machinery, not the software: the engine pin, `VERSION`,
+`build.sh` (a per-variant `variant_config` picks base, module list, size ceiling and payload), the
+gates, and upstream's `remove-bundle` and `uefi-bootable`. Its Flatpak payload is staged on the
+**host** by `build.sh`, pinned ref-by-ref (`BOTTLES_LOCK`), and copied in by `bundle.files`. See the
+cookbook page for why it is not installed in the build chroot.
+
 ## The layer model
 
 Slax's root filesystem is a union of numbered squashfs bundles. **Load order is the numeric prefix
@@ -64,6 +79,8 @@ That is the whole mechanism. It is not a naming convention laid over something e
 | `20-wine.sb` | Wine and its dependency closure | `noload=20-wine.sb` |
 | `21-wine-desktop.sb` | launcher entry, env defaults, the wrapper | `noload=21-wine-desktop.sb` |
 | `30-notepadpp.sb` | the application layer | `noload=30-notepadpp.sb` |
+| `20-flatpak.sb` | **slax-bottles only**: flatpak and bubblewrap | `noload=20-flatpak.sb` |
+| `30-bottles.sb` | **slax-bottles only**: the Flatpak installation, DXVK/VKD3D, launcher | `noload=30-bottles.sb` |
 | `98-dpkg-db.sb` | generated at pack time | — |
 | `99-changes-N.sb` | a saved session, if any | — |
 

@@ -18,6 +18,14 @@ If you find this useful, support Slax upstream. This repository is not that proj
 <https://notepad-plus-plus.org>. Neither is modified here; both are redistributed as their
 publishers built them.
 
+**Bottles** is the work of the Bottles developers — <https://usebottles.com>,
+<https://github.com/bottlesdevs/Bottles>. slax-bottles redistributes it exactly as **Flathub** built
+it, together with the Flathub runtimes it depends on (the GNOME Platform, the freedesktop GL, compat
+and codecs extensions, and WineHQ's Gecko and Mono). **DXVK** is Philip Rebohle's
+(<https://github.com/doitsujin/dxvk>); **VKD3D-Proton** is Hans-Kristian Arntzen's and contributors'
+(<https://github.com/HansKristian-Work/vkd3d-proton>). None of them is modified here. Bottles has a
+donate link; it asks for one on first launch.
+
 The build engine is [slax-kitchen](https://github.com/Fullaxx/slax-kitchen), pinned as a submodule.
 `ci/lib.sh` and six `ci/checks/*.sh` are copied from it verbatim (MIT → MIT); `ci/run-checks.sh` and
 four more gates are adapted from it. Each carries a header naming the upstream commit it came from,
@@ -32,6 +40,9 @@ and `ci/checks/96-release-consistency.sh` fails if that commit is not the curren
 | `vendor/slax-kitchen/vendor/linux-live/` — nested submodule | **GPLv2**, © Tomáš Matějíček |
 | Wine 8.0 (`wine`, `wine32`, `libwine`, `wine32-preloader`, `fonts-wine`) | **LGPL-2.1-or-later** |
 | Notepad++ 8.9.8 | **GPLv3** |
+| Bottles 67.3 (slax-bottles only) | **GPLv3** |
+| the Flathub runtimes in slax-bottles | each component its own licence; the runtimes carry them under `files/share/licenses/` |
+| DXVK 3.1, VKD3D-Proton 3.0.1 (slax-bottles only) | **zlib** / **LGPL-2.1** respectively |
 | every other Debian package in the image | its own licence, per `/usr/share/doc/*/copyright` |
 | the Linux kernel, aufs-patched by upstream Slax | **GPLv2** |
 | non-free firmware in `01-firmware.sb` | per-package redistribution terms |
@@ -52,6 +63,14 @@ installed. `build.sh` records which one that was on a `grub (ESP)` line in
 `out/build-summary-uefi.txt`, so the claim above points at something checkable rather than being a
 promise nothing keeps. The bios image contains no GPLv3 component at all.
 
+**slax-bottles is a third image**, with a different software set: 64-bit Slax, flatpak from
+Debian bookworm, and the Bottles Flatpak with its runtimes, DXVK and VKD3D-Proton. It also carries the
+same kind of GRUB ESP as the uefi image, so the same GPLv3+ note applies, recorded in
+`out/build-summary-bottles.txt`. Everything in its Flatpak installation is pinned by ostree commit in
+`BOTTLES_LOCK` (`build.env`) and listed inside the image at `/opt/bottles/VERSION`. That is what
+identifies the corresponding source: Flathub builds from public manifests, and each commit records the
+manifest revision that produced it.
+
 **Nothing here is modified.** Every binary in the image is upstream's, redistributed as built. So
 "complete corresponding source" means each component's own upstream release, and none of it had to be
 written by us.
@@ -69,6 +88,8 @@ tarballs as assets alongside the ISO, for everything whose version is known:
 | `busybox` 1.26.2 in the initramfs | busybox.net, that release |
 | `ncurses-menu`, `mount.dynfilefs`, `mount.httpfs2`, `mc` | Tomáš's repositories, at their releases |
 | the kernel | upstream Slax's build, plus the out-of-tree aufs patch set |
+| Bottles and its Flathub runtimes (slax-bottles) | the `flathub/com.usebottles.bottles` manifest and Bottles' `67.3` tag; each runtime's source per its Flathub/freedesktop-sdk/GNOME manifest at the locked commit |
+| DXVK 3.1, VKD3D-Proton 3.0.1 (slax-bottles) | their upstream release tags |
 
 ### What we cannot supply, stated plainly
 

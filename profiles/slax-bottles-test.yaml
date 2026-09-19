@@ -1,0 +1,47 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax-bottles-test
+  summary: The slax-bottles image plus testkit -- built to be asserted against, never shipped
+base:
+  flavour: debian
+  arch: 64bit
+  version: "12.2.0"
+recipes:
+  # NOT A SHIPPED IMAGE. slax-bottles.yaml plus serial-console and testkit, so that
+  # `kitchen test` has our image to assert against. The ordering rules are exactly those
+  # of profiles/slax-wine-test.yaml; read its comments before moving anything.
+  #
+  # FIRST: serial-console adds the only entry carrying console=ttyS0. Without that entry
+  # the harness falls back to screenshots and asserts nothing. It also hardcodes
+  # `automount`, so it must come before slax-bottles-iso, which strips it from every entry.
+  - serial-console
+
+  # Removal before anything that builds. Second rather than first is legal, because
+  # serial-console builds no bundle.
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
+
+  - recipes/available/bottles.yaml
+  - recipes/available/slax-bottles-iso.yaml
+
+  # Prints facts about the assembled union to the serial console before change_root.
+  # `report` is the half a machine can check: our files reached the union. That is one
+  # rung below "the tile appears and Bottles opens", which needs a desktop boot.
+  # `marker` is the persistence probe, a neutral file for the reason slax-wine-test.yaml
+  # gives.
+  - name: testkit
+    vars:
+      marker: /var/lib/slax-bottles-perch-marker
+      report: >-
+        /usr/bin/flatpak /usr/bin/bwrap
+        /usr/local/bin/slax-bottles
+        /usr/share/applications/5bottles.desktop
+        /usr/share/applications/5chromium.desktop
+        /var/lib/flatpak/exports/share/icons/hicolor/scalable/apps/com.usebottles.bottles.svg
+        /etc/slax-bottles-release /opt/bottles/VERSION
+
+  # LAST: boot.uefi parses isolinux.cfg, so it must see every edit above.
+  - uefi-bootable
+output:
+  name: "slax-bottles-test-{{version}}.iso"
