@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 6bd59f14acbd861c3aa9fcfc2f2b7ea095f0cd3b (ci/checks/30-shellcheck.sh).
+# Copied verbatim from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (ci/checks/30-shellcheck.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: shellcheck every shell script.

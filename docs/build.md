@@ -139,5 +139,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`6bd59f1`](https://github.com/Fullaxx/slax-kitchen/tree/6bd59f1). Bumping the
+The engine is pinned at [`86d27d5`](https://github.com/Fullaxx/slax-kitchen/tree/86d27d5). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

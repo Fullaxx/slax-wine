@@ -346,7 +346,8 @@ discipline. It is the one local change in that file, marked `LOCAL CHANGE` at th
 
 **`ci/checks/97-tier-c-ledger.sh`** (added in `e7f2bea`) — measured with `REPO_ROOT` pointed at this
 tree, it exits 0 with *"tests/boot/tier-c.json not present"*. There is no `tests/boot/`, no ledger
-and no `ci/release-notes.sh` here, so it would note-and-skip forever. Still not adopted.
+and no `ci/release-notes.sh` here, so it would note-and-skip forever. Still not adopted, and nor is
+its unit test, `tests/unit/test_tier_c_ledger.py` (added in `5627f2d`), which tests nothing we carry.
 
 **`ci/checks/80-unit.sh` was in this section and has left it**, which is the part worth recording.
 The reasoning was sound and is now obsolete, and those are different things. Measured at the
@@ -578,6 +579,10 @@ Checked in memory against the new code before bumping: all five of our overrides
 the new explicit `drop:` var recorded in the sidecar without complaint. But every boot route we run
 drives `slax-wine-test-*.iso`, so re-running them has to wait on this — which is why the bump sat
 on a branch rather than on `master` until `ba79ce0` landed.
+
+*(Later: `5627f2d` retired the path-shape rule altogether, closing upstream's #26. It had caught two
+things in its life, and both were false, #20 among them. See
+[Adopted at the `86d27d5` bump](#adopted-at-the-86d27d5-bump).)*
 
 ## In flight upstream at the `8adfca6` bump · **merged, taken at `337f7e7`**
 
@@ -849,7 +854,7 @@ Four commits, `3a44e8a..6bd59f1`, answering #24 and the issue it led to:
 | `6bd59f1` | their self-review of #23–#25: the boxes set `TMPDIR` for child processes too, "milliseconds" became "seconds" (the gate is 17 s), and the gate's three rules are written down in their `CONTRIBUTING.md` | **green**: gates, all four builds, TCG boot |
 
 **Held, then taken.** At the first look the tip was `7194e0b` and red. We waited rather than pin the
-last green commit or the red one — now a rule in [The lifecycle](#the-lifecycle) — and took
+last green commit or the red one — now a rule in [Moving the pin](#moving-the-pin) — and took
 `6bd59f1` once its run had finished with every job green.
 
 **What moved in our tree.** `ci/checks/80-unit.sh` is re-copied and still *Adapted*, one difference:
@@ -866,6 +871,45 @@ and leave 0 where they left 46, and the submodule stays pristine.
 **No rebuild.** The range touches `ci/checks/80-unit.sh`, `tests/unit/`, `CLAUDE.md`,
 `CONTRIBUTING.md` and `docs/00-overview/status.md` — nothing the build runs. The `3a44e8a` images and
 the boot evidence behind them stand unchanged.
+
+## Adopted at the `86d27d5` bump
+
+Three commits, `6bd59f1..86d27d5`. Upstream's CI on `86d27d5` was green in every job (gates, all four
+builds, the TCG boot) before anything here moved. `5627f2d` on its own had been red.
+
+| commit | what | here |
+|---|---|---|
+| `e7c0ac9` | their `CLAUDE.md`: nothing is committed or pushed until the user has inspected the work and asked, and approving a plan is not approving its commits | mirrored into ours at the user's call. Step 4 of [Moving the pin](#moving-the-pin) now stops where the commit would go, and this was the first bump handed over uncommitted |
+| `5627f2d` | **closes #26**: the provenance guard's path-shape rule is retired. It had caught two things in its life, and both were false, our #20 among them. Its replacement refuses only strings under the directories this build really uses: the work tree, the kitchen checkout, a non-generic `$HOME`, and, **new, the project checkout**, which a vendored kitchen like ours never had covered. Profile vars are checked before anything builds, at the start of `kitchen apply` | a build input: rebuilt |
+| `86d27d5` | refs #26: a build directory counts only where a path can begin, which fixes the false positives a short checkout (`/work`) gave `5627f2d` in CI | a build input: rebuilt |
+
+**What the new guard means here.** At every bump we used to check by hand that no sidecar carries a
+build-machine path. That check is now upstream's, in two places our build reaches:
+- `kitchen apply` checks the profile vars before anything is built (`lib/apply.py:3613`)
+- `kitchen pack` runs `finalize`, which checks the whole sidecar (`lib/pack.sh:228`)
+
+Both cover this checkout for the first time. Our three builds passing them is the proof that nothing
+we record names the builder, including the `drop` pattern and testkit's in-image marker and report
+paths. Nothing here had worked around the old guard, since at `8adfca6` we held rather than work
+around #20, so nothing retires.
+
+**The build, at `86d27d5`:** 7/8/10 steps and 21/21 assertions each. Sizes are 531,935,232 /
+538,425,344 / 538,437,632, identical to the `3a44e8a` images to the byte. Every file was compared
+with those images:
+
+| what | result |
+|---|---|
+| everything outside our four modules | byte-identical, except `/boot/efi.img` on the two GRUB images |
+| `/boot/efi.img` | `EFI/BOOT/BOOTX64.EFI` is identical. The FAT image differs in 60 bytes: the volume serial, and 56 timestamp bytes across 8 directory entries, nothing else. Two images built on the same day differ in 36 of those: the serial, and the create and write times. The other 24 are the create, access and write dates, because this build ran the next day |
+| our four modules | identical content, all 3,831 entries |
+| the sidecars | no field added or removed. What changed is the kitchen and project commits, the submodule pin, and the byte hashes of artifacts whose content is identical. testkit's marker keeps its leading slash |
+
+So the images did not change, the boot evidence stands, and the routes were not re-run.
+
+**Copied files:** none of the sixteen changed upstream, and all were re-cited. **Not adopted:**
+`tests/unit/test_tier_c_ledger.py`, which is new and tests a gate this repo deliberately does not
+carry. Upstream's three changed tests pass inside the pinned submodule and leave nothing in their
+`TMPDIR`, and the submodule stays pristine.
 
 ## Two findings were dropped before filing, in round one
 
