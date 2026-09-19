@@ -27,16 +27,19 @@ steps:
   # 20- because it is this image's platform, the same slot 20-wine has in slax-wine: the
   # fork band's 20-29 is this project's platform, 30-89 its applications (D-5).
   #
-  # `from:` is named for the same reason as in wine.yaml (D-3): the engine default is
-  # "every bundle below this one", which includes 05-chromium until remove-bundle has
-  # run. The profile removes it first anyway; this keeps the stack explicit.
+  # No `from:`. The engine default is "every bundle that will sit below this one", which
+  # once remove-bundle has run is 01-core..04-apps: the whole finished image below 20.
+  # The order is held twice without naming the stack -- the engine refuses a removal
+  # that follows a build, and gate 96 5(a3) refuses a slax-bottles.yaml that lists
+  # remove-bundle late -- and a stack named by hand goes stale the moment a bundle is
+  # added below 20. The same reasoning, and the same proof by rebuilding, as wine.yaml's
+  # (docs/DECISIONS.md D-3).
   #
   # Only `flatpak` is named. It Depends on bubblewrap, which is the one other thing the
   # sandbox needs. `no_recommends` drops xdg-desktop-portal and friends: Slax runs Fluxbox,
   # not a portal-aware desktop, and D-15 records what that costs.
   - verb: bundle.packages
     bundle: "{{platform}}"
-    from: [01-core, 01-firmware, 02-xorg, 03-desktop, 04-apps]
     packages:
       - flatpak
     apt:
