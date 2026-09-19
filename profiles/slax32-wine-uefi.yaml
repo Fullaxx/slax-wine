@@ -1,16 +1,16 @@
 apiVersion: slax-kitchen/v1
 kind: Profile
 metadata:
-  name: slax-wine-uefi
-  summary: Slax with Wine and Notepad++, plus a GRUB ESP -- boots BIOS and UEFI
+  name: slax32-wine-uefi
+  summary: 32-bit Slax with Wine and Notepad++, plus a GRUB ESP -- boots BIOS and UEFI
 base:
-  # IDENTICAL to slax-wine-bios.yaml. Both images are the same 32-bit Debian Slax; the
+  # IDENTICAL to slax32-wine-bios.yaml. Both images are the same 32-bit Debian Slax; the
   # only difference between them is the last recipe in this file.
   flavour: debian
   arch: 32bit
   version: "12.2.0"
 recipes:
-  # THE CORE FOUR, byte-for-byte the list in profiles/slax-wine-bios.yaml and in the same
+  # THE CORE FOUR, byte-for-byte the list in profiles/slax32-wine-bios.yaml and in the same
   # order, preceded by the same removal. ci/checks/96-release-consistency.sh section 5
   # fails if the two disagree: 5(b) compares the `recipes/available/` paths, and because
   # that comparison reads only those lines it cannot see remove-bundle at all -- which is
@@ -60,7 +60,7 @@ recipes:
   # 6,488,064 bytes (6.2 MiB), which is grub-mkstandalone embedding its modules; an
   # earlier draft of this comment guessed "KiB-sized" and was wrong by three orders of
   # magnitude. The ISO goes 531,935,232 -> 538,425,344 bytes, 507.3 -> 513.5 MiB, still
-  # inside MAX_ISO_MIB.
+  # inside WINE32_MAX_ISO_MIB.
   #
   # It builds NO bundle, so both images carry exactly the same nine .sb modules and
   # build.sh's WANT_MODULES assertion is shared between them unchanged.
@@ -87,5 +87,5 @@ recipes:
   # debian-32bit-12.2.0 booting through GRUB under x86-64 OVMF. See INSTALL.md.
   - uefi-bootable
 output:
-  # Not used -- build.sh names the output from build.env. See slax-wine-bios.yaml.
-  name: "slax-wine-uefi-{{version}}.iso"
+  # Not used -- build.sh names the output from build.env. See slax32-wine-bios.yaml.
+  name: "slax32-wine-uefi-{{version}}.iso"

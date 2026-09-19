@@ -46,16 +46,16 @@ ENVF="$REPO_ROOT/build.env"
 echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' \
     || fail "build.env: VERSION '$VERSION' is not semver"
 
-# ---- 2. BASE_TARGET is assembled from its own parts --------------------------------
+# ---- 2. each BASE*_TARGET is assembled from its own parts --------------------------
 # kitchen names targets <flavour>-<arch>-<version>; keeping the parts separate makes
 # them usable individually, and this stops the two spellings drifting apart.
-want_target="$BASE_FLAVOUR-$BASE_ARCH-$BASE_VERSION"
-[ "$BASE_TARGET" = "$want_target" ] \
-    || fail "build.env: BASE_TARGET '$BASE_TARGET' != '$want_target' built from its parts"
-# slax-bottles has a base of its own, held to the same rule.
-want_target="$BOTTLES_BASE_FLAVOUR-$BOTTLES_BASE_ARCH-$BOTTLES_BASE_VERSION"
-[ "$BOTTLES_BASE_TARGET" = "$want_target" ] \
-    || fail "build.env: BOTTLES_BASE_TARGET '$BOTTLES_BASE_TARGET' != '$want_target' built from its parts"
+want_target="$BASE32_FLAVOUR-$BASE32_ARCH-$BASE32_VERSION"
+[ "$BASE32_TARGET" = "$want_target" ] \
+    || fail "build.env: BASE32_TARGET '$BASE32_TARGET' != '$want_target' built from its parts"
+# The 64-bit base, held to the same rule.
+want_target="$BASE64_FLAVOUR-$BASE64_ARCH-$BASE64_VERSION"
+[ "$BASE64_TARGET" = "$want_target" ] \
+    || fail "build.env: BASE64_TARGET '$BASE64_TARGET' != '$want_target' built from its parts"
 
 # ---- 2b. the app version is not left behind ----------------------------------------
 # APP_VERSION is not decorative: build.sh writes it into /opt/notepadpp/VERSION inside
@@ -83,13 +83,13 @@ else
     # (malformed sources.yaml, a scalar where a mapping was expected) wrote to stderr,
     # left stdout empty, and the gate reported green -- silently skipping the one
     # cross-check that earns this gate its keep.
-    # TWICE: slax-wine's 32-bit base and slax-bottles' 64-bit one. `set --` rather than
-    # a loop over names, so each call names its four values literally.
-    for base in BASE BOTTLES_BASE; do
-    if [ "$base" = BASE ]; then
-        set -- "$BASE_TARGET" "$BASE_ISO" "$BASE_SHA256" "$BASE_SIZE"
+    # TWICE: the 32-bit base and the 64-bit one. `set --` rather than a loop over
+    # names, so each call names its four values literally.
+    for base in BASE32 BASE64; do
+    if [ "$base" = BASE32 ]; then
+        set -- "$BASE32_TARGET" "$BASE32_ISO" "$BASE32_SHA256" "$BASE32_SIZE"
     else
-        set -- "$BOTTLES_BASE_TARGET" "$BOTTLES_BASE_ISO" "$BOTTLES_BASE_SHA256" "$BOTTLES_BASE_SIZE"
+        set -- "$BASE64_TARGET" "$BASE64_ISO" "$BASE64_SHA256" "$BASE64_SIZE"
     fi
     if ! python3 - "$SRC" "$base" "$@" \
             > "$TMP/base" 2> "$TMP/base.err" <<'PY'
@@ -139,10 +139,10 @@ if [ ! -f "$WD" ]; then
 else
     line_present "$WD" "VERSION=\"$VERSION\"" \
         || fail "wine-desktop.yaml: /etc/slax-wine-release VERSION does not match build.env ($VERSION)"
-    line_present "$WD" "BASE_ISO=\"$BASE_ISO\"" \
-        || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_ISO does not match build.env"
-    line_present "$WD" "BASE_SHA256=\"$BASE_SHA256\"" \
-        || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_SHA256 does not match build.env"
+    line_present "$WD" "BASE_ISO=\"$BASE32_ISO\"" \
+        || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_ISO does not match BASE32_ISO"
+    line_present "$WD" "BASE_SHA256=\"$BASE32_SHA256\"" \
+        || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_SHA256 does not match BASE32_SHA256"
 fi
 
 # The same for slax-bottles, whose release file is written by bottles.yaml. The Bottles
@@ -155,10 +155,10 @@ if [ ! -f "$BY" ]; then
 else
     line_present "$BY" "VERSION=\"$VERSION\"" \
         || fail "bottles.yaml: /etc/slax-bottles-release VERSION does not match build.env ($VERSION)"
-    line_present "$BY" "BASE_ISO=\"$BOTTLES_BASE_ISO\"" \
-        || fail "bottles.yaml: /etc/slax-bottles-release BASE_ISO does not match BOTTLES_BASE_ISO"
-    line_present "$BY" "BASE_SHA256=\"$BOTTLES_BASE_SHA256\"" \
-        || fail "bottles.yaml: /etc/slax-bottles-release BASE_SHA256 does not match BOTTLES_BASE_SHA256"
+    line_present "$BY" "BASE_ISO=\"$BASE64_ISO\"" \
+        || fail "bottles.yaml: /etc/slax-bottles-release BASE_ISO does not match BASE64_ISO"
+    line_present "$BY" "BASE_SHA256=\"$BASE64_SHA256\"" \
+        || fail "bottles.yaml: /etc/slax-bottles-release BASE_SHA256 does not match BASE64_SHA256"
     line_present "$BY" "BOTTLES_VERSION=\"$BOTTLES_VERSION\"" \
         || fail "bottles.yaml: /etc/slax-bottles-release BOTTLES_VERSION does not match build.env ($BOTTLES_VERSION)"
 fi
@@ -172,8 +172,8 @@ fi
 # recipe to one, forget the other, and half the release quietly stops containing it. So
 # this section asserts both halves -- coverage, and agreement.
 PROFDIR="$REPO_ROOT/profiles"
-CORE_A="$PROFDIR/slax-wine-bios.yaml"
-CORE_B="$PROFDIR/slax-wine-uefi.yaml"
+CORE_A="$PROFDIR/slax32-wine-bios.yaml"
+CORE_B="$PROFDIR/slax32-wine-uefi.yaml"
 
 if [ ! -d "$REPO_ROOT/recipes/available" ]; then
     fail "recipes/available is missing, so the profiles have nothing of ours to build"
@@ -249,13 +249,13 @@ else
     # uefi adds `- uefi-bootable`, a bare name resolved from the engine, so comparing
     # only the recipes/available/ entries is the right comparison.
     if [ ! -f "$CORE_A" ] || [ ! -f "$CORE_B" ]; then
-        fail "expected both profiles/slax-wine-bios.yaml and -uefi.yaml; the release is a pair"
+        fail "expected both profiles/slax32-wine-bios.yaml and -uefi.yaml; the release is a pair"
     else
         sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$CORE_A" \
             | grep -E '^- recipes/available/' > "$TMP/core-a" || true
         sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$CORE_B" \
             | grep -E '^- recipes/available/' > "$TMP/core-b" || true
-        [ -s "$TMP/core-a" ] || fail "slax-wine-bios.yaml lists no recipes"
+        [ -s "$TMP/core-a" ] || fail "slax32-wine-bios.yaml lists no recipes"
         if ! cmp -s "$TMP/core-a" "$TMP/core-b"; then
             fail "the bios and uefi profiles disagree on the core recipe list:$(
                   diff "$TMP/core-a" "$TMP/core-b" | tr '\n' ' ')"

@@ -1,14 +1,14 @@
 apiVersion: slax-kitchen/v1
 kind: Profile
 metadata:
-  name: slax-wine-bios
-  summary: Slax with Wine and Notepad++, stock bootloader -- BIOS only, no browser
+  name: slax32-wine-bios
+  summary: 32-bit Slax with Wine and Notepad++, stock bootloader -- BIOS only, no browser
 base:
   flavour: debian
   arch: 32bit
   version: "12.2.0"
 recipes:
-  # THE CORE FOUR, and the order they are applied in. `profiles/slax-wine-uefi.yaml`
+  # THE CORE FOUR, and the order they are applied in. `profiles/slax32-wine-uefi.yaml`
   # carries this same list and adds `uefi-bootable` after it; gate 96 section 5 fails if
   # the two ever disagree, because two profiles that are meant to build the same system
   # are exactly the kind of thing that drifts silently.
@@ -61,4 +61,4 @@ output:
   # Not used: build.sh names the output from build.env, because {{version}} here means
   # the SLAX version (12.2.0), not ours. Present so the profile is complete and
   # `kitchen build` would produce something sane if anyone ran it.
-  name: "slax-wine-bios-{{version}}.iso"
+  name: "slax32-wine-bios-{{version}}.iso"

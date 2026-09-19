@@ -155,7 +155,7 @@ proprietary case becomes "point it at a local path instead of a URL".
 filesystem booted through `isolinux.cfg`, where persistence is `MENU DISABLED` — so the one route it
 enables is the one that cannot keep a Wine prefix.
 
-**`uefi-bootable`: now applied, in `profiles/slax-wine-uefi.yaml`** — for a **narrower** reason than
+**`uefi-bootable`: now applied, in `profiles/slax32-wine-uefi.yaml`** — for a **narrower** reason than
 this entry first claimed on reversing, and the correction is the useful part.
 
 The original entry called it unnecessary because *"`bootinst.sh` … relocates the EFI loader, giving

@@ -4,8 +4,8 @@
 
 | | boots on | pick it when |
 |---|---|---|
-| `slax-wine-bios-<ver>.iso` | BIOS | you know the machine boots BIOS/legacy and you want the stock loader |
-| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | you want to boot the **ISO itself** on a UEFI machine — a DVD, or a virtual CD in a VM |
+| `slax32-wine-bios-<ver>.iso` | BIOS | you know the machine boots BIOS/legacy and you want the stock loader |
+| `slax32-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | you want to boot the **ISO itself** on a UEFI machine — a DVD, or a virtual CD in a VM |
 
 The uefi image is a **superset**: it keeps the BIOS boot entry and adds an EFI one, so it boots
 everywhere the bios image does, for 6.2 MiB more. **If unsure, take it.**
@@ -43,7 +43,7 @@ later. Everything else follows from it.
 | | **FAT32** | **ext4** |
 |---|---|---|
 | BIOS boot — either image | yes | yes |
-| **UEFI**, `slax-wine-bios` image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only |
+| **UEFI**, `slax32-wine-bios` image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only |
 | **UEFI** from a stick — *either* image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only. The uefi image's GRUB is an ISO structure and never reaches the stick |
 | **UEFI**, 32-bit firmware — either image | **no** — see below | **no** |
 | Persistence | a sparse container file, **16 GB minimum** | a plain directory, **no limit** |
@@ -70,7 +70,7 @@ later. Everything else follows from it.
 >
 > **What has actually been booted, and by whom.** A slax-wine image has now been UEFI-booted:
 > measured 2026-09-18, GRUB under x86-64 OVMF loads `BOOTX64.EFI` and boots the 32-bit kernel to
-> `Live Kit done`, in 6 seconds under KVM. That is the `slax-wine-uefi` image's own loader, on our
+> `Live Kit done`, in 6 seconds under KVM. That is the `slax32-wine-uefi` image's own loader, on our
 > own image — not an upstream result borrowed.
 >
 > It is **not** proof of the stick rows in the table above, and the distinction is the whole point of
@@ -82,8 +82,8 @@ later. Everything else follows from it.
 Pick by the machine you are booting, not by the stick:
 
 - **UEFI-only machine** (most laptops made after ~2012 with legacy/CSM disabled) → use the
-  **`slax-wine-uefi` image**, and then the filesystem is a free choice: **ext4** for unlimited
-  persistence, FAT32 if you also want the stick readable from Windows. With the `slax-wine-bios`
+  **`slax32-wine-uefi` image**, and then the filesystem is a free choice: **ext4** for unlimited
+  persistence, FAT32 if you also want the stick readable from Windows. With the `slax32-wine-bios`
   image you would be forced onto FAT32 and its 16 GB container.
 - **Machine that can boot BIOS/legacy** → **ext4**. Unlimited persistence, faster, and you can read
   the prefix directly from any Linux box. Either image works.
@@ -117,7 +117,7 @@ sudo mkfs.ext4  -L SLAXWINE /dev/sdX1         # BIOS only, unlimited prefix
 
 # 3. copy the slax/ directory across
 sudo mkdir -p /mnt/iso /mnt/usb
-sudo mount -o loop,ro slax-wine-uefi-1.0.0.iso /mnt/iso   # or -bios-, whichever you built
+sudo mount -o loop,ro slax32-wine-uefi-1.0.0.iso /mnt/iso   # or -bios-, whichever you built
 sudo mount /dev/sdX1 /mnt/usb
 sudo cp -a /mnt/iso/slax /mnt/usb/
 sudo sync
@@ -251,7 +251,7 @@ differs:
 | | slax-wine | slax-bottles |
 |---|---|---|
 | **machine** | 32-bit x86 with PAE, or any 64-bit x86 | **64-bit x86 only** ([software.md](docs/software.md)) |
-| **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | BIOS and UEFI. It is always built the way `slax-wine-uefi` is, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
+| **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | BIOS and UEFI. It is always built the way `slax32-wine-uefi` is, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
 | **what persistence keeps** | the Wine prefix, `/root/.wine` | every bottle, under `/root/.var/app/com.usebottles.bottles/`. On an ext4 stick that is `slax/changes/1/root/.var/app/com.usebottles.bottles` |
 | **space** | the image's `slax/` is ~510 MiB | the image's `slax/` is ~1.2 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
 
@@ -264,7 +264,7 @@ gaps as slax-wine's, plus the first.
 ## Why `dd` does not work
 
 A stock Slax ISO has no master boot record at all — bytes 0–511 are zero — so
-`dd if=slax-wine-uefi-1.0.0.iso of=/dev/sdX` produces a stick that boots on nothing. slax-wine does not
+`dd if=slax32-wine-uefi-1.0.0.iso of=/dev/sdX` produces a stick that boots on nothing. slax-wine does not
 ship the `isohybrid` fix, deliberately: even when it works, a `dd`'d image is a read-only ISO9660
 filesystem, so there is nowhere for changes to be written and **persistence is impossible**. Ventoy
 and Rufus carry the same limitation.

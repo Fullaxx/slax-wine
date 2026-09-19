@@ -12,8 +12,8 @@ One page per recipe. Each states what it does, what it measured, and what it can
 | [`slax-bottles-iso`](slax-bottles-iso.md) | **slax-bottles only**: the same boot default and checksum as `slax-wine-iso`, with its own identity |
 
 The first four are applied, in that order, by **both** slax-wine profiles:
-[`slax-wine-bios`](../../profiles/slax-wine-bios.yaml) and
-[`slax-wine-uefi`](../../profiles/slax-wine-uefi.yaml), which adds upstream's `uefi-bootable` after
+[`slax32-wine-bios`](../../profiles/slax32-wine-bios.yaml) and
+[`slax32-wine-uefi`](../../profiles/slax32-wine-uefi.yaml), which adds upstream's `uefi-bootable` after
 them. Both also list upstream's `remove-bundle` **first** — it has no page here because it is not
 ours; it drops `05-chromium.sb` with a pattern each profile states rather than inherits, and the
 engine refuses a plan where a removal follows anything that builds. The profiles are authoritative —

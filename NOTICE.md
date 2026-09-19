@@ -51,8 +51,8 @@ and `ci/checks/96-release-consistency.sh` fails if that commit is not the curren
 ## Redistributing the ISOs
 
 slax-kitchen deliberately publishes **no** ISO, and says why: the GPLv2 source-offer obligation falls
-on whoever publishes a customized image. **slax-wine publishes two** — `slax-wine-bios` and
-`slax-wine-uefi` — so that obligation is ours, and this section is how it is discharged rather than
+on whoever publishes a customized image. **slax-wine publishes two** — `slax32-wine-bios` and
+`slax32-wine-uefi` — so that obligation is ours, and this section is how it is discharged rather than
 a disclaimer.
 
 The two images contain the **same** software: identical bundles, identical packages. The uefi one

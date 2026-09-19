@@ -1,13 +1,13 @@
 # `slax-wine-iso` — label the image, and stop `automount` grabbing every disk
 
 **Status: runtime-verified** — the volume id, application id and checksum are confirmed in the built
-image and 21 structure assertions pass including `--volid SLAX-WINE`; and this recipe's only
+image and 21 structure assertions pass including `--volid SLAX32-WINE`; and this recipe's only
 functional change, removing `automount` from the boot line, has now been **observed taking effect
 through both bootloaders**.
 
 ## How the `automount` removal was proven
 
-Measured 2026-09-18 on a KVM host, against `slax-wine-test` (this image plus `serial-console` and
+Measured 2026-09-18 on a KVM host, against `slax32-wine-test` (this image plus `serial-console` and
 `testkit`). The observable is the kernel's own `Kernel command line:` line in the serial log:
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
@@ -32,18 +32,18 @@ Two traps worth writing down, both hit while doing this:
   `mkdir -p /media/<dev>` when the flag is absent, and `/media` ships in no bundle — but it only
   creates a mountpoint for a device that is *not* the boot device, and a plain boot has only the CD.
   Measured: the `--kernel` route, **with** `automount`, still reported `file /media: absent`. It
-  reads "absent" either way. `profiles/slax-wine-test.yaml` records this so nobody re-adds it.
+  reads "absent" either way. `profiles/slax32-wine-test.yaml` records this so nobody re-adds it.
 
 Reproducing it, which matters more than the logs — `out/` is gitignored, so a fresh clone has no
 evidence files, only the means to regenerate them:
 
 ```sh
-./build.sh --test                      # profiles/slax-wine-test.yaml: + serial-console, + testkit
-K=vendor/slax-kitchen/kitchen; I="$PWD/out/slax-wine-test-1.0.0.iso"
+./build.sh --test                      # profiles/slax32-wine-test.yaml: + serial-console, + testkit
+K=vendor/slax-kitchen/kitchen; I="$PWD/out/slax32-wine-test-1.0.0.iso"
 $K test "$I" --kernel                  # the control: its cmdline HAS automount
 $K test "$I" --bios
 $K test "$I" --uefi
-grep -a '^Kernel command line:' out/boot-tests/slax-wine-test-1.0.0-*.serial.log
+grep -a '^Kernel command line:' out/boot-tests/slax32-wine-test-1.0.0-*.serial.log
 ```
 
 Expect `automount` on the `-kernel` line and on neither of the others. **A UEFI run needs KVM**: at
@@ -139,10 +139,12 @@ which is a bigger question than a YAML line. A signed release is a post-v1.0.0 w
 ## Verified
 
 ```
-21 passed, 0 failed
-  ok   volume id is SLAX-WINE
+  ok   volume id is 'SLAX32-WINE'
+  ...
   ok   /slax/modules/98-dpkg-db.sb present
   ok   size <= 532 MiB
+
+21 passed, 0 failed
 ```
 
 The checksum is written from the output directory, so the filename inside it is **relative** and
@@ -151,7 +153,7 @@ version — `genisoimage` stamps PVD timestamps it cannot pin, so a rebuild of t
 the same bytes everywhere except those fields. See [sizing.md](../sizing.md):
 
 ```
-<this build's sha256>  slax-wine-bios-1.0.0.iso
+<this build's sha256>  slax32-wine-bios-1.0.0.iso
 ```
 
 ## What `kitchen probe` says, and why that is right

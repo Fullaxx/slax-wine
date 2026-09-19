@@ -33,7 +33,7 @@ steps:
   # because there is nowhere in the tree they could live -- the mastering tool writes
   # them into the PVD.
   #
-  # This recipe is NOT required to run last, and in profiles/slax-wine-uefi.yaml it does
+  # This recipe is NOT required to run last, and in profiles/slax32-wine-uefi.yaml it does
   # not: `uefi-bootable` follows it, because boot.uefi generates its GRUB menu by parsing
   # slax/boot/isolinux.cfg and must therefore see the boot.cmdline edit above. That is
   # safe -- v_boot_uefi writes the hint key `uefi`, which is distinct from the volid,
@@ -51,8 +51,8 @@ steps:
   # told with --volid, because assertion #1 otherwise hardcodes 'slax' -- which is
   # exactly why this project does not use `kitchen build`.
   - verb: iso.metadata
-    volid: SLAX-WINE
-    appid: "slax-wine (github.com/Fullaxx/slax-wine)"
+    volid: SLAX32-WINE
+    appid: "slax32-wine (github.com/Fullaxx/slax-wine)"
     publisher: "Brett Kuskie -- github.com/Fullaxx/slax-wine"
     preparer: "slax-kitchen; Slax by Tomas Matejicek, see NOTICE.md"
 

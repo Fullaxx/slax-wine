@@ -1,7 +1,7 @@
 # What is on each ISO, and what it needs
 
 Two systems, three shipped images. **slax-wine** is 32-bit Slax with Debian's Wine, as
-`slax-wine-bios` and `slax-wine-uefi`, which carry the same software. **slax-bottles** is 64-bit
+`slax32-wine-bios` and `slax32-wine-uefi`, which carry the same software. **slax-bottles** is 64-bit
 Slax with the Bottles Flatpak, and no Debian Wine at all. Why they differ is
 [DECISIONS.md](DECISIONS.md) D-14; why slax-wine is 32-bit is still an open question (Q-1).
 
@@ -16,7 +16,7 @@ the first time bookworm ships a point release:
 
 ---
 
-## slax-wine — `slax-wine-bios`, `slax-wine-uefi`
+## slax-wine — `slax32-wine-bios`, `slax32-wine-uefi`
 
 ### Base
 
@@ -111,7 +111,7 @@ everything else is stated as what it is.
 | | slax-wine | slax-bottles |
 |---|---|---|
 | **CPU** | 32-bit x86 with **PAE**. The kernel is Debian's `686-pae` flavour (slax-kitchen `docs/30-inventory/kernel.md`). Any 64-bit x86 CPU also qualifies | **x86-64, and x86-64-v1 is enough to start it.** Measured in QEMU: under `-cpu qemu64`, which has no SSSE3, SSE4, POPCNT or AVX, Bottles starts and draws its window with no faults. A bottle was created, and Windows programs run in it, under `-cpu Nehalem` (x86-64-v2) |
-| **Firmware** | BIOS: both images. UEFI: `slax-wine-uefi` only, and only **64-bit** UEFI firmware, because no `bootia32.efi` exists upstream ([INSTALL.md](../INSTALL.md)) | BIOS or 64-bit UEFI. It is always built UEFI-bootable |
+| **Firmware** | BIOS: both images. UEFI: `slax32-wine-uefi` only, and only **64-bit** UEFI firmware, because no `bootia32.efi` exists upstream ([INSTALL.md](../INSTALL.md)) | BIOS or 64-bit UEFI. It is always built UEFI-bootable |
 | **Memory** | Measured booting in 2 GiB (the boot harness's default); no minimum established | Measured booting in 3 GiB. In a 6 GiB VM: 550 MiB used at the idle desktop, 738 MiB with Bottles open, 1.75 GiB after creating a bottle. No minimum established. Without persistence everything written, bottles included, also lives in RAM |
 | **GPU** | None required. Wine draws through Mesa's OpenGL, software-rendered without GPU firmware (D-10) | None required to *run* Bottles: it ran with software rendering. **DXVK 3.x needs a Vulkan 1.4 driver** (per DXVK: RADV 25.0+, ANV 25.1+, NVIDIA 575.51.02+). The runtime's Mesa 26.2.2 meets that; whether a real GPU initialises under Slax's 6.1 kernel with no GPU firmware (D-10) is **untested**. Without Vulkan, Direct3D goes through Wine's OpenGL path, or fails |
 | **Storage** | The ISO: 507.3 or 513.5 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 1241.7 MiB. A fresh bottle measured **386 and 491 MiB** on two runs, before anything is installed into it |

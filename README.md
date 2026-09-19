@@ -5,8 +5,8 @@ Slax with Wine on it: a 32-bit Debian live system that runs Windows programs, wi
 
 ```sh
 git clone --recurse-submodules https://github.com/Fullaxx/slax-wine
-cd slax-wine && ./build.sh          # -> out/slax-wine-bios-1.0.0.iso
-                                    #    out/slax-wine-uefi-1.0.0.iso
+cd slax-wine && ./build.sh          # -> out/slax32-wine-bios-1.0.0.iso
+                                    #    out/slax32-wine-uefi-1.0.0.iso
 ```
 
 Needs `squashfs-tools`, `xorriso`, `curl` and a `python3` with `yaml` — and root (or `sudo`) for one
@@ -26,8 +26,8 @@ is not obvious.
 
 | | boots on | why you would pick it |
 |---|---|---|
-| `slax-wine-bios-<ver>.iso` | BIOS | stock Slax bootloader, no GRUB, 6.2 MiB smaller |
-| `slax-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
+| `slax32-wine-bios-<ver>.iso` | BIOS | stock Slax bootloader, no GRUB, 6.2 MiB smaller |
+| `slax32-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
 
 **The UEFI image is a superset, not an alternative** — it keeps the BIOS El Torito entry and adds an
 EFI one, so it boots anywhere the BIOS image does. Verified on the artifacts: `xorriso
@@ -51,7 +51,7 @@ runs sandboxed with its own Wine, so it can use neither our 32-bit base nor our 
 | Bottles | 67.3 from Flathub, with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono; every ref pinned by commit |
 | offline extras | DXVK 3.1 and VKD3D-Proton 3.0.1, without which Bottles will not create a bottle offline (measured) |
 | no browser | `05-chromium.sb` removed, as in slax-wine |
-| size | **1241.7 MiB**. It boots BIOS and UEFI, like `slax-wine-uefi` |
+| size | **1241.7 MiB**. It boots BIOS and UEFI, like `slax32-wine-uefi` |
 
 Using it: **[docs/using-bottles.md](docs/using-bottles.md)**.
 

@@ -13,12 +13,12 @@ the reason is worth keeping.
 | + `21-wine-desktop.sb` | +4,096 | +0.004 |
 | + `30-notepadpp.sb` | +6,713,344 | +6.4 |
 | + `98-dpkg-db.sb` (generated at pack time) | +131,072 | +0.1 |
-| **slax-wine-bios 1.0.0** | **531,935,232** | **507.3** |
+| **slax32-wine-bios 1.0.0** | **531,935,232** | **507.3** |
 | + `boot/efi.img` (uefi image only — a FAT12 ESP, **not** a bundle) | +6,488,064 | +6.2 |
-| **slax-wine-uefi 1.0.0** | **538,425,344** | **513.5** |
+| **slax32-wine-uefi 1.0.0** | **538,425,344** | **513.5** |
 
 Net **+95,875,072 bytes** — +91.4 MiB over stock for the bios image, **+102,365,184** / +97.6 MiB for
-the uefi one. Both are under `MAX_ISO_MIB=532` (513.5 is the larger), so one cap covers both and no
+the uefi one. Both are under `WINE32_MAX_ISO_MIB=532` (513.5 is the larger), so one cap covers both and no
 per-variant value is needed. The uefi image has 18.5 MiB of headroom, the bios image 24.7 MiB.
 
 **The ESP is 6.2 MiB, not a few KiB.** `grub-mkstandalone` embeds GRUB's modules into the EFI binary,

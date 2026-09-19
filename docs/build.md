@@ -80,8 +80,8 @@ deployed commits.
 ```sh
 git clone --recurse-submodules https://github.com/Fullaxx/slax-wine
 cd slax-wine
-./build.sh                  # -> out/slax-wine-bios-1.0.0.iso
-                            #    out/slax-wine-uefi-1.0.0.iso
+./build.sh                  # -> out/slax32-wine-bios-1.0.0.iso
+                            #    out/slax32-wine-uefi-1.0.0.iso
 ```
 
 slax-bottles is a separate image on the 64-bit base (see [DECISIONS.md](DECISIONS.md) D-14), so it
@@ -99,7 +99,7 @@ roughly twice the wall clock; use `--bios` while iterating.
 | flag | effect |
 |---|---|
 | `--bios` / `--uefi` / `--both` | which image(s). **`--both` is the default** — they are the release pair |
-| `--test` | build `slax-wine-test-<ver>.iso` instead: the same recipes plus `serial-console`, `testkit` and `uefi-bootable`, so both firmware paths can be driven from one image. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against. |
+| `--test` | build `slax32-wine-test-<ver>.iso` instead: the same recipes plus `serial-console`, `testkit` and `uefi-bootable`, so both firmware paths can be driven from one image. Not shipped, not part of `--both`; it is what `kitchen test --persistence` is run against. |
 | `--bottles` | build `slax-bottles-<ver>.iso`: 64-bit Slax with Bottles baked in, and no Debian Wine. Uses the 64-bit base and its own module list and size ceiling (`BOTTLES_*` in `build.env`) |
 | `--bottles-test` | its testkit image, `slax-bottles-test-<ver>.iso`: the counterpart of `--test` |
 | `--all` | bios, uefi and bottles: every shipped image |
@@ -151,8 +151,8 @@ Failing any of these fails the build:
   `compat/sources.yaml`
 - the payload's sha256 matches `APP_SHA256`, or for slax-bottles, every Flatpak ref is deployed at
   its `BOTTLES_LOCK` commit and nothing unlisted is installed
-- **each** ISO's volume id is what its recipe set (`SLAX-WINE`, or `SLAX-BOTTLES`), and each is under
-  its ceiling (`MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
+- **each** ISO's volume id is what its recipe set (`SLAX32-WINE`, or `SLAX-BOTTLES`), and each is under
+  its ceiling (`WINE32_MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
 - `/slax/modules/` contains **exactly** nine bundles — five stock survivors, our three, and the
   generated `98-dpkg-db.sb`. The same list for both variants, because `uefi-bootable` builds no
   bundle. slax-bottles has **eight**: the same five, `20-flatpak`, `30-bottles` and the db

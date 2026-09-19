@@ -6,7 +6,7 @@ version bump.
 
 | slax-wine | Slax | base ISO | base sha256 |
 |---|---|---|---|
-| 1.0.0 (slax-wine-bios, -uefi) | 12.2.0 (Debian 12 bookworm, 32-bit) | `slax-32bit-debian-12.2.0.iso` | `03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b` |
+| 1.0.0 (slax32-wine-bios, -uefi) | 12.2.0 (Debian 12 bookworm, 32-bit) | `slax-32bit-debian-12.2.0.iso` | `03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b` |
 | 1.0.0 (slax-bottles) | 12.2.0 (Debian 12 bookworm, **64-bit**) | `slax-64bit-debian-12.2.0.iso` | `61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70` |
 
 ## How that pairing is enforced

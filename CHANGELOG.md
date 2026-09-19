@@ -11,8 +11,8 @@ Built on `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`), with slax-kitchen pinned at
 `86d27d5`.
 
-**Two images, same system.** `slax-wine-bios-1.0.0.iso` (507.3 MiB) uses the stock Slax bootloader.
-`slax-wine-uefi-1.0.0.iso` (513.5 MiB) adds upstream's `uefi-bootable` recipe — a GRUB EFI loader in
+**Two images, same system.** `slax32-wine-bios-1.0.0.iso` (507.3 MiB) uses the stock Slax bootloader.
+`slax32-wine-uefi-1.0.0.iso` (513.5 MiB) adds upstream's `uefi-bootable` recipe — a GRUB EFI loader in
 an El Torito ESP — and is a **superset**: it keeps the BIOS entry, so it boots everywhere the first
 does, and the **ISO** additionally boots on UEFI firmware. It changes nothing about USB sticks: its
 GRUB lives in an El Torito ESP, which `bootinst` never copies, so both images fall back to the stock
@@ -62,7 +62,7 @@ because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bot
   upstream's `tests/unit/test_desktop_entries.py`, which refuses a `.desktop` whose `Icon=` Slax's
   launcher generator would fail to resolve — the trap that silently deleted **both** of this
   image's launchers before it was caught by hand.
-- `uefi-bootable` — **upstream's** recipe, applied only by `profiles/slax-wine-uefi.yaml`. Builds no
+- `uefi-bootable` — **upstream's** recipe, applied only by `profiles/slax32-wine-uefi.yaml`. Builds no
   bundle; adds one 6.2 MiB `boot/efi.img`.
 
 ### Known limitations
@@ -71,7 +71,7 @@ because Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bot
   second. The **FAT32 route is untested**: no dynfilefs container, no XFS, no `perchsize=`, no
   `xfs_growfs`, and nothing has run `bootinst` or booted from a real stick. So the Wine `C:` drive
   surviving on the kind of stick most people will use is still read from source, not measured.
-- **UEFI from a stick is untested, on either image.** The `slax-wine-uefi` ISO itself now boots under
+- **UEFI from a stick is untested, on either image.** The `slax32-wine-uefi` ISO itself now boots under
   x86-64 OVMF — measured, GRUB to `Live Kit done` in 6 s. But a `bootinst`-prepared stick uses
   `syslinux.efi`, a different loader in a different place, and **nobody has booted that**. The uefi
   image does not change it: its GRUB is an El Torito structure that never reaches a stick.

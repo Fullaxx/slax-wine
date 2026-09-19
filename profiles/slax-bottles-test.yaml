@@ -10,7 +10,7 @@ base:
 recipes:
   # NOT A SHIPPED IMAGE. slax-bottles.yaml plus serial-console and testkit, so that
   # `kitchen test` has our image to assert against. The ordering rules are exactly those
-  # of profiles/slax-wine-test.yaml; read its comments before moving anything.
+  # of profiles/slax32-wine-test.yaml; read its comments before moving anything.
   #
   # FIRST: serial-console adds the only entry carrying console=ttyS0. Without that entry
   # the harness falls back to screenshots and asserts nothing. It also hardcodes
@@ -28,7 +28,7 @@ recipes:
   # Prints facts about the assembled union to the serial console before change_root.
   # `report` is the half a machine can check: our files reached the union. That is one
   # rung below "the tile appears and Bottles opens", which needs a desktop boot.
-  # `marker` is the persistence probe, a neutral file for the reason slax-wine-test.yaml
+  # `marker` is the persistence probe, a neutral file for the reason slax32-wine-test.yaml
   # gives.
   - name: testkit
     vars:

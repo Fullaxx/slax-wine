@@ -5,26 +5,26 @@
 # Deliberately NOT `kitchen build`: it runs tests/structure/iso_assert.py with no
 # --volid, and that argument DEFAULTS to 'slax' (iso_assert.py:49 -- an argparse default,
 # not a hardcoded constant; lib/build.sh is what never passes it). slax-wine-iso.yaml
-# sets SLAX-WINE, so every build would fail its own test. The other two historical objections are gone --
+# sets SLAX32-WINE, so every build would fail its own test. The other two historical objections are gone --
 # `apply --profile` runs no tests, and the output name is chosen at pack.
 #
 #   ./build.sh [--bios|--uefi|--both|--test|--bottles|--bottles-test|--all]
 #              [--keep-work] [--no-fetch]
 #
 # TWO IMAGES, and --both is the default because they are the release pair:
-#   slax-wine-bios-<ver>.iso   stock bootloader. BIOS only.
-#   slax-wine-uefi-<ver>.iso   + a GRUB ESP. Boots BIOS *and* UEFI -- it is a SUPERSET,
-#                              not an alternative, because pack.sh adds the EFI El Torito
-#                              entry with -eltorito-alt-boot and leaves the BIOS one.
+#   slax32-wine-bios-<ver>.iso   stock bootloader. BIOS only.
+#   slax32-wine-uefi-<ver>.iso   + a GRUB ESP. Boots BIOS *and* UEFI -- it is a SUPERSET,
+#                                not an alternative, because pack.sh adds the EFI El Torito
+#                                entry with -eltorito-alt-boot and leaves the BIOS one.
 # Same base, same nine bundles, and the same recipe list: upstream's remove-bundle first
 # (it drops 05-chromium.sb, and the engine refuses a plan where a removal follows
 # anything that builds), then our four. Use --bios while iterating; each variant is a
 # full unpack+apply, so --both costs roughly twice the wall clock.
 #
-#   --test  builds slax-wine-test-<ver>.iso: the same recipes plus serial-console and
+#   --test  builds slax32-wine-test-<ver>.iso: the same recipes plus serial-console and
 #           testkit, and uefi-bootable so both firmware paths can be exercised from one
 #           image. NOT shipped and NOT part of --both; it is the artifact `kitchen test
-#           --persistence` is run against. See profiles/slax-wine-test.yaml.
+#           --persistence` is run against. See profiles/slax32-wine-test.yaml.
 #
 #   --bottles       builds slax-bottles-<ver>.iso: a DIFFERENT system on the 64-bit base,
 #                   Bottles from Flathub and no Debian Wine. Not part of --both, which
@@ -118,31 +118,30 @@ give_back_work() {
 
 # ---- per-variant facts ---------------------------------------------------------------
 # Everything that differs between images, in one place. bios, uefi and test are the
-# slax-wine system and keep exactly the values this script always had. bottles and
-# bottles-test are slax-bottles: another base, another payload, another module list.
+# slax-wine system on the 32-bit base, as slax32-wine-*. bottles and bottles-test are
+# slax-bottles: another base, another payload, another module list.
 # The image's NAME comes from here too -- slax-bottles-<ver>.iso, not slax-wine-bottles.
 variant_config() {
     case "$1" in
         bios|uefi|test)
-            V_IMAGE="slax-wine-$1"
-            V_TARGET=$BASE_TARGET; V_ISO=$BASE_ISO; V_SIZE=$BASE_SIZE; V_SHA=$BASE_SHA256
-            V_WANT=$WANT_MODULES; V_MAX=$MAX_ISO_MIB; V_PAYLOAD=notepadpp
+            V_IMAGE="slax32-wine-$1"
+            V_TARGET=$BASE32_TARGET; V_ISO=$BASE32_ISO; V_SIZE=$BASE32_SIZE; V_SHA=$BASE32_SHA256
+            V_WANT=$WANT_MODULES; V_MAX=$WINE32_MAX_ISO_MIB; V_PAYLOAD=notepadpp
             V_OWN="20-wine 21-wine-desktop 30-notepadpp 98-dpkg-db"
             V_APP="$APP_NAME $APP_VERSION"
-            # The summary's first line, as it has always read for slax-wine.
-            V_TITLE="slax-wine $VERSION ($1)"
-            # The application id slax-wine has always carried. Kept byte-for-byte: it is
-            # in the PVD of two images already described by their docs.
-            V_APPID="slax-wine $VERSION $1 (base $BASE_ISO)" ;;
+            # The summary's first line and the application id in the PVD, both named for
+            # the image, with the base it was built on.
+            V_TITLE="slax32-wine $VERSION ($1)"
+            V_APPID="slax32-wine $VERSION $1 (base $BASE32_ISO)" ;;
         bottles|bottles-test)
             V_IMAGE="slax-$1"
-            V_TARGET=$BOTTLES_BASE_TARGET; V_ISO=$BOTTLES_BASE_ISO
-            V_SIZE=$BOTTLES_BASE_SIZE; V_SHA=$BOTTLES_BASE_SHA256
+            V_TARGET=$BASE64_TARGET; V_ISO=$BASE64_ISO
+            V_SIZE=$BASE64_SIZE; V_SHA=$BASE64_SHA256
             V_WANT=$BOTTLES_WANT_MODULES; V_MAX=$BOTTLES_MAX_ISO_MIB; V_PAYLOAD=bottles
             V_OWN="20-flatpak 30-bottles 98-dpkg-db"
             V_APP="$BOTTLES_APP $BOTTLES_VERSION (Flathub $BOTTLES_BRANCH)"
             V_TITLE="slax-bottles $VERSION ($1)"
-            V_APPID="slax-bottles $VERSION${1#bottles} (base $BOTTLES_BASE_ISO)" ;;
+            V_APPID="slax-bottles $VERSION${1#bottles} (base $BASE64_ISO)" ;;
         *) echo "build.sh: unknown variant $1" >&2; exit 2 ;;
     esac
     V_PROFILE="$REPO_ROOT/profiles/$V_IMAGE.yaml"

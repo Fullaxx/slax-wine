@@ -1,8 +1,8 @@
 apiVersion: slax-kitchen/v1
 kind: Profile
 metadata:
-  name: slax-wine-test
-  summary: The BIOS image plus testkit -- built to be asserted against, never shipped
+  name: slax32-wine-test
+  summary: slax32-wine-uefi plus serial-console and testkit -- built to be asserted against, never shipped
 base:
   flavour: debian
   arch: 32bit
@@ -132,4 +132,4 @@ recipes:
   # the shipped one.
   - uefi-bootable
 output:
-  name: "slax-wine-test-{{version}}.iso"
+  name: "slax32-wine-test-{{version}}.iso"

@@ -10,7 +10,7 @@ base:
   arch: 64bit
   version: "12.2.0"
 recipes:
-  # A DIFFERENT SYSTEM from slax-wine-bios/-uefi, not a variant of them. There is no
+  # A DIFFERENT SYSTEM from slax32-wine-bios/-uefi, not a variant of them. There is no
   # Debian Wine here: Bottles is sandboxed and brings its own runners, so it could not use
   # it. ci/checks/96 section 5(b), which holds the bios and uefi core lists identical,
   # deliberately does not compare this profile. Section 5(a3) does hold it to
@@ -33,5 +33,5 @@ recipes:
   # image.
   - uefi-bootable
 output:
-  # Not used -- build.sh names the output from build.env. See slax-wine-bios.yaml.
+  # Not used -- build.sh names the output from build.env. See slax32-wine-bios.yaml.
   name: "slax-bottles-{{version}}.iso"

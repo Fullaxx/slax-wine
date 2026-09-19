@@ -13,7 +13,7 @@ laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
 
 ```
 build.env          version + base identity (both bases) + the Bottles pin -- the single source of truth
-profiles/          five: slax-wine-bios, -uefi and slax-bottles ship; the two -test ones do not
+profiles/          five: slax32-wine-bios, -uefi and slax-bottles ship; the two -test ones do not
 recipes/available/ six recipes: four for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
 ci/                twelve gates; seven copied verbatim, four adapted, one ours
@@ -30,7 +30,7 @@ built — `ci/checks/96-release-consistency.sh` fails on an orphan for that reas
 
 ### Two shipped images, one system
 
-`slax-wine-bios` and `slax-wine-uefi` run **upstream's `remove-bundle` and then the same four
+`slax32-wine-bios` and `slax32-wine-uefi` run **upstream's `remove-bundle` and then the same four
 recipes in the same order**. The uefi profile adds one more, upstream's `uefi-bootable`, which
 builds no bundle and writes a single 6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB. So both
 images carry an identical nine bundles and share `build.sh`'s `WANT_MODULES` assertion unchanged.
@@ -254,14 +254,14 @@ recipes claim `runtime-verified`, and [bottles](50-cookbook/bottles.md) says whi
 Persistence on ext4 perch is observed on it too: `kitchen test --persistence` on `slax-bottles-test`,
 the marker written on boot 1 and found on boot 2.
 
-**Persistence, ext4 native perch: observed.** Two boots of `slax-wine-test` on one ext4 perch disk
+**Persistence, ext4 native perch: observed.** Two boots of `slax32-wine-test` on one ext4 perch disk
 under `kitchen test --persistence` — boot 1 wrote a marker into the union and `sync`ed it, boot 2
 found it (`perch-marker: present`), both reaching `Live Kit done`. The same run also boot-asserted
 that all seven of our launcher files reached the assembled union with the right sizes, which is one
 rung below "the tile appears" and is the half a machine can check.
 
 **Both bootloaders, and UEFI: observed.** Measured 2026-09-18 on a KVM host against
-`slax-wine-test`: `kitchen test --bios` boots through isolinux and `--uefi` boots through GRUB under
+`slax32-wine-test`: `kitchen test --bios` boots through isolinux and `--uefi` boots through GRUB under
 x86-64 OVMF, each reaching `Live Kit done` in 6 s, each selecting the serial entry. Their kernel
 command lines carry **no `automount`**, while the `--kernel` control — whose cmdline the harness
 builds and which *does* carry it — shows it present. That pairing is what makes the negative result
