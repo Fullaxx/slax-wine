@@ -93,15 +93,69 @@ Two rules make our end of it work:
   and [Local workarounds](#local-workarounds) below carries a row for it, both from the commit that
   adds it.
 - **A pin bump is never automatic.** Every design decision in [ARCHITECTURE.md](ARCHITECTURE.md)
-  reasons about specific engine behaviour, so a bump gets read as a diff before it is committed.
-  `ci/checks/20-vendor-pristine.sh` fails a pointer that moved without one. **It lands only on a
-  commit whose upstream CI is green** — every job, builds and boot test included — and a red or
-  still-running one is waited out rather than pinned around. `7194e0b` was.
+  reasons about specific engine behaviour, so a bump gets read as a diff before it is committed —
+  [Moving the pin](#moving-the-pin) is how — and `ci/checks/20-vendor-pristine.sh` fails a pointer
+  that moved without one.
 
 The first rule used to read *"carries the issue URL in a comment, so it is findable with `grep`"*,
 and nothing checked it. The #23 workaround carried no URL, so the grep that was meant to find it
 could not; it was found at the next bump by reading its *Adapted* header instead. A convention that
 has to be remembered is not a check, so the rule now has a gate behind it.
+
+## Moving the pin
+
+This is what "update the pin" means here: four steps, in this order, and only the fourth moves
+anything. `CLAUDE.md` points at this section; the steps live here and nowhere else.
+
+**1. Review every new upstream commit.**
+
+- The target is upstream's `master` tip, unless you are given a commit. List every commit between the
+  pin and the target, and read each one's message **and** diff, never a subject line alone (the
+  [register](#register)'s own lesson). Note each `Closes #N`, and ours above all.
+- **Upstream CI on the target must be green in every job**: the gates, all four builds and the boot
+  test. A red or still-running target is waited out, not pinned around. `7194e0b` was waited out,
+  and `6bd59f1` was taken only once its run had finished green.
+
+**2. Work out what it does to this repo.**
+
+- **Build inputs.** These are `kitchen`, `lib/`, `schema/`, `compat/`, `tools/`, and the upstream
+  recipes our profiles use.
+  - If any of them changed, rebuild all three images. Compare them file by file with the previous
+    build, content rather than bytes, since the build stamps directory mtimes. Re-run the boot
+    routes only if the contents changed.
+  - If none changed, say so, and the previous evidence stands.
+- **Copied files.** Find which of our copies changed upstream, with
+  `git rev-list --count <pin>..<target> -- <path>` on each source. Those are re-copied; the rest are
+  only re-cited.
+- **What upstream added.** A new gate or test is adopted, or it goes under
+  [Deliberately not adopted](#deliberately-not-adopted-from-upstream) with the reason.
+- **What the tests say.** Upstream's changed tests run inside the pinned submodule with
+  `python3 -B`, and the submodule must stay pristine. When a gate we copy changed, run it over our
+  own tests too, as root and as an unprivileged user; developing as root hides a whole class of
+  failure (`f3ff3a3`).
+- **Anything we cite.** Check whether a permalinked page moved or changed.
+
+**3. Retire what upstream has made redundant.**
+
+- [Local workarounds](#local-workarounds): every **active** row whose issue the new pin closes is
+  retired in this bump, or marked *kept after fix* with its reason. Gate 96 §10 names them once the
+  pin is staged, but it only knows what is marked and listed.
+- Every file headed *Adapted from slax-kitchen*: re-read its stated differences, and move it back
+  toward *Copied verbatim* wherever upstream now makes a difference unnecessary. These headers are
+  read by hand, because a difference we keep for a reason of our own has no issue to close.
+- Anything else that exists only because upstream fell short gets the same question. The `3a44e8a`
+  bump found two kinds: belt-and-braces kept after the fix it guarded against, and skips that
+  outlived the empty tree they were written for.
+
+**4. Move the pin.**
+
+- On a branch, fetch, check the target out in `vendor/slax-kitchen`, and stage it. Gate 96 then
+  names what has to follow: §7 every header, §8 every pin and permalink, §9 any stale verbatim copy,
+  §10 any fixed workaround.
+- Re-copy and re-cite, run every gate in tree and staged scope, and commit through the hook.
+- Record the bump here as *Adopted at the `<pin>` bump*: the commits and their CI, what moved, what
+  was retired, the proofs, and why there was or was not a rebuild.
+- Fast-forward `master` and delete the branch. **Pushing is a separate request.**
 
 ## Local workarounds
 
