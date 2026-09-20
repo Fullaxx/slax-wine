@@ -1173,7 +1173,18 @@ and it is worth filing — with the timings, under [our own bar](#our-own-bar-wh
 | [`notepadpp32`](50-cookbook/notepadpp32.md) | the first launch that failed against that limit, and the second that worked |
 | [`software.md`](software.md) | nothing. Its figures are memory, not speed, and RAM does not care about the accelerator |
 
-**5. What does not change**, and should not be re-opened while doing the above:
+**5. Work what was waiting on it.** Anything held back for the accelerator carries the
+`blocked: needs KVM` label on this repository:
+
+```sh
+gh issue list -R Fullaxx/slax-wine --label "blocked: needs KVM"
+```
+
+Today that is [#1](https://github.com/Fullaxx/slax-wine/issues/1) — the two Notepad++ tiles
+replacing each other in one prefix, whose whole acceptance list is desktop runtime work, which is
+why it waited rather than being guessed at.
+
+**6. What does not change**, and should not be re-opened while doing the above:
 
 - [#28](https://github.com/Fullaxx/slax-kitchen/issues/28) — QEMU refuses an unknown key name on any
   accelerator, and the harness discards the reply either way.
