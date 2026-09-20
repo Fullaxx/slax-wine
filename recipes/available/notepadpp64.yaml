@@ -1,0 +1,85 @@
+apiVersion: slax-kitchen/v1
+kind: Recipe
+metadata:
+  name: notepadpp64
+  summary: Ship the 64-bit (x64) Notepad++ installer as a swappable application layer
+  tags: [bundle, app, wine]
+compat:
+  flavours: [debian]
+  # 64-bit base only: the program it installs is x86-64, which only wine64 runs. Its
+  # 32-bit counterpart, notepadpp32.yaml, is on every image, this one included.
+  arch: [64bit]
+  slax: ">=12.2.0 <13.0.0"
+  privilege: none
+  # The same dependency as notepadpp32's, for the same reason, declared the same way.
+  requires:
+    - recipes/available/wine-desktop.yaml
+vars:
+  bundle: 31-notepadpp64
+steps:
+  # notepadpp32.yaml's twin, and it says 64 everywhere that one says 32: the recipe, the
+  # bundle, /opt/notepadpp64, the installer, the command and the tile. 31 so it sits
+  # beside 30-notepadpp32 in the application band. What this adds over notepadpp32 is a
+  # Windows program that needs the 64-bit half of Wine, installed the way users install
+  # one.
+  #
+  # THE INSTALLER IS NOT 64-BIT. Measured: npp.8.9.8.Installer.x64.exe is a PE32 (i386)
+  # NSIS program; only what it installs is x86-64. So one launch exercises both halves:
+  # a 32-bit installer running under wine32 that writes into the 64-bit "Program Files",
+  # then a 64-bit program running under wine64.
+  #
+  # The payload is fetched and verified by build.sh like notepadpp32's: APP64_URL,
+  # APP64_SHA256 and the shared APP_VERSION in build.env, staged as npp64-installer.exe.
+  - verb: bundle.files
+    bundle: "{{bundle}}"
+    files:
+      - dest: /opt/notepadpp64
+        src: ./notepadpp64.files/opt/notepadpp64
+
+      - dest: /usr/local/bin/notepadpp64
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Launch the 64-bit (x64) Notepad++, installing it into the Wine prefix the
+          # first time. "$@" goes to the EDITOR, never to the installer.
+          [ -r /etc/profile.d/wine.sh ] && . /etc/profile.d/wine.sh
+          PREFIX=${WINEPREFIX:-$HOME/.wine}
+          NPP="$PREFIX/drive_c/Program Files/Notepad++/notepad++.exe"
+          fail() {
+              echo "notepadpp64: $1" >&2
+              if command -v xmessage >/dev/null 2>&1; then
+                  xmessage -center "$1" 2>/dev/null || true
+              fi
+              exit 1
+          }
+
+          # A 64-bit program needs a 64-bit prefix. One that exists without syswow64 is
+          # a win32 prefix -- and its "Program Files" is where notepadpp32 installs, so
+          # going on would start the wrong build. Refuse, and say why.
+          if [ -d "$PREFIX/drive_c/windows" ] && [ ! -d "$PREFIX/drive_c/windows/syswow64" ]; then
+              fail "Notepad++ (64-bit) needs a 64-bit Wine prefix, and $PREFIX is 32-bit.
+          Use notepadpp32 there, or a prefix made without WINEARCH=win32."
+          fi
+
+          # The guard means a cancelled install does not loop.
+          if [ ! -f "$NPP" ]; then
+              wine /opt/notepadpp64/npp64-installer.exe
+          fi
+          [ -f "$NPP" ] || fail "Notepad++ (64-bit) is not installed: the installer was cancelled or failed.
+          Run it again to retry."
+          exec wine "$NPP" "$@"
+
+      # The same absolute icon as notepadpp32's tile, for the reason given there.
+      - dest: /usr/share/applications/7notepadpp64.desktop
+        mode: "0644"
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Notepad++ (64-bit)
+          GenericName=Text Editor
+          Comment=The 64-bit build; runs under Wine and installs itself on first use
+          Exec=notepadpp64
+          TryExec=notepadpp64
+          Icon=/usr/share/icons/Adwaita/48x48/legacy/accessories-text-editor.png
+          Terminal=false
+          Categories=Utility;TextEditor;

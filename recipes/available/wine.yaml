@@ -5,13 +5,11 @@ metadata:
   summary: Install Wine 8.0 from bookworm main
   tags: [bundle, packages, wine, size]
 compat:
-  # Debian and 32-bit only, today. The point of this image, as it was set up, is
-  # running 32-bit Windows binaries, which is what Debian's i386 wine32 + wine32-preloader
-  # do. A 64-bit base would need wine64 plus i386 multiarch -- a larger image and a
-  # different project. That is an assumption, not a measurement: docs/DECISIONS.md
-  # Q-1 records it as an open question, and how it is to be answered.
+  # Both bases: slax-wine is built on each (docs/DECISIONS.md D-16). Two steps below build
+  # the same 20-wine bundle, one per base, each guarded by `when: arch==...`, so exactly
+  # one of them runs.
   flavours: [debian]
-  arch: [32bit]
+  arch: [32bit, 64bit]
   slax: ">=12.2.0 <13.0.0"
   privilege: chroot
 vars:
@@ -26,18 +24,20 @@ steps:
   #
   # This recipe used to do both, and the split is upstream's reasoning, not ours: mixing
   # hides a deletion inside an addition, and the deletion then dictates where the whole
-  # recipe may sit. All three profiles now list upstream's `remove-bundle` FIRST, each
-  # spelling out `drop: "^05-chromium\.sb$"` -- which restates that recipe's own default
-  # on purpose, because a default that decides what ships should not be inherited
-  # silently. Same rule as the apt keys below.
+  # recipe may sit. Every profile that applies this recipe lists upstream's
+  # `remove-bundle` before anything that builds, each spelling out
+  # `drop: "^05-chromium\.sb$"` -- which restates that recipe's own default on purpose,
+  # because a default that decides what ships should not be inherited silently. Same rule
+  # as the apt keys below.
   #
   # WHY THE ORDER STILL MATTERS, because nothing in this file shows it any more: the
   # build below takes the ENGINE DEFAULT for `from:`, "every bundle that will sit below
   # this one", which for a 20- bundle would include 05-chromium.sb if it were still
   # there. Building before removing would link against libraries that then leave with
-  # the bundle. Measured on this exact base: libpulse0 is a hard Depends of libwine,
+  # the bundle. Measured on the 32-bit base: libpulse0 is a hard Depends of libwine,
   # ABSENT from 01-core..04-apps and PRESENT in 05-chromium.sb -- apt would see it
-  # installed, skip it, and the .so would vanish at runtime.
+  # installed, skip it, and the .so would vanish at runtime. The 64-bit base has the
+  # same shape: libpulse0 is absent from its 01-core..04-apps too.
   #
   # Two guards hold the order. check_plan_order refuses a removal that follows a build,
   # across the whole plan and seeded from the journal so it holds across separate
@@ -52,9 +52,9 @@ steps:
   #
   # The size argument for dropping the browser lives in docs/DECISIONS.md D-2 and
   # docs/sizing.md, which carry the measured ledger: 05-chromium.sb is 81.7 MiB against
-  # Wine's 166.6 MiB, so it buys half of Wine, not all of it.
+  # Wine's 166.6 MiB on the 32-bit base, so it buys half of Wine, not all of it.
 
-  # -- 2. the Wine bundle ------------------------------------------------------------
+  # -- 2. the Wine bundle, 32-bit base ----------------------------------------------
   #
   # 20- because bundle numbering is slax-kitchen's convention, not upstream Slax's, and
   # it allocates 00-09 to the platform (upstream's 01-06 plus slax-kitchen's own
@@ -73,6 +73,7 @@ steps:
   # The default stack is 01-core..04-apps once remove-bundle has run: the whole of the
   # finished image below 20, so apt's idea of "already installed" matches the ISO exactly.
   - verb: bundle.packages
+    when: arch==32bit
     bundle: "{{bundle}}"
     # Five packages are the payload; eleven are libwine Recommends named back by hand.
     #
@@ -145,5 +146,95 @@ steps:
       #
       # Both keys below restate engine defaults (apply.py:2711, :2716). Kept explicit
       # because an apt invocation that silently changed either would change what ships.
+      update: true
+      no_recommends: true
+
+  # -- 3. the Wine bundle, 64-bit base ----------------------------------------------
+  #
+  # The same Wine, 8.0~repack-4 from bookworm main, in its two halves: wine64 runs 64-bit
+  # Windows programs, and wine32 -- an i386 package, hence the foreign architecture
+  # below -- runs 32-bit ones, each in a separate 32-bit Linux process. The 64-bit Slax
+  # kernel runs those: its embedded config has IA32_EMULATION=y, MODIFY_LDT_SYSCALL=y and
+  # X86_16BIT=y (read from /slax/boot/vmlinuz's IKCONFIG, docs/DECISIONS.md D-16).
+  #
+  # EVERY HALF IS NAMED, because Debian makes most of them optional:
+  #
+  #   wine                   arch-all wrapper; Depends: wine64 | wine32
+  #   wine64                 the 64-bit loader
+  #   wine64-preloader       only a Suggests of wine64
+  #   libwine                the 64-bit payload
+  #   wine32:i386            only a RECOMMENDS of wine64. Without it this image runs no
+  #                          32-bit Windows program at all, and no_recommends would drop
+  #                          it silently -- so build.sh refuses an image whose package
+  #                          list lacks it.
+  #   wine32-preloader:i386  as in the 32-bit step: nothing Depends on it
+  #   libwine:i386           the 32-bit payload
+  #   fonts-wine             arch-all
+  #
+  # THE RECOMMENDS, TWICE. The amd64 list is the 32-bit step's, name for name: the 64-bit
+  # base has exactly the 32-bit base's set of them -- measured, the same nine present and
+  # the same absentees (libpulse0, fonts-liberation, libasound2-plugins, libvulkan1). The
+  # :i386 list gives 32-bit programs what the 32-bit image gives them natively: the ten
+  # arch-specific names from that list, plus the six the 32-bit base carries without
+  # naming them (libgl1-mesa-dri, libdbus-1-3, libkrb5-3, libxfixes3, libcups2,
+  # libgssapi-krb5-2). libpulse0:i386 arrives as a hard Depends of libwine:i386.
+  #
+  # NEVER :i386 ON AN ARCH-ALL PACKAGE (wine, fonts-wine, fonts-liberation). After the
+  # install the engine checks every name with `dpkg-query -W <name as written>`
+  # (apply.py:2913), and an arch-all package is not found as :i386, so the step would
+  # fail after a successful install.
+  #
+  # LOCKSTEP. A Multi-Arch: same library must be the same version on both architectures.
+  # The base's amd64 libraries date from October 2023 and apt installs today's i386 ones,
+  # so apt lifts each amd64 twin to match, and those upgraded amd64 packages ship in this
+  # bundle. docs/DECISIONS.md D-16 lists them, measured.
+  - verb: bundle.packages
+    when: arch==64bit
+    bundle: "{{bundle}}"
+    packages:
+      - wine
+      - wine64
+      - wine64-preloader
+      - libwine
+      - wine32:i386
+      - wine32-preloader:i386
+      - libwine:i386
+      - fonts-wine
+      # amd64: the 32-bit step's Recommends, name for name
+      - libgl1
+      - libgnutls30
+      - libxcomposite1
+      - libxcursor1
+      - libxi6
+      - libxinerama1
+      - libxrandr2
+      - libxrender1
+      - libxxf86vm1
+      - fonts-liberation
+      - libasound2-plugins
+      # i386: the same, for 32-bit programs
+      - libgl1:i386
+      - libgnutls30:i386
+      - libxcomposite1:i386
+      - libxcursor1:i386
+      - libxi6:i386
+      - libxinerama1:i386
+      - libxrandr2:i386
+      - libxrender1:i386
+      - libxxf86vm1:i386
+      - libasound2-plugins:i386
+      # i386: what the 32-bit base carries without naming it
+      - libgl1-mesa-dri:i386
+      - libdbus-1-3:i386
+      - libkrb5-3:i386
+      - libxfixes3:i386
+      - libcups2:i386
+      - libgssapi-krb5-2:i386
+    apt:
+      # `dpkg --add-architecture i386` before the index refresh. /var/lib/dpkg/arch ships
+      # in this bundle (slax-kitchen docs/90-reference/verbs.md), so the booted system
+      # knows the architecture too, and `apt install foo:i386` works there.
+      architectures: [i386]
+      # The same two keys, for the same reason, as the 32-bit step.
       update: true
       no_recommends: true

@@ -19,10 +19,12 @@ with its own identity in the middle:
 
 ## Why a copy and not a shared recipe
 
-The alternative was turning `slax-wine-iso` into a template with `volid`/`appid` vars. It would save
-two short steps, at the cost of editing a recipe two shipped images already depend on, for a
-recipe whose middle step differs anyway. **If either copied step changes in `slax-wine-iso.yaml`,
-change it here too.** The recipe's header comment says the same thing.
+The alternative was a branch for slax-bottles inside `slax-wine-iso`. That recipe is the slax-wine
+images' own: it already carries one identity step per base for them
+([DECISIONS.md](../DECISIONS.md) D-16), and slax-bottles is another product. A third branch there
+would save two short steps, at the cost of editing a recipe four shipped images depend on, for a step
+that differs anyway. **If either copied step changes in `slax-wine-iso.yaml`, change it here too.**
+The recipe's header comment says the same thing.
 
 Upstream's generic recipes were considered and do not fit. `iso-identity` has no `appid`, and its
 fixed `preparer: slax-kitchen` drops the Slax credit this project carries. `boot-cmdline` also
@@ -44,10 +46,21 @@ All three also printed testkit's report: every file `bottles` ships reached the 
 
 **The UEFI row needed different keystrokes.** Under TCG, OVMF takes longer than the harness's
 default `2s` lead, so the first run missed GRUB's 5-second menu. It booted the default entry to the
-desktop (the screenshot shows it), but with nothing on serial there was nothing to assert. The run
-that passed sent `home` once a second for 22 seconds, then `down,down,ret`. `home` is idempotent in
-GRUB, so whenever the menu appears it is parked on the first entry, and the serial entry is two
-below. The **shipped** 5-second timeout was the one tested; it was not raised for the test.
+desktop (the screenshot shows it), but with nothing on serial there was nothing to assert. The
+**shipped** 5-second timeout was the one tested; it was not raised for the test.
+
+The run that passed used `--keys '3s,(home,1s)x22,down,down,ret'`, and this page called it `home`
+once a second for 22 seconds. **It was not.** The harness has no `(…)xN` syntax, and QEMU refused
+both of those tokens without a word, because the harness discards QEMU's reply — filed as
+[slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28). What ran was a 3-second lead,
+which falls inside this host's menu window: GRUB is up by 3.2 s and gone by 8.3 s. That the window
+moves with the host is a TCG problem only, so it was not filed; the measurements are in
+[UPSTREAM.md](../UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg).
+That run still selected the serial entry, so the row stands.
+
+Re-run 2026-09-19 with real `home` presses, the `KEYS` of
+[`slax-wine-iso`](slax-wine-iso.md#how-the-automount-removal-was-proven): it passed, with the serial
+entry's command line and no `automount`.
 
 ## Why `automount` goes
 

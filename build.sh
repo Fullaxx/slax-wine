@@ -1,41 +1,48 @@
 #!/bin/sh
-# Build the slax-wine and slax-bottles ISOs: fetch -> stage app -> unpack -> apply -> pack ->
-# assert.
+# Build the slax-wine and slax-bottles ISOs: fetch -> stage apps -> unpack -> apply -> pack
+# -> assert.
 #
 # Deliberately NOT `kitchen build`: it runs tests/structure/iso_assert.py with no
 # --volid, and that argument DEFAULTS to 'slax' (iso_assert.py:49 -- an argparse default,
 # not a hardcoded constant; lib/build.sh is what never passes it). slax-wine-iso.yaml
-# sets SLAX32-WINE, so every build would fail its own test. The other two historical objections are gone --
-# `apply --profile` runs no tests, and the output name is chosen at pack.
+# sets SLAX32-WINE or SLAX64-WINE, so every build would fail its own test. The other two
+# historical objections are gone -- `apply --profile` runs no tests, and the output name
+# is chosen at pack.
 #
-#   ./build.sh [--bios|--uefi|--both|--test|--bottles|--bottles-test|--all]
-#              [--keep-work] [--no-fetch]
+#   ./build.sh [--32|--64] [--bios|--uefi|--both|--test] [--keep-work] [--no-fetch]
+#   ./build.sh --bottles|--bottles-test|--all                [--keep-work] [--no-fetch]
 #
-# TWO IMAGES, and --both is the default because they are the release pair:
-#   slax32-wine-bios-<ver>.iso   stock bootloader. BIOS only.
-#   slax32-wine-uefi-<ver>.iso   + a GRUB ESP. Boots BIOS *and* UEFI -- it is a SUPERSET,
-#                                not an alternative, because pack.sh adds the EFI El Torito
-#                                entry with -eltorito-alt-boot and leaves the BIOS one.
-# Same base, same nine bundles, and the same recipe list: upstream's remove-bundle first
-# (it drops 05-chromium.sb, and the engine refuses a plan where a removal follows
-# anything that builds), then our four. Use --bios while iterating; each variant is a
-# full unpack+apply, so --both costs roughly twice the wall clock.
+# slax-wine is FOUR IMAGES, bios and uefi on each architecture, and a bare ./build.sh
+# builds all four:
+#   slax32-wine-bios-<ver>.iso   32-bit base, stock bootloader. BIOS only.
+#   slax32-wine-uefi-<ver>.iso   32-bit base, + a GRUB ESP. Boots BIOS *and* UEFI.
+#   slax64-wine-bios-<ver>.iso   64-bit base, stock bootloader. BIOS only.
+#   slax64-wine-uefi-<ver>.iso   64-bit base, + a GRUB ESP. Boots BIOS *and* UEFI.
+# A uefi image is a SUPERSET, not an alternative: pack.sh adds the EFI El Torito entry
+# with -eltorito-alt-boot and leaves the BIOS one. --32 or --64 picks one architecture and
+# --bios or --uefi one firmware; each image is a full unpack+apply, so narrow it while
+# iterating.
 #
-#   --test  builds slax32-wine-test-<ver>.iso: the same recipes plus serial-console and
-#           testkit, and uefi-bootable so both firmware paths can be exercised from one
-#           image. NOT shipped and NOT part of --both; it is the artifact `kitchen test
-#           --persistence` is run against. See profiles/slax32-wine-test.yaml.
+# The same recipes on all four: upstream's remove-bundle first (it drops 05-chromium.sb,
+# and the engine refuses a plan where a removal follows anything that builds), then wine,
+# wine-desktop, notepadpp32 and slax-wine-iso. The 64-bit images add notepadpp64, and the
+# uefi images add uefi-bootable last.
+#
+#   --test  builds slax32-wine-test-<ver>.iso and slax64-wine-test-<ver>.iso, or one of
+#           them with --32 or --64: the uefi recipes plus serial-console and testkit, so
+#           both firmware paths can be exercised from one image. NOT shipped; it is the
+#           artifact `kitchen test` is run against. See profiles/slax32-wine-test.yaml.
 #
 #   --bottles       builds slax-bottles-<ver>.iso: a DIFFERENT system on the 64-bit base,
-#                   Bottles from Flathub and no Debian Wine. Not part of --both, which
-#                   stays the slax-wine release pair. See profiles/slax-bottles.yaml.
+#                   Bottles from Flathub and no Debian Wine. See profiles/slax-bottles.yaml.
 #   --bottles-test  its testkit image, the counterpart of --test.
-#   --all           bios, uefi and bottles: every shipped image.
+#   --all           the four slax-wine images and slax-bottles: every shipped image.
 #
-# --no-fetch skips DOWNLOADING the base ISO; it is still verified, and it does NOT cover
-# the application payload, which is fetched whenever it is absent or its hash does not
-# match. Fully offline therefore needs a warm isos/ AND a good notepadpp.files/ -- and,
-# for the bottles variants, a bottles.files/ that already matches BOTTLES_LOCK.
+# --no-fetch skips DOWNLOADING the base ISOs; they are still verified, and it does NOT
+# cover the application payloads, which are fetched whenever one is absent or its hash
+# does not match. Fully offline therefore needs a warm isos/ AND good notepadpp32.files/
+# and notepadpp64.files/ -- and, for the bottles variants, a bottles.files/ that already
+# matches BOTTLES_LOCK.
 #   ISO_DIR=/path/to/isos ./build.sh      # reuse ISOs you already have
 #
 # Only the apply step is elevated. bundle.packages needs a real chroot (CAP_SYS_CHROOT +
@@ -45,7 +52,7 @@ set -eu
 REPO_ROOT=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 # The cd above is inside a command substitution, so it never moved this shell. Move it
 # now, because the profile names its recipes by RELATIVE path and kitchen resolves those
-# against the CURRENT WORKING DIRECTORY, not the repo root: lib/apply.py:2842 is a bare
+# against the CURRENT WORKING DIRECTORY, not the repo root: lib/apply.py:3305 is a bare
 # `if os.path.isfile(n)`, and the search path is recipe_search_path() + [os.getcwd()].
 # Without this line `/path/to/slax-wine/build.sh` run from anywhere else died with
 # "recipe not found: recipes/available/wine.yaml" -- but only at step 4, AFTER step 3
@@ -59,36 +66,46 @@ ASSERT="$REPO_ROOT/vendor/slax-kitchen/tests/structure/iso_assert.py"
 ISO_DIR=${ISO_DIR:-$REPO_ROOT/isos}
 WORK=${WORK:-$REPO_ROOT/work}
 OUT=${OUT:-$REPO_ROOT/out}
-STAGE="$REPO_ROOT/recipes/available/notepadpp.files"
 BSTAGE="$REPO_ROOT/recipes/available/bottles.files"
 
 # The expected /slax/modules contents. iso_assert.py has --require but no --forbid, and
 # "chromium is gone" is half the size claim, so assert the list exactly -- that also
-# catches an accidental extra bundle. NINE: five stock survivors, our three, and
-# 98-dpkg-db.sb, which lib/pack.sh generates from the status fragments our bundles ship.
-# Forgetting that last one is the easy way to fail the build on its own output.
-WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp.sb 98-dpkg-db.sb"
+# catches an accidental extra bundle, and it is what proves 31-notepadpp64 is on the
+# 64-bit images and nowhere else. On the 32-bit base, NINE: five stock survivors, our
+# three, and 98-dpkg-db.sb, which lib/pack.sh generates from the status fragments our
+# bundles ship. Forgetting that last one is the easy way to fail the build on its own
+# output. The 64-bit base has the same five stock survivors.
+WANT_MODULES32="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp32.sb 98-dpkg-db.sb"
+WANT_MODULES64="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp32.sb 31-notepadpp64.sb 98-dpkg-db.sb"
 # slax-bottles: the same five stock survivors, flatpak, Bottles, and the generated db.
 BOTTLES_WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-flatpak.sb 30-bottles.sb 98-dpkg-db.sb"
 
-KEEP_WORK=0; NO_FETCH=0; VARIANTS="bios uefi"
+KEEP_WORK=0; NO_FETCH=0; ARCHES="32 64"; KINDS="bios uefi"; ONLY=""
 while [ $# -gt 0 ]; do
     case "$1" in
-        --bios)      VARIANTS="bios"; shift ;;
-        --uefi)      VARIANTS="uefi"; shift ;;
-        --both)      VARIANTS="bios uefi"; shift ;;
-        # Not shipped, and not in --both: the test image adds testkit, which prints to
-        # the serial console and carries a persistence marker. It exists so
+        --32)            ARCHES="32"; shift ;;
+        --64)            ARCHES="64"; shift ;;
+        --bios)          KINDS="bios"; shift ;;
+        --uefi)          KINDS="uefi"; shift ;;
+        --both)          KINDS="bios uefi"; shift ;;
+        # Not shipped, and not in the default: the test image adds testkit, which prints
+        # to the serial console and carries a persistence marker. It exists so
         # `kitchen test --persistence` has something of OURS to assert against.
-        --test)      VARIANTS="test"; shift ;;
-        --bottles)       VARIANTS="bottles"; shift ;;
-        --bottles-test)  VARIANTS="bottles-test"; shift ;;
-        --all)           VARIANTS="bios uefi bottles"; shift ;;
-        --keep-work) KEEP_WORK=1; shift ;;
-        --no-fetch)  NO_FETCH=1; shift ;;
+        --test)          KINDS="test"; shift ;;
+        --bottles)       ONLY="bottles"; shift ;;
+        --bottles-test)  ONLY="bottles-test"; shift ;;
+        --all)           ONLY="all"; shift ;;
+        --keep-work)     KEEP_WORK=1; shift ;;
+        --no-fetch)      NO_FETCH=1; shift ;;
         *) echo "build.sh: unknown option $1" >&2; exit 2 ;;
     esac
 done
+case "$ONLY" in
+    "")   VARIANTS=""
+          for a in $ARCHES; do for k in $KINDS; do VARIANTS="$VARIANTS $a-$k"; done; done ;;
+    all)  VARIANTS="32-bios 32-uefi 64-bios 64-uefi bottles" ;;
+    *)    VARIANTS=$ONLY ;;
+esac
 
 say() { printf '\n== %s\n' "$*"; }
 
@@ -117,23 +134,37 @@ give_back_work() {
 }
 
 # ---- per-variant facts ---------------------------------------------------------------
-# Everything that differs between images, in one place. bios, uefi and test are the
-# slax-wine system on the 32-bit base, as slax32-wine-*. bottles and bottles-test are
-# slax-bottles: another base, another payload, another module list.
-# The image's NAME comes from here too -- slax-bottles-<ver>.iso, not slax-wine-bottles.
+# Everything that differs between images, in one place. 32-* and 64-* are the slax-wine
+# images, slax32-wine-* and slax64-wine-*: the same system on the two bases, and the only
+# difference in what they carry is that the 64-bit ones add notepadpp64. bottles and
+# bottles-test are slax-bottles: another payload, another module list.
 variant_config() {
     case "$1" in
-        bios|uefi|test)
-            V_IMAGE="slax32-wine-$1"
-            V_TARGET=$BASE32_TARGET; V_ISO=$BASE32_ISO; V_SIZE=$BASE32_SIZE; V_SHA=$BASE32_SHA256
-            V_WANT=$WANT_MODULES; V_MAX=$WINE32_MAX_ISO_MIB; V_PAYLOAD=notepadpp
-            V_OWN="20-wine 21-wine-desktop 30-notepadpp 98-dpkg-db"
-            V_APP="$APP_NAME $APP_VERSION"
+        32-bios|32-uefi|32-test|64-bios|64-uefi|64-test)
+            V_BITS=${1%%-*}; kind=${1#*-}
+            V_IMAGE="slax$V_BITS-wine-$kind"
+            if [ "$V_BITS" = 32 ]; then
+                V_TARGET=$BASE32_TARGET; V_ISO=$BASE32_ISO
+                V_SIZE=$BASE32_SIZE; V_SHA=$BASE32_SHA256
+                V_WANT=$WANT_MODULES32; V_MAX=$WINE32_MAX_ISO_MIB
+                V_PAYLOAD="notepadpp32"
+                V_OWN="20-wine 21-wine-desktop 30-notepadpp32 98-dpkg-db"
+                V_APP="notepadpp32 $APP_VERSION"
+            else
+                V_TARGET=$BASE64_TARGET; V_ISO=$BASE64_ISO
+                V_SIZE=$BASE64_SIZE; V_SHA=$BASE64_SHA256
+                V_WANT=$WANT_MODULES64; V_MAX=$WINE64_MAX_ISO_MIB
+                V_PAYLOAD="notepadpp32 notepadpp64"
+                V_OWN="20-wine 21-wine-desktop 30-notepadpp32 31-notepadpp64 98-dpkg-db"
+                V_APP="notepadpp32 and notepadpp64 $APP_VERSION"
+            fi
             # The summary's first line and the application id in the PVD, both named for
             # the image, with the base it was built on.
-            V_TITLE="slax32-wine $VERSION ($1)"
-            V_APPID="slax32-wine $VERSION $1 (base $BASE32_ISO)" ;;
+            V_TITLE="slax$V_BITS-wine $VERSION ($kind)"
+            V_APPID="slax$V_BITS-wine $VERSION $kind (base $V_ISO)"
+            V_RELEASE=etc/slax-wine-release; V_RELEASE_SB=21-wine-desktop ;;
         bottles|bottles-test)
+            V_BITS=64
             V_IMAGE="slax-$1"
             V_TARGET=$BASE64_TARGET; V_ISO=$BASE64_ISO
             V_SIZE=$BASE64_SIZE; V_SHA=$BASE64_SHA256
@@ -141,7 +172,8 @@ variant_config() {
             V_OWN="20-flatpak 30-bottles 98-dpkg-db"
             V_APP="$BOTTLES_APP $BOTTLES_VERSION (Flathub $BOTTLES_BRANCH)"
             V_TITLE="slax-bottles $VERSION ($1)"
-            V_APPID="slax-bottles $VERSION${1#bottles} (base $BASE64_ISO)" ;;
+            V_APPID="slax-bottles $VERSION${1#bottles} (base $BASE64_ISO)"
+            V_RELEASE=etc/slax-bottles-release; V_RELEASE_SB=30-bottles ;;
         *) echo "build.sh: unknown variant $1" >&2; exit 2 ;;
     esac
     V_PROFILE="$REPO_ROOT/profiles/$V_IMAGE.yaml"
@@ -156,7 +188,9 @@ TARGETS=""; PAYLOADS=""
 for v in $VARIANTS; do
     variant_config "$v"
     case " $TARGETS " in *" $V_TARGET "*) ;; *) TARGETS="$TARGETS $V_TARGET" ;; esac
-    case " $PAYLOADS " in *" $V_PAYLOAD "*) ;; *) PAYLOADS="$PAYLOADS $V_PAYLOAD" ;; esac
+    for p in $V_PAYLOAD; do
+        case " $PAYLOADS " in *" $p "*) ;; *) PAYLOADS="$PAYLOADS $p" ;; esac
+    done
 done
 for t in $TARGETS; do
     say "base ISO: $t"
@@ -164,39 +198,50 @@ for t in $TARGETS; do
     "$K" fetch "$t" -o "$ISO_DIR" --verify-only
 done
 
-# ---- 2a. the application payload: Notepad++ ----------------------------------------
+# ---- 2a. the application payloads: Notepad++, 32- and 64-bit ------------------------
 # Fetched and verified rather than committed. Not because committing is forbidden --
 # .exe is not a forbidden extension and GitHub's limit is 100 MB -- but because
 # slax-arcade needs the same mechanism for software that cannot be published at all, and
 # one contract across both projects is worth more than build-time self-containment.
 #
-# Staged under a stable name so updating the app is two edits in build.env and nothing
-# in the recipe, the wrapper or the .desktop entry.
-stage_notepadpp() {
-    say "application payload: $APP_NAME $APP_VERSION"
-    mkdir -p "$STAGE/opt/notepadpp"
-    APP_FILE="$STAGE/opt/notepadpp/npp-installer.exe"
-    if [ -f "$APP_FILE" ] && [ "$(sha256sum "$APP_FILE" | cut -d' ' -f1)" = "$APP_SHA256" ]; then
-        echo "  ok   npp-installer.exe (already verified)"
+# One installer per recipe, each into its own stage, tagged like everything else of it:
+# notepadpp32.files/opt/notepadpp32/npp32-installer.exe and the 64 equivalent. Staged
+# under a stable name, so updating Notepad++ touches build.env only -- APP_VERSION and
+# each installer's URL, sha256 and size -- and nothing in a recipe, a wrapper or a
+# .desktop entry. A 32-bit build stages only the x86 installer.
+stage_npp() {
+    bits=$1
+    case "$bits" in
+        32) url=$APP32_URL; sha=$APP32_SHA256 ;;
+        64) url=$APP64_URL; sha=$APP64_SHA256 ;;
+    esac
+    say "application payload: notepadpp$bits $APP_VERSION"
+    dir="$REPO_ROOT/recipes/available/notepadpp$bits.files/opt/notepadpp$bits"
+    exe="npp$bits-installer.exe"
+    mkdir -p "$dir"
+    if [ -f "$dir/$exe" ] && [ "$(sha256sum "$dir/$exe" | cut -d' ' -f1)" = "$sha" ]; then
+        echo "  ok   $exe (already verified)"
     else
-        rm -f "$APP_FILE"
-        curl -fsSL "$APP_URL" -o "$APP_FILE"
-        got=$(sha256sum "$APP_FILE" | cut -d' ' -f1)
-        if [ "$got" != "$APP_SHA256" ]; then
-            rm -f "$APP_FILE"
-            echo "build.sh: $APP_URL sha256 $got != build.env $APP_SHA256" >&2
+        rm -f "$dir/$exe"
+        curl -fsSL "$url" -o "$dir/$exe"
+        got=$(sha256sum "$dir/$exe" | cut -d' ' -f1)
+        if [ "$got" != "$sha" ]; then
+            rm -f "$dir/$exe"
+            echo "build.sh: $url sha256 $got != build.env $sha" >&2
             exit 1
         fi
-        echo "  ok   npp-installer.exe ($(stat -c%s "$APP_FILE") bytes, sha256 verified)"
+        echo "  ok   $exe ($(stat -c%s "$dir/$exe") bytes, sha256 verified)"
     fi
     # Provenance beside the payload, so the ISO is self-describing even though the
     # filename is deliberately version-free.
-    cat > "$STAGE/opt/notepadpp/VERSION" <<PROV
-$APP_NAME $APP_VERSION
-upstream: $APP_URL
-sha256:   $APP_SHA256
+    cat > "$dir/VERSION" <<PROV
+notepadpp$bits $APP_VERSION
+upstream: $url
+sha256:   $sha
 PROV
 }
+stage_notepadpp32() { stage_npp 32; }
+stage_notepadpp64() { stage_npp 64; }
 
 # ---- 2b. the application payload: Bottles ------------------------------------------
 # A Flatpak installation, staged on the HOST and copied in by bottles.yaml's
@@ -208,9 +253,9 @@ PROV
 # the live system (all root) looks.
 #
 # The pin is BOTTLES_LOCK in build.env: every ref, and the commit it has to be. A hash of a
-# single file, as notepadpp uses, cannot express that, so the check is ref-by-ref against
-# `flatpak info --show-commit`, in both directions: every locked ref is present at its
-# commit, and nothing is present that the lock does not name.
+# single file, as the Notepad++ payloads use, cannot express that, so the check is
+# ref-by-ref against `flatpak info --show-commit`, in both directions: every locked ref is
+# present at its commit, and nothing is present that the lock does not name.
 FLATHUB_REPO=https://dl.flathub.org/repo/flathub.flatpakrepo
 FPDIR="$BSTAGE/var/lib/flatpak"
 # LC_ALL=C because two of the checks below read flatpak's labels ("Version:",
@@ -389,11 +434,10 @@ for p in $PAYLOADS; do
 done
 
 # ---- 3..7, once per variant --------------------------------------------------------
-# slax-wine's two shipped images are one build: same base, same core four recipes, same
-# nine bundles. The UEFI profile adds `uefi-bootable` as a fifth recipe and nothing else,
-# so a difference between those two can only come from that one recipe. slax-bottles is
-# a different system on another base; variant_config above is the only place the
-# variants differ, and everything below is shared by all of them.
+# The four slax-wine images are one build on two bases: the same recipes, with
+# notepadpp64 added on the 64-bit base and `uefi-bootable` added to the uefi images, and
+# nothing else. slax-bottles is a different system; variant_config above is the only
+# place the variants differ, and everything below is shared by all of them.
 #
 # Each variant gets its OWN work tree under work/, because recipes are not idempotent:
 # apply consults its journal and refuses a second application, so the trees cannot be
@@ -412,6 +456,28 @@ build_variant() {
     say "[$v] unpack"
     rm -rf "$work"
     "$K" unpack "$ISO_DIR/$V_ISO" -o "$work" --force
+
+    # (a) THE PROFILE'S BASE IS THE ONE UNPACKED. `kitchen apply --profile` reads only a
+    # profile's recipe list and vars (read_profile_recipes); its `base:` block is checked
+    # nowhere, so a slax64 profile would build on the 32-bit ISO without a word. And the
+    # engine decides `when: arch==...` from the source ISO that unpack recorded, so that
+    # has to be this variant's ISO.
+    # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/29
+    # The arch half of it is https://github.com/Fullaxx/slax-kitchen/issues/27, which is
+    # why this checks the recorded ISO too rather than trusting the engine's fact.
+    pbase=$(python3 -c 'import sys, yaml
+b = yaml.safe_load(open(sys.argv[1]))["base"]
+print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
+    [ "$pbase" = "$V_TARGET" ] || {
+        echo "build.sh: [$v] ${profile#"$REPO_ROOT"/} says base $pbase; this variant builds on $V_TARGET" >&2
+        exit 1
+    }
+    src=$(sed -n 's/^source_iso: *//p' "$work/.kitchen/origin.yaml")
+    [ "${src##*/}" = "$V_ISO" ] || {
+        echo "build.sh: [$v] unpack recorded ${src##*/}, expected $V_ISO" >&2
+        exit 1
+    }
+    echo "  ok   profile base $pbase is the ISO unpacked"
 
     # The profile is authoritative: it carries the ordered recipe list, so there is
     # exactly one place that says what this image is.
@@ -466,9 +532,10 @@ build_variant() {
     # shellcheck disable=SC2086
     python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$V_MAX" $uefi_flag $req
 
-    # WANT_MODULES is shared by bios, uefi and test deliberately: uefi-bootable builds NO
-    # bundle, it writes one boot/efi.img. If that ever differs between them, something is
-    # wrong. The bottles variants carry their own list (BOTTLES_WANT_MODULES).
+    # An architecture's bios, uefi and test images share one list deliberately:
+    # uefi-bootable builds NO bundle, it writes one boot/efi.img. If that ever differs
+    # between them, something is wrong. The bottles variants carry their own list
+    # (BOTTLES_WANT_MODULES).
     got=$(xorriso -indev "$out_iso" -lsl /slax/modules/ -- 2>/dev/null \
           | sed -n "s/.*'\\(.*\\.sb\\)'\$/\\1/p" | sort | tr '\n' ' ')
     # shellcheck disable=SC2086
@@ -480,6 +547,19 @@ build_variant() {
         exit 1
     fi
     echo "  ok   modules: $got"
+
+    # (b) THE IMAGE CANNOT CLAIM ANOTHER BASE. Gate 96 checks the recipe's copy of the
+    # release file; this reads back the copy that shipped, from its bundle.
+    rtmp=$(mktemp -d "$WORK/.rel.XXXXXX")
+    unsquashfs -q -n -d "$rtmp/x" "$work/iso/slax/modules/$V_RELEASE_SB.sb" \
+        "$V_RELEASE" >/dev/null
+    if ! grep -qxF "BASE_ISO=\"$V_ISO\"" "$rtmp/x/$V_RELEASE"; then
+        echo "build.sh: [$v] /$V_RELEASE in $V_RELEASE_SB.sb does not say BASE_ISO=\"$V_ISO\"" >&2
+        rm -rf "$rtmp"
+        exit 1
+    fi
+    rm -rf "$rtmp"
+    echo "  ok   /$V_RELEASE names $V_ISO"
 
     # ---- what is installed, from the image itself ----
     # The package list the docs point at (docs/software.md) instead of carrying 600 lines
@@ -503,6 +583,16 @@ build_variant() {
     rm -rf "$ptmp"
     npkgs=$(($(wc -l < "$pkgs") - 1))
     [ "$npkgs" -gt 0 ] || { echo "build.sh: [$v] no installed packages read from 98-dpkg-db.sb" >&2; exit 1; }
+    # (c) BOTH HALVES OF WINE on the 64-bit base. wine32 is only a Recommends of wine64,
+    # so a 64-bit Wine can lose every 32-bit Windows program without a single error. The
+    # image's own package database has to show both loaders, and libwine for both.
+    if [ "$V_BITS" = 64 ] && [ "$V_PAYLOAD" != bottles ]; then
+        for pa in wine64:amd64 wine32:i386 libwine:amd64 libwine:i386; do
+            awk -F'\t' -v p="${pa%:*}" -v a="${pa#*:}" '$1 == p && $3 == a { f = 1 } END { exit !f }' "$pkgs" \
+                || { echo "build.sh: [$v] $pa is not installed -- see $pkgs" >&2; exit 1; }
+        done
+        echo "  ok   wine64 and wine32 installed, libwine for amd64 and i386"
+    fi
     # slax-bottles' Flatpak side: the same text the image carries at /opt/bottles/VERSION.
     fpk=""
     if [ "$V_PAYLOAD" = bottles ]; then

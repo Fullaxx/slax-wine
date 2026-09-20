@@ -9,12 +9,14 @@ base:
   version: "12.2.0"
 recipes:
   # NOT A SHIPPED IMAGE. This exists so `kitchen test` has something of OURS to assert
-  # against, and it is deliberately excluded from ci/checks/96's bios-vs-uefi core-list
-  # comparison: it carries remove-bundle plus the same four recipes, so the thing under
-  # test is OUR image rather than a stock one, plus three things the shipped pair must
-  # not have. Note the removal-first check in ci/checks/96 §5(a3) covers only the two
-  # SHIPPED profiles; this one is held to the same order by the engine itself, which
-  # refuses any plan where a removal follows something that builds.
+  # against: it carries remove-bundle plus the same recipes as the shipped slax32-wine
+  # pair, so the thing under test is OUR image rather than a stock one, plus two things
+  # the shipped images must not have (serial-console, testkit) and uefi-bootable.
+  # ci/checks/96 §5(b) holds its recipes/available list to slax32-wine-bios's; the three
+  # extras are upstream's and named, not pathed, so that comparison does not see them.
+  # The removal-first check, §5(a3), covers only the SHIPPED profiles; this one is held
+  # to the same order by the engine itself, which refuses any plan where a removal
+  # follows something that builds.
   #
   # ORDER IS LOAD-BEARING IN BOTH DIRECTIONS HERE. Read the two notes below before
   # moving anything; getting either backwards does not fail, it quietly tests nothing.
@@ -48,8 +50,8 @@ recipes:
   # It is SECOND here rather than first, and that is legal for a specific reason: the
   # rule is removal-before-building, not removal-first-in-the-file. serial-console above
   # edits isolinux.cfg/syslinux.cfg and builds no bundle, so it is not something the
-  # removal has to precede. The two shipped profiles have nothing before it, which is
-  # why ci/checks/96 §5(a3) can hold THEM to the stricter literal form.
+  # removal has to precede. The shipped profiles have nothing before it, which is why
+  # ci/checks/96 §5(a3) can hold THEM to the stricter literal form.
   #
   # A BARE NAME, resolved from the engine's own recipes/ -- nothing to vendor or re-sync.
   #
@@ -65,12 +67,12 @@ recipes:
 
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
-  - recipes/available/notepadpp.yaml
+  - recipes/available/notepadpp32.yaml
   - recipes/available/slax-wine-iso.yaml
 
   # testkit prints facts about the ASSEMBLED union to the serial console just before
   # change_root, from a rootcopy.preinit hook. It builds no bundle, so this image still
-  # has the same nine modules as the shipped pair.
+  # has the same nine modules as the shipped slax32-wine images.
   #
   # Two jobs:
   #
@@ -94,11 +96,11 @@ recipes:
     vars:
       marker: /var/lib/slax-wine-perch-marker
       report: >-
-        /usr/local/bin/slax-wine /usr/local/bin/notepadpp
+        /usr/local/bin/slax-wine /usr/local/bin/notepadpp32
         /usr/share/applications/5wine.desktop
-        /usr/share/applications/7notepadpp.desktop
+        /usr/share/applications/7notepadpp32.desktop
         /etc/profile.d/wine.sh /etc/slax-wine-release
-        /opt/notepadpp/npp-installer.exe
+        /opt/notepadpp32/npp32-installer.exe
 
   # DO NOT ADD /media TO THAT LIST. It was there for one build, as a probe for whether
   # `automount` had been removed -- fstab_create returns early without it and only past
@@ -124,12 +126,14 @@ recipes:
   # warns about.
   #
   # menu_timeout is left at uefi-bootable's shipped default of 5, NOT raised to the 30
-  # that profiles/boot-matrix.yaml uses. That is deliberate: a 5 s menu gives the harness
-  # a 2 s keystroke lead (lib/build.sh:63-75), which is correct under KVM and a gamble
-  # under TCG. Running these boots on a KVM host is what buys the right to test the GRUB
-  # configuration we actually SHIP rather than a test-only variant of it. If a run ever
-  # misses the menu, raise it here and say in the result that the tested timeout was not
-  # the shipped one.
+  # that profiles/boot-matrix.yaml uses, so the GRUB configuration we actually SHIP is the
+  # one tested. Under KVM the harness's own keystrokes select the serial entry. Under TCG
+  # they miss it: a fixed 2 s lead (lib/build.sh:61-78), and when GRUB's menu appears
+  # depends on the host -- 3.2 s on the build host, 6.9 s with its vCPU starved. So pass
+  # --keys: `home` once a second for 24 presses, which holds the menu whenever it comes,
+  # then down,down,ret. The command is in docs/50-cookbook/slax-wine-iso.md, and the
+  # measurements in docs/UPSTREAM.md. On a KVM host none of this is needed: the menu is
+  # up in about a second and the harness's own keys select the serial entry.
   - uefi-bootable
 output:
   name: "slax32-wine-test-{{version}}.iso"

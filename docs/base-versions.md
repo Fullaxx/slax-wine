@@ -7,7 +7,7 @@ version bump.
 | slax-wine | Slax | base ISO | base sha256 |
 |---|---|---|---|
 | 1.0.0 (slax32-wine-bios, -uefi) | 12.2.0 (Debian 12 bookworm, 32-bit) | `slax-32bit-debian-12.2.0.iso` | `03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b` |
-| 1.0.0 (slax-bottles) | 12.2.0 (Debian 12 bookworm, **64-bit**) | `slax-64bit-debian-12.2.0.iso` | `61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70` |
+| 1.0.0 (slax64-wine-bios, -uefi, slax-bottles) | 12.2.0 (Debian 12 bookworm, **64-bit**) | `slax-64bit-debian-12.2.0.iso` | `61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70` |
 
 ## How that pairing is enforced
 
@@ -17,7 +17,7 @@ Four places say it. **Two are checked**; the other two are the source and a deri
 |---|---|
 | `build.env` — the single source of truth | — *(it is what everything else is checked against)* |
 | `vendor/slax-kitchen/compat/sources.yaml`, via the submodule pin | **checked** — `ci/checks/96-release-consistency.sh` cross-checks file, size and sha256 |
-| `/etc/slax-wine-release` / `/etc/slax-bottles-release` inside the image | **checked** — the same gate matches the recipes' lines whole and literal |
+| `/etc/slax-wine-release` / `/etc/slax-bottles-release` inside the image | **checked** — the same gate matches the recipes' lines whole and literal, each of `wine-desktop`'s two steps against its own base; and `build.sh` reads the built image's copy back and refuses one that names another base |
 | the ISO's application id | *not checked* — `build.sh` **sets** it from `build.env` with `kitchen pack --appid`, which is not the same as verifying it |
 
 and `kitchen fetch --verify-only` re-checks the bytes on every build, so a base that does not match

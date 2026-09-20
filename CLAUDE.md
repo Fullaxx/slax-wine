@@ -35,6 +35,13 @@ Read [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *The lifecycle*: file the issue, 
 nobody marked is invisible at the next bump — the one for slax-kitchen #23 was, until its header
 was read.
 
+## When the build host gains KVM
+
+Every boot test prints `note: no /dev/kvm, running under TCG -- this is slow` today, and the UEFI
+ones need hand-written `--keys` because of it. When that note stops appearing, read
+[`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When KVM lands* before re-running anything: it is a
+checklist, and its last step is the docs retiring the workaround — including that section itself.
+
 ## Before reviewing anything
 
 Read [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *Our own bar, which is higher* — read the code path end

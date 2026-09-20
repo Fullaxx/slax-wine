@@ -11,8 +11,9 @@ out/
 # Session working files. See ci/checks/10-no-dnc.sh.
 *.DNC.md
 
-# The application payload is fetched and verified by build.sh, not committed.
-recipes/available/notepadpp.files/
+# The application payloads are fetched and verified by build.sh, not committed.
+recipes/available/notepadpp32.files/
+recipes/available/notepadpp64.files/
 # ...and so is the Bottles Flatpak installation, which is 3 GiB unpacked.
 recipes/available/bottles.files/
 

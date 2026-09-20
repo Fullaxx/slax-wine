@@ -4,17 +4,17 @@ metadata:
   name: slax-bottles
   summary: 64-bit Slax with Bottles baked in -- boots BIOS and UEFI, no browser
 base:
-  # 64-bit, unlike slax-wine's pair, because Bottles exists only as an x86_64 Flatpak.
+  # 64-bit only, because Bottles exists only as an x86_64 Flatpak.
   # See docs/DECISIONS.md D-14.
   flavour: debian
   arch: 64bit
   version: "12.2.0"
 recipes:
-  # A DIFFERENT SYSTEM from slax32-wine-bios/-uefi, not a variant of them. There is no
-  # Debian Wine here: Bottles is sandboxed and brings its own runners, so it could not use
-  # it. ci/checks/96 section 5(b), which holds the bios and uefi core lists identical,
-  # deliberately does not compare this profile. Section 5(a3) does hold it to
-  # removal-first.
+  # A DIFFERENT SYSTEM from the slax32-wine and slax64-wine images, not a variant of them.
+  # There is no Debian Wine here: Bottles is sandboxed and brings its own runners, so it
+  # could not use it. ci/checks/96 section 5(b), which holds the slax-wine recipe lists to
+  # one another, deliberately does not compare this profile. Section 5(a3) does hold it
+  # to removal-first.
   #
   # REMOVAL FIRST, for the same reason as in the slax-wine profiles: a bundle is built
   # against everything below it, so build 20-flatpak before dropping 05-chromium and apt
@@ -27,10 +27,8 @@ recipes:
   - recipes/available/slax-bottles-iso.yaml
 
   # LAST, because boot.uefi generates its GRUB menu by parsing isolinux.cfg, so it must
-  # see slax-bottles-iso's automount removal. One image rather than a bios/uefi pair: the
-  # uefi image is a strict superset (the BIOS El Torito entry is kept), and hardware that
-  # runs x86_64 Bottles is almost always UEFI-era. The 6.2 MiB ESP is small next to a 1.2 GiB
-  # image.
+  # see slax-bottles-iso's automount removal. slax-bottles is one image, built with it;
+  # pack.sh keeps the BIOS El Torito entry beside the EFI one, so it boots both ways.
   - uefi-bootable
 output:
   # Not used -- build.sh names the output from build.env. See slax32-wine-bios.yaml.

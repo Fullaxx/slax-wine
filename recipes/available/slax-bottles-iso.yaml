@@ -10,9 +10,10 @@ compat:
   slax: ">=12.2.0 <13.0.0"
   privilege: none
 steps:
-  # slax-wine-iso.yaml's first and last steps, copied rather than shared. The alternative
-  # was turning a recipe that two shipped images already depend on into a template, to
-  # save two short steps; the middle step differs anyway. Upstream's iso-identity was
+  # slax-wine-iso.yaml's first and last steps, copied rather than shared. That recipe is
+  # the slax-wine images' own -- it carries one identity step per base for them -- and
+  # slax-bottles is another product; sharing would have meant a branch for it in a recipe
+  # four shipped images depend on, to save two short steps. Upstream's iso-identity was
   # considered too: it has no appid, and its fixed `preparer: slax-kitchen` would drop the
   # Slax credit. Its sibling boot-cmdline appends `toram`, which is wrong for a 1.2 GiB
   # image. If these two steps ever change in slax-wine-iso.yaml, change them here too.

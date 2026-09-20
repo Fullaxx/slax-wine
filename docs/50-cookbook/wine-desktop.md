@@ -1,10 +1,17 @@
 # `wine-desktop` — put Wine in the launcher, and hide the browser we removed
 
-**Status: runtime-verified** — on a full desktop boot, every claim this bundle makes was observed:
-the **Wine tile appears** in xlunch, clicking it opens Wine **with no xterm wrapper** (so
-`Terminal=false` is doing its job), the **browser is absent** from the launcher, and there is **no
-Wine Mono / Gecko download prompt** (so `/etc/profile.d/wine.sh` reached the session through
+**Status: runtime-verified**, on both bases — on a full desktop boot, every claim this bundle makes
+was observed: the **Wine tile appears** in xlunch, clicking it opens Wine **with no xterm wrapper**
+(so `Terminal=false` is doing its job), the **browser is absent** from the launcher, and there is
+**no Wine Mono / Gecko download prompt** (so `/etc/profile.d/wine.sh` reached the session through
 `su --login`).
+
+On 64-bit, on `slax64-wine-uefi` (2026-09-19, in QEMU): the click opened Wine's file manager once the
+first-run prefix was made, 258 s later under emulation, and that prefix was 64-bit, as this step's
+`wine.sh` leaves it. On 32-bit the click was observed before the 64-bit step was added, and adding it
+changed nothing there: the 32-bit build's `21-wine-desktop.sb` is identical, entry by entry, to the
+one in the images this change started from, and its launcher again showed the Wine tile and no
+browser.
 
 That matters more than a green tick: an earlier draft of this recipe used `Icon=wine`, which
 resolves to nothing, and xlunch silently dropped the entry. The tile is the whole point of the
@@ -77,13 +84,24 @@ This stub has always set `Hidden` explicitly *and* omitted `Icon`, so it was nev
 keeps `NoDisplay` for anything else that honours the freedesktop standard. The entry degrades
 honestly either way: it is named "Web Browser (not included)" and runs `/bin/true`.
 
+## One bundle, a step per base
+
+The recipe has two `bundle.files` steps, `when: arch==32bit` and `when: arch==64bit`, and both build
+`21-wine-desktop.sb`; only the one matching the base runs. Three of the five files are the same file
+in both — the Wine tile, the browser mask and the `slax-wine` wrapper — written once and shared
+through YAML anchors. Two differ: `/etc/profile.d/wine.sh` (below) and `/etc/slax-wine-release`,
+whose `BASE_ISO` and `BASE_SHA256` name the base it was built on.
+
 ## The environment reaches the desktop, and the wrapper makes sure
 
-`/etc/profile.d/wine.sh` sets `WINEARCH=win32` and `WINEDLLOVERRIDES="mscoree,mshtml="`. The second
-is what suppresses Wine's first-run "download Mono and Gecko" dialog — Debian packages neither, in
-main, contrib or non-free, so that dialog could only ever be satisfied by fetching ~136 MiB from
-winehq at runtime on an image that is usually offline. The cost is that .NET and embedded-HTML
-applications do not run; [using-wine.md](../using-wine.md) says so.
+`/etc/profile.d/wine.sh` sets `WINEDLLOVERRIDES="mscoree,mshtml="` on both bases, and
+`WINEARCH=win32` on the 32-bit one only. On the 64-bit base no `WINEARCH` is set, so a new prefix is
+64-bit and runs 32-bit programs too, and a user's own `WINEARCH=win32` — for a 32-bit prefix —
+survives the wrapper, which re-sources this file. `WINEDLLOVERRIDES` is what suppresses Wine's
+first-run "download Mono and Gecko" dialog — Debian packages neither, in main, contrib or non-free,
+so that dialog could only ever be satisfied by fetching ~136 MiB from winehq at runtime on an image
+that is usually offline. The cost is that .NET and embedded-HTML applications do not run;
+[using-wine.md](../using-wine.md) says so.
 
 `profile.d` is read by login shells, and the Slax session **is** one — `02-xorg`'s `xorg.service`
 runs `/bin/su --login -c "/usr/bin/Xdetect ..."`, and `01-core`'s `/etc/profile` ends with the
@@ -119,13 +137,14 @@ built slax/modules/21-wine-desktop.sb (4 KiB, 5 files)
   /etc/slax-wine-release
 ```
 
-`/etc/slax-wine-release` is `os-release`-shaped and deliberately carries no build date or git commit,
-so two builds of the same tag produce identical bytes.
-`ci/checks/96-release-consistency.sh` greps its VERSION, BASE_ISO and BASE_SHA256 against
-`build.env`, so the image cannot claim a version it was not built as.
+The same five paths on the 64-bit base. `/etc/slax-wine-release` is `os-release`-shaped and
+deliberately carries no build date or git commit, so two builds of the same tag produce identical
+bytes. `ci/checks/96-release-consistency.sh` checks each step's VERSION, BASE_ISO and BASE_SHA256
+against `build.env` — the 32-bit step's against `BASE32_*`, the 64-bit one's against `BASE64_*` — and
+`build.sh` reads the built image's copy back and refuses one that names another base.
 
 | you want | use |
 |---|---|
 | the Wine packages themselves | [`wine`](wine.md) |
-| something to run in it | [`notepadpp`](notepadpp.md) |
+| something to run in it | [`notepadpp32`](notepadpp32.md), and [`notepadpp64`](notepadpp64.md) on 64-bit |
 | to turn the desktop changes off | `noload=21-wine-desktop.sb` at the boot prompt |

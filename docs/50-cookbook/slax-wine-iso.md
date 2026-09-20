@@ -1,9 +1,10 @@
 # `slax-wine-iso` — label the image, and stop `automount` grabbing every disk
 
-**Status: runtime-verified** — the volume id, application id and checksum are confirmed in the built
-image and 21 structure assertions pass including `--volid SLAX32-WINE`; and this recipe's only
-functional change, removing `automount` from the boot line, has now been **observed taking effect
-through both bootloaders**.
+**Status: runtime-verified**, on both bases. The volume id, application id and checksum are
+confirmed in every built image, and the structure assertions pass with `--volid SLAX32-WINE` (21 of
+21) and `--volid SLAX64-WINE` (22 of 22; its extra one is `31-notepadpp64.sb`). This recipe's only
+functional change is removing `automount` from the boot line. That has been **observed taking effect
+through both bootloaders**, on `slax32-wine-test` and on `slax64-wine-test`.
 
 ## How the `automount` removal was proven
 
@@ -42,18 +43,59 @@ evidence files, only the means to regenerate them:
 K=vendor/slax-kitchen/kitchen; I="$PWD/out/slax32-wine-test-1.0.0.iso"
 $K test "$I" --kernel                  # the control: its cmdline HAS automount
 $K test "$I" --bios
-$K test "$I" --uefi
+KEYS=$(printf '1s,home,%.0s' $(seq 24))down,down,ret   # under TCG only; see below
+$K test "$I" --uefi --keys "$KEYS"
 grep -a '^Kernel command line:' out/boot-tests/slax32-wine-test-1.0.0-*.serial.log
 ```
 
-Expect `automount` on the `-kernel` line and on neither of the others. **A UEFI run needs KVM**: at
-the shipped `menu_timeout` of 5 the harness gets a 2-second keystroke lead, which is correct under
-KVM and misses the menu under TCG — and a missed menu boots the *default* entry, so the test would
-assert against a boot it never selected. These runs were made on a KVM host for that reason.
+Expect `automount` on the `-kernel` line and on neither of the others. The rows above were measured on
+a KVM host, where `--uefi` needs no `--keys`.
+
+**Under TCG, the harness's own UEFI keystrokes miss the menu.** It sends `down,down,ret` after a
+fixed 2-second lead, and when GRUB's 5-second menu appears depends on the host. Measured on this build
+host it is drawn by 3.2 s, so the keys come too *early*. With the vCPU sharing a core it is 6.9 s.
+Leads of 3–6 s pass on the idle host, and fail on the busy one. A missed menu boots the *default*
+entry, so the test fails with nothing on the serial log.
+
+`KEYS` above is what to do instead, measured on both hosts. It is `home` once a second for 24
+presses, then `down,down,ret`. Presses that land before GRUB are dropped. The first one GRUB sees
+stops its countdown, and `home` is idempotent, so the menu waits on its first entry; the serial entry
+is two below.
+
+**This is a TCG-only chore.** Under KVM the menu is up in about a second, the harness's own 2-second
+lead lands inside it, and `--uefi` needs no `--keys` — which is how the rows above were measured. It
+was deliberately not filed upstream for that reason; the measurements are in
+[UPSTREAM.md](../UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg).
+
+**Earlier runs here passed `'3s,(home,1s)x22,down,down,ret'` and described it as that loop. It was
+not one.** The harness has no `(…)xN` syntax, and QEMU refused `(home` and `1s)x22` without a word,
+because the harness discards QEMU's reply — that half *is* filed, as
+[slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28). What ran was a 3-second lead,
+inside this host's window. Those boots still selected the serial entry, as their kernel command lines
+show, so the results in this page stand; only the explanation was wrong.
 
 **What this does not cover:** the shipped images byte-for-byte — the tested image adds
 `serial-console` and `testkit`. The boot configs are otherwise identical, and the removal is applied
 to *every* `APPEND` line in both files, so it transfers.
+
+**On the 64-bit base**, measured 2026-09-19 under TCG on this build host (no KVM), against
+`slax64-wine-test`:
+
+| boot route | cmdline comes from | `automount` | reached `Live Kit done` |
+|---|---|---|---|
+| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes, 28 s |
+| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes, 31 s |
+| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes, 29 s |
+
+The UEFI row ran against the **shipped** 5-second menu, with the 3-second lead described above.
+Every run also printed testkit's report: every file this image's recipes ship reached the union,
+both Wine loaders and `/var/lib/dpkg/arch` included.
+
+**Re-run on the images as finally built**, 2026-09-19 under TCG, both test images on all three
+routes: all six reached `Live Kit done`, in 21–26 s, and `automount` was on the two `--kernel` lines
+and on none of the four bootloader lines. The UEFI runs again had the 3-second lead. Then both
+passed with `KEYS`, real `home` presses: `slax32-wine-test` on the idle host, and `slax64-wine-test`
+idle and with its vCPU sharing a core.
 
 ```sh
 ./build.sh
@@ -118,7 +160,11 @@ a recipe where it could drift from the git tag — and someone running `kitchen 
 `kitchen pack` by hand still gets an image that identifies itself honestly.
 
 `volid` is the one people see: it becomes the filesystem label when the image is mounted or written
-to a stick. It is also why this project does not use `kitchen build` — that runs
+to a stick. It is **per base** — `SLAX32-WINE` or `SLAX64-WINE`, the same tag as the file name — so
+`iso.metadata` is the one step of this recipe split in two, guarded by `when: arch==32bit` and
+`when: arch==64bit`; the `automount` removal and the checksum are the same step on both. Nothing
+functional reads the label: GRUB finds the medium with `search --file /slax/boot/vmlinuz`, and
+livekit by content. The volid is also why this project does not use `kitchen build` — that runs
 `tests/structure/iso_assert.py` with no `--volid`, and the argument *defaults* to `slax`
 (`iso_assert.py:49`), so every build would fail its own test. The default is an argparse default, not
 a hardcoded constant; what makes it unavoidable is that `lib/build.sh` never passes the flag.
@@ -159,23 +205,28 @@ the same bytes everywhere except those fields. See [sizing.md](../sizing.md):
 ## What `kitchen probe` says, and why that is right
 
 ```
-verdict    : MODIFIED (4 unexplained differences)
-explained by recipes:
-  bundles.05-chromium.sb      <- remove-bundle
-  iso.preparer_id             <- iso-identity
-  iso.publisher_id            <- iso-identity
-  iso.volume_id               <- iso-identity
-unexplained:
-  bundles.20-wine.sb          expected 'absent', got 'ADDED'
-  bundles.21-wine-desktop.sb  expected 'absent', got 'ADDED'
-  bundles.30-notepadpp.sb     expected 'absent', got 'ADDED'
-  bundles.98-dpkg-db.sb       expected 'absent', got 'ADDED'
+probe: out/slax32-wine-bios-1.0.0.iso
+  best match : debian-32bit-12.2.0
+  verdict    : MODIFIED (4 unexplained differences)
+  explained by recipes:
+    bundles.05-chromium.sb                       <- remove-bundle
+    iso.preparer_id                              <- iso-identity
+    iso.publisher_id                             <- iso-identity
+    iso.volume_id                                <- iso-identity
+  unexplained:
+    bundles.20-wine.sb                           expected 'absent', got 'ADDED'
+    bundles.21-wine-desktop.sb                   expected 'absent', got 'ADDED'
+    bundles.30-notepadpp32.sb                    expected 'absent', got 'ADDED'
+    bundles.98-dpkg-db.sb                        expected 'absent', got 'ADDED'
 ```
 
 **"Unexplained" is the expected result for a fork.** `probe` attributes differences to recipes it
 ships, and it has never heard of ours. The four it cannot place are exactly our four bundles, and the
 four it can place are exactly the changes we made with its own recipes' verbs. Nothing is
 unaccounted for — a difference appearing here that is *not* one of those eight would be the signal.
+
+`slax64-wine-bios` matches `debian-64bit-12.2.0` the same way, with **five** unexplained: the same
+four and `31-notepadpp64.sb`.
 
 | you want | use |
 |---|---|

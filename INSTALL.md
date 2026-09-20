@@ -2,25 +2,29 @@
 
 ## First: which image
 
-| | boots on | pick it when |
-|---|---|---|
-| `slax32-wine-bios-<ver>.iso` | BIOS | you know the machine boots BIOS/legacy and you want the stock loader |
-| `slax32-wine-uefi-<ver>.iso` | **BIOS *and* UEFI** | you want to boot the **ISO itself** on a UEFI machine — a DVD, or a virtual CD in a VM |
+| | base | boots on | runs on |
+|---|---|---|---|
+| `slax32-wine-bios-<ver>.iso` | 32-bit | BIOS | a 32-bit x86 CPU with PAE, or any 64-bit one |
+| `slax32-wine-uefi-<ver>.iso` | 32-bit | **BIOS *and* UEFI** | the same |
+| `slax64-wine-bios-<ver>.iso` | 64-bit | BIOS | a 64-bit x86 CPU |
+| `slax64-wine-uefi-<ver>.iso` | 64-bit | **BIOS *and* UEFI** | the same |
 
-The uefi image is a **superset**: it keeps the BIOS boot entry and adds an EFI one, so it boots
-everywhere the bios image does, for 6.2 MiB more. **If unsure, take it.**
+The four are one system, on two bases, each with two boot routes ([DECISIONS.md](docs/DECISIONS.md)
+D-16); the 64-bit ones also run 64-bit Windows programs. A uefi image is a **superset** of its bios
+twin: it keeps the BIOS boot entry and adds an EFI one, so it boots everywhere the bios image does,
+for 6.2 MiB more. It lets the **ISO itself** boot on a UEFI machine — a DVD, or a virtual CD in a VM.
 
 > **It does not change anything about USB sticks.** Its GRUB loader lives in an El Torito ESP at
 > `/boot/efi.img` — an *ISO* structure. A stick has no El Torito catalog, `bootinst.sh` never copies
 > it, and the procedure below copies only `slax/`, which does not contain it. What `bootinst`
-> relocates is `slax/boot/EFI/Boot/`, and that directory is **byte-for-byte identical in both
-> images** (verified). So on a stick, both use the stock FAT-only `syslinux.efi`, and the FAT32
-> decision below applies to both equally.
+> relocates is `slax/boot/EFI/Boot/`, and that directory is **byte-for-byte identical in a base's
+> bios and uefi images** (verified). So on a stick, both use the stock FAT-only `syslinux.efi`, and
+> the FAT32 decision below applies to both equally.
 >
 > The uefi image's value is booting the **ISO** on UEFI: optical media, or a virtual CD.
 
-The third image, **`slax-bottles-<ver>.iso`**, installs the same way. What differs is in
-[slax-bottles](#slax-bottles) below.
+**`slax-bottles-<ver>.iso`** installs the same way. What differs is in [slax-bottles](#slax-bottles)
+below.
 
 ---
 
@@ -42,15 +46,14 @@ later. Everything else follows from it.
 
 | | **FAT32** | **ext4** |
 |---|---|---|
-| BIOS boot — either image | yes | yes |
-| **UEFI**, `slax32-wine-bios` image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only |
-| **UEFI** from a stick — *either* image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only. The uefi image's GRUB is an ISO structure and never reaches the stick |
-| **UEFI**, 32-bit firmware — either image | **no** — see below | **no** |
+| BIOS boot — any image | yes | yes |
+| **UEFI** from a stick — *any* image | **yes** | **no** — `bootinst` relocates `syslinux.efi`, which reads FAT only. A uefi image's GRUB is an ISO structure and never reaches the stick |
+| **UEFI**, 32-bit firmware — any image | **no** — see below | **no** |
 | Persistence | a sparse container file, **16 GB minimum** | a plain directory, **no limit** |
 | Readable from Windows | yes | no |
 | Your `C:` drive ends up in | `slax/changes/1/changes.dat` | `slax/changes/1/root/.wine` |
 
-> **32-bit UEFI firmware cannot boot this image at all.** Slax ships only `bootx64.efi` — an
+> **32-bit UEFI firmware cannot boot any of these images.** Slax ships only `bootx64.efi` — an
 > x86-64 EFI application — and no `bootia32.efi`, on every one of its images including the 32-bit
 > ones. A handful of older Atom tablets and netbooks have 32-bit UEFI with no legacy/CSM option, and
 > those machines have no supported route: not FAT32, not ext4, not `dd`. Upstream documents this in
@@ -60,7 +63,9 @@ later. Everything else follows from it.
 > **Persistence on ext4 has now been observed.** Two boots of a slax-wine image on one ext4 perch
 > disk: boot 1 wrote a marker into the union and `sync`ed it, boot 2 found it still there
 > (`perch-marker: present, written 2026-09-18T11:12:00Z`), both reaching `Live Kit done`. That is the
-> **native perch** path — the bind-mount into `slax/changes/N/` that the ext4 column describes.
+> **native perch** path — the bind-mount into `slax/changes/N/` that the ext4 column describes. The
+> same two boots on `slax64-wine-test`, 2026-09-19: the marker absent and created on the first,
+> present on the second.
 >
 > Its limits, stated so the row is not read as more than it is: a VM, a direct kernel boot, and a raw
 > ext4 filesystem on a bare disk image. It did **not** exercise a partition table, `bootinst`, a
@@ -81,12 +86,11 @@ later. Everything else follows from it.
 
 Pick by the machine you are booting, not by the stick:
 
-- **UEFI-only machine** (most laptops made after ~2012 with legacy/CSM disabled) → use the
-  **`slax32-wine-uefi` image**, and then the filesystem is a free choice: **ext4** for unlimited
-  persistence, FAT32 if you also want the stick readable from Windows. With the `slax32-wine-bios`
-  image you would be forced onto FAT32 and its 16 GB container.
+- **UEFI-only machine** (most laptops made after ~2012 with legacy/CSM disabled), booting the **ISO**
+  → a **uefi image**. For a **stick**, the loader is the same stock `syslinux.efi` whichever image you
+  copied, and it reads FAT only: **FAT32**, and its 16 GB container.
 - **Machine that can boot BIOS/legacy** → **ext4**. Unlimited persistence, faster, and you can read
-  the prefix directly from any Linux box. Either image works.
+  the prefix directly from any Linux box. Any image works.
 - **8 GB stick** → ext4 if the machine boots BIOS. On FAT32 the container's 16 GB minimum cannot be
   lowered, so it is always larger than the stick; you will hit the physical end of the stick rather
   than a clean "disk full".
@@ -248,12 +252,12 @@ container is created and can only ever be raised, never lowered.
 Everything this page says about FAT32, ext4, `perchdir=` and `perchsize=` applies unchanged. What
 differs:
 
-| | slax-wine | slax-bottles |
-|---|---|---|
-| **machine** | 32-bit x86 with PAE, or any 64-bit x86 | **64-bit x86 only** ([software.md](docs/software.md)) |
-| **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | BIOS and UEFI. It is always built the way `slax32-wine-uefi` is, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
-| **what persistence keeps** | the Wine prefix, `/root/.wine` | every bottle, under `/root/.var/app/com.usebottles.bottles/`. On an ext4 stick that is `slax/changes/1/root/.var/app/com.usebottles.bottles` |
-| **space** | the image's `slax/` is ~510 MiB | the image's `slax/` is ~1.2 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
+| | slax32-wine | slax64-wine | slax-bottles |
+|---|---|---|---|
+| **machine** | 32-bit x86 with PAE, or any 64-bit x86 | **64-bit x86 only** | **64-bit x86 only** ([software.md](docs/software.md)) |
+| **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | the same | BIOS and UEFI. It is always built the way the slax-wine uefi images are, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
+| **what persistence keeps** | the Wine prefix, `/root/.wine` | the same | every bottle, under `/root/.var/app/com.usebottles.bottles/`. On an ext4 stick that is `slax/changes/1/root/.var/app/com.usebottles.bottles` |
+| **space** | the image's `slax/` is ~510 MiB, and a fresh Wine prefix 589 MiB before anything is installed in it | the image's `slax/` is ~816 MiB, and a fresh Wine prefix 1,265 MiB — it is 64-bit, and carries both halves of Wine's libraries | the image's `slax/` is ~1.2 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
 
 **Persistence, measured on this image:** two boots of `slax-bottles-test` on one ext4 perch disk
 under `kitchen test --persistence`. Boot 1 found no marker and wrote one into the union, and boot 2

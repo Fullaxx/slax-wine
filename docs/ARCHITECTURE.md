@@ -8,19 +8,21 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 
 ## The shape of the thing
 
-slax-wine owns no engine code. It is six recipes, five profiles, a build script and twelve gates,
+slax-wine owns no engine code. It is seven recipes, eight profiles, a build script and twelve gates,
 laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
 
 ```
 build.env          version + base identity (both bases) + the Bottles pin -- the single source of truth
-profiles/          five: slax32-wine-bios, -uefi and slax-bottles ship; the two -test ones do not
-recipes/available/ six recipes: four for slax-wine, two for slax-bottles
+profiles/          eight: slax32-wine-bios, -uefi, slax64-wine-bios, -uefi and slax-bottles ship;
+                   the three -test ones do not
+recipes/available/ seven recipes: five for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
 ci/                twelve gates; seven copied verbatim, four adapted, one ours
 tests/unit/        four tests: the .desktop trap that once cost both launchers (adapted), the
                    gate library that let a .exe and then a submodule bump through (verbatim),
                    gate 80 itself, which once let a test write into the commit running it
-                   (verbatim), and gate 96's pin read, which once answered for this repo (ours)
+                   (verbatim), and gate 96 (ours): its pin read, which once answered for this
+                   repo, and the sections that hold four images to one recipe list
 vendor/            the engine, pinned by commit
 ```
 
@@ -28,33 +30,38 @@ vendor/            the engine, pinned by commit
 so there is exactly one place that says what each image is. A recipe named by no profile is never
 built — `ci/checks/96-release-consistency.sh` fails on an orphan for that reason.
 
-### Two shipped images, one system
+### Four shipped images, one system
 
-`slax32-wine-bios` and `slax32-wine-uefi` run **upstream's `remove-bundle` and then the same four
-recipes in the same order**. The uefi profile adds one more, upstream's `uefi-bootable`, which
-builds no bundle and writes a single 6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB. So both
-images carry an identical nine bundles and share `build.sh`'s `WANT_MODULES` assertion unchanged.
+slax-wine is bios and uefi images on each of two bases ([DECISIONS.md](DECISIONS.md) D-16):
+`slax32-wine-bios` and `-uefi` on `debian-32bit-12.2.0`, `slax64-wine-bios` and `-uefi` on
+`debian-64bit-12.2.0`. All four run **upstream's `remove-bundle` and then `wine`, `wine-desktop`,
+`notepadpp32` and `slax-wine-iso`, in that order**; the 64-bit ones add `notepadpp64`. `wine`,
+`wine-desktop` and `slax-wine-iso` carry one step per base, guarded by `when: arch==32bit` or
+`arch==64bit`, so one recipe list builds both. The uefi profiles add upstream's `uefi-bootable`
+last, which builds no bundle and writes a single 6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB.
+So a base's two images carry identical bundles, nine on 32-bit and ten on 64-bit, and share one
+module-list assertion in `build.sh`.
 
 Two consequences worth holding onto:
 
-- **The uefi image is a superset.** `pack.sh` adds its EFI entry with `-eltorito-alt-boot`, leaving
-  the BIOS entry in place. `xorriso -report_el_torito` on the two artifacts shows `isolinux.bin` in
-  both and `/boot/efi.img` only in the second. It boots anywhere the bios image does.
+- **A uefi image is a superset.** `pack.sh` adds its EFI entry with `-eltorito-alt-boot`, leaving
+  the BIOS entry in place. `xorriso -report_el_torito` on the artifacts shows `isolinux.bin` in all
+  four and `/boot/efi.img` only in the uefi ones. It boots anywhere its bios twin does.
 - **What it buys is a UEFI-bootable ISO, and only that.** Stock Slax cannot boot on UEFI at all
   (upstream's `known-upstream-bugs.md` entry 1); `uefi-bootable` fixes that for the **ISO** — optical
   media, or a virtual CD. It does **nothing** for a USB stick: its GRUB lives in an El Torito ESP at
   `/boot/efi.img`, an ISO structure that `bootinst` never copies, and the directory `bootinst` *does*
-  relocate — `slax/boot/EFI/Boot/` — is byte-for-byte identical in both images. So sticks use the
-  stock FAT-only `syslinux.efi` either way, and UEFI-on-a-stick still means FAT32 for both.
+  relocate — `slax/boot/EFI/Boot/` — is byte-for-byte identical in a base's two images. So sticks
+  use the stock FAT-only `syslinux.efi` either way, and UEFI-on-a-stick still means FAT32 for all.
   See [INSTALL.md](../INSTALL.md).
 
 Ordering is load-bearing: `uefi-bootable` generates its GRUB menu by *parsing* `isolinux.cfg`, so it
 must run after `slax-wine-iso`, which edits that file. Its pack hint (`uefi`) is a different key from
 `slax-wine-iso`'s (`volid`, `appid`, `checksums`), so the two cannot overwrite one another.
 
-### A third image, a different system: slax-bottles
+### And slax-bottles, a different system
 
-`slax-bottles` is **not** a variant of the pair above. Bottles exists only as an x86_64 Flatpak, so
+`slax-bottles` is **not** a variant of the four above. Bottles exists only as an x86_64 Flatpak, so
 it is built on `debian-64bit-12.2.0`, and it carries **no Debian Wine**: Bottles runs sandboxed with
 its own runners and could not use ours ([DECISIONS.md](DECISIONS.md) D-14). Its profile is
 `remove-bundle`, [`bottles`](50-cookbook/bottles.md), [`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md),
@@ -78,9 +85,10 @@ That is the whole mechanism. It is not a naming convention laid over something e
 | bundle | ships | may be switched off with |
 |---|---|---|
 | `01-core` … `04-apps` | upstream Slax, untouched | — |
-| `20-wine.sb` | Wine and its dependency closure | `noload=20-wine.sb` |
+| `20-wine.sb` | Wine and its dependency closure — on 64-bit, both halves and the i386 libraries | `noload=20-wine.sb` |
 | `21-wine-desktop.sb` | launcher entry, env defaults, the wrapper | `noload=21-wine-desktop.sb` |
-| `30-notepadpp.sb` | the application layer | `noload=30-notepadpp.sb` |
+| `30-notepadpp32.sb` | the application layer: the 32-bit Notepad++ | `noload=30-notepadpp32.sb` |
+| `31-notepadpp64.sb` | **slax64-wine only**: the 64-bit Notepad++ | `noload=31-notepadpp64.sb` |
 | `20-flatpak.sb` | **slax-bottles only**: flatpak and bubblewrap | `noload=20-flatpak.sb` |
 | `30-bottles.sb` | **slax-bottles only**: the Flatpak installation, DXVK/VKD3D, launcher | `noload=30-bottles.sb` |
 | `98-dpkg-db.sb` | generated at pack time | — |
@@ -110,10 +118,11 @@ schema so there is one implementation rather than two that can drift.
 
 ### The swap contract
 
-`30-notepadpp.sb` is deliberately self-contained apart from one dependency: its launcher calls
-`/usr/local/bin/slax-wine` from `21-wine-desktop.sb`. **`20`+`21` are the platform; `30` is an app on
-it.** A variant replaces `30-*.sb` only — delete the file from `/slax/modules/` on a stick and drop
-another in, with no rebuild, or swap it live with `slax activate`.
+`30-notepadpp32.sb` and `31-notepadpp64.sb` are deliberately self-contained apart from the platform:
+each launcher sources `/etc/profile.d/wine.sh` from `21-wine-desktop.sb` and runs `20-wine.sb`'s
+Wine. **`20`+`21` are the platform; `30` and `31` are apps on it.** A variant replaces those only —
+delete the file from `/slax/modules/` on a stick and drop another in, with no rebuild, or swap it
+live with `slax activate`.
 
 The application's `.desktop` entry ships **in the application bundle**, not in the platform bundle,
 so swapping the bundle swaps its launcher. That property is what makes the swap a file operation.
@@ -229,22 +238,26 @@ A register, because every one of these cost time to find.
 | **`kitchen build` fails on a custom volid** | `iso_assert.py`'s `--volid` *defaults* to `slax` (`:49`), and `lib/build.sh` never passes it. Not a hardcode — but the effect is the same, hence `build.sh` |
 | **`bundle.fromTarball` is tar-only** | `tarfile.open`, so no `.zip` and no `.7z` |
 | **Recipes are not idempotent** | `apply` consults its journal and refuses a second application. `build.sh` unpacks fresh every run |
-| **A bundle name can be produced once** | two steps targeting the same bundle is refused. Combine them into one `bundle.files` |
+| **A bundle name can be produced once** | two steps that both *run* and target the same bundle are refused — at run time, when the `.sb` already exists. Combine them into one `bundle.files`; or, per base, guard each with `when: arch==…` so exactly one runs, as `wine` and `wine-desktop` do |
 | **Estimate bundle size from squashfs, not from `.deb`** | `-b 1024K` restarts xz every mebibyte, so a bundle is ~**1.4×** the `.deb`s it came from. Compare against ALL the packages installed (121.1 MiB for Wine's 60), never one headline `.deb` |
 | **`98-dpkg-db.sb` appears in the output** | generated at pack time. An expected-modules assertion that omits it fails on its own build |
 | **Piping into `tee` hides a failure** | the pipeline's status is `tee`'s. POSIX sh has no `PIPESTATUS`; record success out of band |
 | **`savechanges` first session is `99-changes-99.sb`** | its arithmetic runs on the last file in `slax/modules/`, now `98-dpkg-db`. Harmless; it increments correctly |
+| **`when: arch==` is read from the ISO's PATH** | `_tree_facts` substring-matches `origin.yaml`'s `source_iso`, so a directory named `…32bit…` makes a 64-bit tree 32-bit, and an ISO renamed without either string skips every arch-guarded step. Filed as [slax-kitchen#27](https://github.com/Fullaxx/slax-kitchen/issues/27); `build.sh`'s release-file and `wine32:i386` checks refuse the result |
+| **`apply --profile` ignores the profile's `base:`** | the schema requires `flavour`, `arch` and `version`; `kitchen build` picks the ISO from them; `apply` reads only the recipe list. Filed as [slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29); `build.sh` checks it here, marked as a workaround |
+| **`kitchen diff --bundles` compares file lists, not files** | so two builds of one tree are always "contents differ", and a real change is never named. Filed as [slax-kitchen#30](https://github.com/Fullaxx/slax-kitchen/issues/30). [Moving the pin](UPSTREAM.md#moving-the-pin) says to compare content rather than bytes for this reason |
 
 ## What is verified, and what is not
 
-`boot-verified`: the ISO boots under TCG to `slax login:` with all three livekit markers and all nine
-bundles mounted in order.
+`boot-verified`: the ISO boots under TCG to `slax login:` with all three livekit markers and all its
+bundles mounted in order — nine on 32-bit, ten on 64-bit.
 
-`runtime-verified`, on a full desktop boot: the **Wine tile opens from the launcher** with no xterm
-wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches, there is **no
-Mono/Gecko prompt**, and the **browser is absent** from the launcher. All four slax-wine recipes claim
-this rung. `slax-wine-iso` was the last, once the *effect* of removing `automount` was observed on
-both bootloaders ([its page](50-cookbook/slax-wine-iso.md)).
+`runtime-verified`, on a full desktop boot of each base: the **Wine tile opens from the launcher**
+with no xterm wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches,
+there is **no Mono/Gecko prompt**, and the **browser is absent** from the launcher. On 64-bit the
+**64-bit Notepad++** installs and runs as a 64-bit process too. All five slax-wine recipes claim this
+rung. `slax-wine-iso` was the last, once the *effect* of removing `automount` was observed on both
+bootloaders ([its page](50-cookbook/slax-wine-iso.md)), on each base.
 
 **slax-bottles**, under TCG with no network device: all three boot routes reach `Live Kit done`, with
 `automount` absent from both bootloaders' command lines. Bottles opens from its wrapper, a bottle is

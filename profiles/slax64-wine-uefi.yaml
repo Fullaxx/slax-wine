@@ -1,0 +1,31 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax64-wine-uefi
+  summary: 64-bit Slax with Wine and Notepad++ 32/64, plus a GRUB ESP -- boots BIOS and UEFI
+base:
+  # IDENTICAL to slax64-wine-bios.yaml. Both images are the same 64-bit Debian Slax; the
+  # only difference between them is the last recipe in this file.
+  flavour: debian
+  arch: 64bit
+  version: "12.2.0"
+recipes:
+  # slax64-wine-bios.yaml's list, byte-for-byte and in the same order, preceded by the
+  # same removal -- gate 96 §5(b) and §5(a3) hold it to both.
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
+
+  - recipes/available/wine.yaml
+  - recipes/available/wine-desktop.yaml
+  - recipes/available/notepadpp32.yaml
+  - recipes/available/notepadpp64.yaml
+  - recipes/available/slax-wine-iso.yaml
+
+  # LAST, for the reason slax32-wine-uefi.yaml spells out: boot.uefi generates its GRUB
+  # menu by PARSING slax/boot/isolinux.cfg, so it must see slax-wine-iso's automount
+  # removal. It builds no bundle and adds one file, boot/efi.img, and pack.sh keeps the
+  # BIOS El Torito entry beside the EFI one, so this image boots both ways.
+  - uefi-bootable
+output:
+  # Not used -- build.sh names the output from build.env. See slax32-wine-bios.yaml.
+  name: "slax64-wine-uefi-{{version}}.iso"

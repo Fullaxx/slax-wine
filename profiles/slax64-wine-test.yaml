@@ -1,0 +1,55 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax64-wine-test
+  summary: slax64-wine-uefi plus serial-console and testkit -- built to be asserted against, never shipped
+base:
+  flavour: debian
+  arch: 64bit
+  version: "12.2.0"
+recipes:
+  # NOT A SHIPPED IMAGE. slax64-wine-uefi.yaml plus serial-console and testkit, so that
+  # `kitchen test` has our 64-bit image to assert against. The ordering rules are exactly
+  # those of profiles/slax32-wine-test.yaml; read its comments before moving anything.
+  #
+  # FIRST: serial-console adds the only entry carrying console=ttyS0. Without that entry
+  # the harness falls back to screenshots and asserts nothing. It also hardcodes
+  # `automount`, so it must come before slax-wine-iso, which strips it from every entry.
+  - serial-console
+
+  # Removal before anything that builds. Second rather than first is legal, because
+  # serial-console builds no bundle.
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
+
+  - recipes/available/wine.yaml
+  - recipes/available/wine-desktop.yaml
+  - recipes/available/notepadpp32.yaml
+  - recipes/available/notepadpp64.yaml
+  - recipes/available/slax-wine-iso.yaml
+
+  # Prints facts about the assembled union to the serial console before change_root.
+  # `marker` is the persistence probe, a neutral file for the reason slax32-wine-test.yaml
+  # gives. `report` is slax32-wine-test's list, extended for this base: both Notepad++
+  # layers, both Wine loaders and their preloaders (paths from Debian's file lists for
+  # wine64 and wine32), the foreign architecture that lets wine32 exist at all, and the
+  # tiles' icons, since a tile whose Icon= path is missing is dropped from the launcher.
+  - name: testkit
+    vars:
+      marker: /var/lib/slax-wine-perch-marker
+      report: >-
+        /usr/local/bin/slax-wine /usr/local/bin/notepadpp32 /usr/local/bin/notepadpp64
+        /usr/share/applications/5wine.desktop
+        /usr/share/applications/7notepadpp32.desktop
+        /usr/share/applications/7notepadpp64.desktop
+        /usr/share/icons/hicolor/scalable/apps/wine.svg
+        /usr/share/icons/Adwaita/48x48/legacy/accessories-text-editor.png
+        /etc/profile.d/wine.sh /etc/slax-wine-release
+        /opt/notepadpp32/npp32-installer.exe /opt/notepadpp64/npp64-installer.exe
+        /usr/lib/wine/wine64 /usr/lib/wine/wine64-preloader
+        /usr/lib/wine/wine /usr/lib/wine/wine-preloader /var/lib/dpkg/arch
+
+  # LAST: boot.uefi parses isolinux.cfg, so it must see every edit above.
+  - uefi-bootable
+output:
+  name: "slax64-wine-test-{{version}}.iso"

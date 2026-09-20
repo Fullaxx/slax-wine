@@ -10,12 +10,12 @@ base:
   arch: 32bit
   version: "12.2.0"
 recipes:
-  # THE CORE FOUR, byte-for-byte the list in profiles/slax32-wine-bios.yaml and in the same
+  # THE CORE LIST, byte-for-byte the one in profiles/slax32-wine-bios.yaml and in the same
   # order, preceded by the same removal. ci/checks/96-release-consistency.sh section 5
-  # fails if the two disagree: 5(b) compares the `recipes/available/` paths, and because
+  # fails if they disagree: 5(b) compares the `recipes/available/` paths, and because
   # that comparison reads only those lines it cannot see remove-bundle at all -- which is
-  # named, not pathed, because it is upstream's -- so 5(a3) separately requires both
-  # shipped profiles to list it AHEAD of anything that builds.
+  # named, not pathed, because it is upstream's -- so 5(a3) separately requires every
+  # shipped profile to list it AHEAD of anything that builds.
   #
   # REMOVAL FIRST, AND IT MUST BE A RECIPE OF ITS OWN. lib/validate.py refuses a recipe
   # that mixes `bundle.remove` with anything additive, so the browser removal that used to
@@ -41,7 +41,7 @@ recipes:
 
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
-  - recipes/available/notepadpp.yaml
+  - recipes/available/notepadpp32.yaml
   - recipes/available/slax-wine-iso.yaml
 
   # -- and the one thing that makes this image different ------------------------------

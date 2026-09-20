@@ -6,17 +6,24 @@ metadata:
   tags: [bundle, desktop, wine]
 compat:
   flavours: [debian]
-  arch: [32bit]
+  arch: [32bit, 64bit]
   slax: ">=12.2.0 <13.0.0"
   privilege: none
-  # This bundle masks the Chromium launcher that `wine` leaves behind when it removes
-  # 05-chromium.sb, and its Wine launcher is pointless without the Wine that recipe
-  # installs. Declared as a path, for the reason notepadpp.yaml spells out.
+  # This bundle masks the Chromium launcher that remove-bundle leaves behind when it drops
+  # 05-chromium.sb (the launcher itself lives in 03-desktop.sb), and its Wine launcher is
+  # pointless without the Wine that wine.yaml installs. Declared as a path, for the reason
+  # notepadpp32.yaml spells out.
   requires:
     - recipes/available/wine.yaml
 vars:
   bundle: 21-wine-desktop
 steps:
+  # TWO STEPS, ONE BUNDLE. Both build 21-wine-desktop and each is guarded by
+  # `when: arch==...`, so exactly one runs. Three of their five files are the same file:
+  # the 32-bit step anchors them (&wine_tile, &browser_mask, &slax_wine_wrapper) and the
+  # 64-bit step names the anchors, so there is one copy of each to edit. What differs is
+  # /etc/profile.d/wine.sh (WINEARCH) and /etc/slax-wine-release (the base).
+  #
   # bundle.files, NOT rootcopy.files. rootcopy is copied onto the union on EVERY boot and
   # costs that much RAM every time, and cannot be switched off; a bundle is mounted
   # read-only from the medium and `noload=21-wine-desktop.sb` gives back stock Slax's
@@ -37,6 +44,7 @@ steps:
   # 21 so it sits above 20-wine (payload below, integration above) and above 03-desktop,
   # whose /usr/share/applications it overrides.
   - verb: bundle.files
+    when: arch==32bit
     bundle: "{{bundle}}"
     files:
       # -- the launcher ---------------------------------------------------------------
@@ -64,12 +72,13 @@ steps:
       # generator's own loop: `Icon=wine` -> DROPPED, this value -> EMITTED, while
       # stock `Icon=terminal` and `Icon=chromium.png` resolve normally.
       #
-      # SVG is safe here: Slax ships imlib2's svg.so loader (03-desktop.sb,
-      # usr/lib/i386-linux-gnu/imlib2/loaders/svg.so), which is what xlunch renders
-      # through. If T-040 shows it does not render, the fallback is to ship a PNG under
-      # /usr/share/pixmaps/ -- the bare $ICONPATH/$Icon shape needs no size directory.
-      # This is the SAME [ -e "$Icon" ] guard documented under the chromium mask below.
-      # It was understood there and not applied here, and that cost both launchers.
+      # SVG is safe here: Slax ships imlib2's svg.so loader in 03-desktop.sb on both bases
+      # (usr/lib/i386-linux-gnu/imlib2/loaders/svg.so, and x86_64-linux-gnu on the 64-bit
+      # one), which is what xlunch renders through, and the tile's icon was seen drawn on
+      # both. Were it ever not to render, the fallback is a PNG under /usr/share/pixmaps/
+      # -- the bare $ICONPATH/$Icon shape needs no size directory. This is the SAME
+      # [ -e "$Icon" ] guard documented under the chromium mask below. It was understood
+      # there and not applied here, and that cost both launchers.
       #
       # Terminal=false is LOAD-BEARING, and was verified against the shipped script.
       # fbappselect:42 runs `ldd $whi | grep libX11` and :50 wraps the command in an
@@ -83,7 +92,8 @@ steps:
       # standards-conforming launchers, but do not rely on it -- and note that
       # fbappselect:37 greps UNANCHORED `Exec\s*=` with `head -n 1`, so TryExec only
       # loses because Exec= happens to come first in this file. Do not reorder them.
-      - dest: /usr/share/applications/5wine.desktop
+      - &wine_tile
+        dest: /usr/share/applications/5wine.desktop
         mode: "0644"
         content: |
           [Desktop Entry]
@@ -98,8 +108,8 @@ steps:
           Categories=System;Emulator;
 
       # -- mask the browser we removed -------------------------------------------------
-      # wine.yaml deletes 05-chromium.sb, but 5chromium.desktop lives in 03-desktop.sb
-      # and survives. A file at the same path in a higher bundle replaces it.
+      # remove-bundle deletes 05-chromium.sb, but 5chromium.desktop lives in 03-desktop.sb
+      # and survives it. A file at the same path in a higher bundle replaces it.
       #
       # Hidden=true is the key that xlunch actually reads: xlunch_genquick greps
       # `^(Name|Icon|Exec|Hidden|Terminal)=` and tests `Hidden = true`. NoDisplay is not
@@ -124,7 +134,8 @@ steps:
       # Upstream's fbliveapp offers to apt-install chromium when it is missing, which is
       # a reasonable default for a networked live system and useless on a released image
       # that is usually offline.
-      - dest: /usr/share/applications/5chromium.desktop
+      - &browser_mask
+        dest: /usr/share/applications/5chromium.desktop
         mode: "0644"
         content: |
           [Desktop Entry]
@@ -136,13 +147,11 @@ steps:
           Hidden=true
 
       # -- environment ------------------------------------------------------------------
-      # WINEARCH=win32 because this image has no wine64 and never will. What naming it
-      # actually buys is a CLEAR error rather than a confusing one: handed a prefix
-      # created on a 64-bit machine, Wine refuses loudly -- "WINEARCH set to win32 but
-      # <prefix> is a 64-bit installation" -- instead of proceeding into an
-      # arch-mismatched prefix. (An earlier comment here claimed it prevents the prefix
-      # being "treated as win64 and failing oddly"; the setting is right, that mechanism
-      # was not.)
+      # WINEARCH=win32 on the 32-bit base, whose Wine has no wine64. What naming it buys
+      # is a CLEAR error rather than a confusing one: handed a prefix created by a 64-bit
+      # Wine, Wine refuses loudly -- "WINEARCH set to win32 but <prefix> is a 64-bit
+      # installation" -- instead of proceeding into an arch-mismatched prefix. The 64-bit
+      # step below sets none; its comment says why.
       #
       # WINEDLLOVERRIDES="mscoree,mshtml=" disables Wine Mono and Wine Gecko, which is
       # what suppresses the first-run "download and install" dialog. Debian packages
@@ -176,8 +185,9 @@ steps:
       # The missing-wine check is not theoretical: the .desktop entry sets
       # Terminal=false, so a bare `exec wine` on an image booted with
       # `noload=20-wine.sb` would die with 127 and NOTHING would appear on screen.
-      # xmessage is in the base image (03-desktop.sb ships usr/bin/xmessage).
-      - dest: /usr/local/bin/slax-wine
+      # xmessage is in the base image (02-xorg.sb ships usr/bin/xmessage, on both bases).
+      - &slax_wine_wrapper
+        dest: /usr/local/bin/slax-wine
         mode: "0755"
         content: |
           #!/bin/sh
@@ -208,8 +218,10 @@ steps:
       # the same tag produce identical bytes. The build date and the slax-kitchen commit
       # are changing facts and belong in the release notes.
       #
-      # ci/checks/96-release-consistency.sh greps these three literals against build.env,
-      # so the image cannot claim a version it was not built as.
+      # ci/checks/96-release-consistency.sh checks VERSION, BASE_ISO and BASE_SHA256 in
+      # each step's copy of this file against build.env -- this one against BASE32_*, the
+      # 64-bit step's against BASE64_* -- so the image cannot claim a version or a base it
+      # was not built as. build.sh checks the built image's copy too.
       - dest: /etc/slax-wine-release
         mode: "0644"
         content: |
@@ -217,5 +229,38 @@ steps:
           VERSION="1.0.0"
           BASE_ISO="slax-32bit-debian-12.2.0.iso"
           BASE_SHA256="03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b"
+          WINE="8.0~repack-4 (Debian bookworm main)"
+          HOME_URL="https://github.com/Fullaxx/slax-wine"
+
+  # -- the 64-bit base ------------------------------------------------------------------
+  # The anchored three above, and its own wine.sh and release file.
+  - verb: bundle.files
+    when: arch==64bit
+    bundle: "{{bundle}}"
+    files:
+      - *wine_tile
+      - *browser_mask
+
+      # NO WINEARCH on the 64-bit base. Wine's own default applies: a new prefix is
+      # win64, and 32-bit programs run in it through wine32. Setting WINEARCH=win64 here
+      # would buy nothing and cost something: the slax-wine wrapper re-sources this file,
+      # so it would silently override a user's own `WINEARCH=win32 WINEPREFIX=...` -- the
+      # way to make a 32-bit prefix on this base, which docs/using-wine.md describes.
+      - dest: /etc/profile.d/wine.sh
+        mode: "0644"
+        content: |
+          # slax-wine defaults. See /etc/slax-wine-release.
+          # No WINEARCH: new prefixes are win64, and run 32-bit programs too.
+          export WINEDLLOVERRIDES="mscoree,mshtml="
+
+      - *slax_wine_wrapper
+
+      - dest: /etc/slax-wine-release
+        mode: "0644"
+        content: |
+          NAME="slax-wine"
+          VERSION="1.0.0"
+          BASE_ISO="slax-64bit-debian-12.2.0.iso"
+          BASE_SHA256="61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70"
           WINE="8.0~repack-4 (Debian bookworm main)"
           HOME_URL="https://github.com/Fullaxx/slax-wine"

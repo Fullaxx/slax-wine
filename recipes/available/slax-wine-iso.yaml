@@ -6,7 +6,9 @@ metadata:
   tags: [boot, iso, release]
 compat:
   flavours: [debian]
-  arch: [32bit]
+  # Both bases. Only the volume descriptor differs between them, so only iso.metadata
+  # is split below, into one step per base guarded by `when: arch==...`.
+  arch: [32bit, 64bit]
   slax: ">=12.2.0 <13.0.0"
   privilege: none
 steps:
@@ -50,9 +52,21 @@ steps:
   # mounted or written to a stick. It is also what tests/structure/iso_assert.py must be
   # told with --volid, because assertion #1 otherwise hardcodes 'slax' -- which is
   # exactly why this project does not use `kitchen build`.
+  #
+  # ONE STEP PER BASE, so the label says which one an image is: SLAX32-WINE or
+  # SLAX64-WINE, the same tag as the file name. Nothing functional reads it -- GRUB finds
+  # the medium with `search --file /slax/boot/vmlinuz` and livekit by content -- so the
+  # two steps differ in identity alone.
   - verb: iso.metadata
+    when: arch==32bit
     volid: SLAX32-WINE
     appid: "slax32-wine (github.com/Fullaxx/slax-wine)"
+    publisher: "Brett Kuskie -- github.com/Fullaxx/slax-wine"
+    preparer: "slax-kitchen; Slax by Tomas Matejicek, see NOTICE.md"
+  - verb: iso.metadata
+    when: arch==64bit
+    volid: SLAX64-WINE
+    appid: "slax64-wine (github.com/Fullaxx/slax-wine)"
     publisher: "Brett Kuskie -- github.com/Fullaxx/slax-wine"
     preparer: "slax-kitchen; Slax by Tomas Matejicek, see NOTICE.md"
 

@@ -1,0 +1,26 @@
+apiVersion: slax-kitchen/v1
+kind: Profile
+metadata:
+  name: slax64-wine-bios
+  summary: 64-bit Slax with Wine and Notepad++ 32/64, stock bootloader -- BIOS only, no browser
+base:
+  flavour: debian
+  arch: 64bit
+  version: "12.2.0"
+recipes:
+  # slax32-wine-bios.yaml's list on the 64-bit base, plus notepadpp64 -- the x64
+  # Notepad++ -- directly after notepadpp32. Gate 96 §5(b) holds it to exactly that, and
+  # §5(a3) to removal-first. The comments in slax32-wine-bios.yaml explain the order and
+  # the removal; they hold here unchanged. The recipes themselves pick their 64-bit steps
+  # (`when: arch==64bit`) from the base this profile is built on.
+  - name: remove-bundle
+    vars: {drop: "^05-chromium\\.sb$"}
+
+  - recipes/available/wine.yaml
+  - recipes/available/wine-desktop.yaml
+  - recipes/available/notepadpp32.yaml
+  - recipes/available/notepadpp64.yaml
+  - recipes/available/slax-wine-iso.yaml
+output:
+  # Not used -- build.sh names the output from build.env. See slax32-wine-bios.yaml.
+  name: "slax64-wine-bios-{{version}}.iso"

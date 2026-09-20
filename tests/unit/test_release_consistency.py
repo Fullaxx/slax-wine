@@ -16,6 +16,12 @@ The same class of bug as slax-kitchen #23, one gate over. Invisible to an ordina
 nothing exports GIT_DIR outside a worktree hook, and every checkout here has its
 submodule -- so, like upstream's test_unit_gate.py, this puts the gate into both
 situations on purpose, and checks the poison bites before trusting a pass.
+
+AND SECTIONS 4 AND 5 MUST BITE. They hold four slax-wine images on two bases to one
+recipe list, each release file to its own base, and each profile's name to what it
+builds. A check nobody has seen fail is a check nobody knows works, so each is broken
+here once, in a copy of this repository, and must fail naming what was broken -- while
+the unbroken copy passes.
 """
 import os
 import shutil
@@ -142,6 +148,115 @@ def test_it_refuses_rather_than_guess_when_git_will_not_name_the_variables():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def fixture(tmp, edit=None):
+    """This repository's own files as a fresh git repository, vendor/slax-kitchen left empty.
+
+    Tracked files AND untracked ones git would track, so an uncommitted recipe or profile
+    is in the copy the gate reads. `edit(fx)` runs before the commit.
+    """
+    fx = os.path.join(tmp, "repo")
+    listing = git(ROOT, "ls-files", "-z", "--cached", "--others", "--exclude-standard").stdout
+    for f in listing.split("\0"):
+        src = os.path.join(ROOT, f)
+        if not f or f.startswith("vendor/") or not os.path.isfile(src):
+            continue
+        dst = os.path.join(fx, f)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(src, dst)
+    os.makedirs(os.path.join(fx, "vendor", "slax-kitchen"), exist_ok=True)
+    if edit:
+        edit(fx)
+    for a in (["init", "-q"], ["add", "-A"],
+              ["-c", "user.email=t@example.invalid", "-c", "user.name=t",
+               "commit", "-qm", "fixture"]):
+        git(fx, *a)
+    return fx
+
+
+def replace_once(fx, rel, old, new):
+    """Edit one file of the fixture; the edit must apply exactly once, or it proves nothing."""
+    path = os.path.join(fx, rel)
+    with open(path) as fh:
+        text = fh.read()
+    if text.count(old) != 1:
+        raise AssertionError(f"fixture edit does not apply once to {rel}: {old!r}")
+    with open(path, "w") as fh:
+        fh.write(text.replace(old, new))
+
+
+def gate_in_fixture(edit=None):
+    tmp = tempfile.mkdtemp(prefix="gate96-fx-")
+    try:
+        fx = fixture(tmp, edit)
+        return run_gate(fx, clean_env(REPO_ROOT=fx))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def refuses(name, edit, needle):
+    rc, out = gate_in_fixture(edit)
+    check(f"{name}: the gate refuses", rc != 0, True)
+    check(f"{name}: ...naming what was broken ({needle!r})", needle in out, True)
+
+
+def test_the_unbroken_copy_passes():
+    """The control. Without it, every refusal below could be the fixture's own fault."""
+    rc, out = gate_in_fixture()
+    check("an unedited copy of this repository passes gate 96", rc, 0)
+    if rc != 0:
+        FAILURES.append("  unedited copy said: " + " | ".join(
+            l.strip() for l in out.splitlines() if "FAIL" in l)[:600])
+
+
+def test_each_release_file_is_checked_against_its_own_base():
+    """Section 4. Swap the BASE lines between wine-desktop's two steps: a file-wide grep
+    still finds every line, so only a per-step check can see it."""
+    def swap(fx):
+        wd = "recipes/available/wine-desktop.yaml"
+        for key in ("BASE_ISO", "BASE_SHA256"):
+            with open(os.path.join(fx, wd)) as fh:
+                lines = [l for l in fh.read().splitlines() if l.strip().startswith(key + "=")]
+            if len(lines) != 2:
+                raise AssertionError(f"expected two {key} lines in {wd}, found {len(lines)}")
+            a, b = lines
+            replace_once(fx, wd, a + "\n", "@@SWAP@@\n")
+            replace_once(fx, wd, b + "\n", a + "\n")
+            replace_once(fx, wd, "@@SWAP@@\n", b + "\n")
+    refuses("BASE lines swapped between the 32- and 64-bit steps", swap,
+            "(arch==32bit): /etc/slax-wine-release BASE_ISO does not match build.env BASE32_ISO")
+
+
+def test_the_slax_wine_recipe_lists_cannot_drift():
+    """Section 5(b), both halves: within an architecture, and across the two."""
+    refuses("slax64-wine-uefi drops notepadpp32",
+            lambda fx: replace_once(fx, "profiles/slax64-wine-uefi.yaml",
+                                    "  - recipes/available/notepadpp32.yaml\n", ""),
+            "slax64-wine-bios and slax64-wine-uefi disagree on the recipe list")
+
+    def no_x64(fx):
+        for kind in ("bios", "uefi", "test"):
+            replace_once(fx, f"profiles/slax64-wine-{kind}.yaml",
+                         "  - recipes/available/notepadpp64.yaml\n", "")
+        # notepadpp64 would otherwise also fail 5(a) as a recipe in no profile; take it out
+        # of the copy so that the only thing left to fail is the cross-architecture rule.
+        os.remove(os.path.join(fx, "recipes/available/notepadpp64.yaml"))
+    refuses("every slax64 profile drops notepadpp64", no_x64,
+            "the slax64-wine recipe list is not the slax32-wine one plus notepadpp64")
+
+
+def test_a_profile_name_says_what_it_builds():
+    """Section 5(c): the base architecture, and the firmware."""
+    refuses("slax64-wine-bios on the 32-bit base",
+            lambda fx: replace_once(fx, "profiles/slax64-wine-bios.yaml",
+                                    "  arch: 64bit\n", "  arch: 32bit\n"),
+            "profiles/slax64-wine-bios.yaml: base arch is 32bit, but the name says 64bit")
+    refuses("slax32-wine-bios with a GRUB ESP",
+            lambda fx: replace_once(fx, "profiles/slax32-wine-bios.yaml",
+                                    "  - recipes/available/slax-wine-iso.yaml\n",
+                                    "  - recipes/available/slax-wine-iso.yaml\n  - uefi-bootable\n"),
+            "profiles/slax32-wine-bios.yaml lists uefi-bootable, but the name says bios")
+
+
 def test_every_test_here_is_registered():
     """A test that exists and never runs is the shape this repository keeps being warned about."""
     defined = {k for k, v in globals().items() if k.startswith("test_") and callable(v)}
@@ -152,6 +267,10 @@ def test_every_test_here_is_registered():
 TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_an_uninitialised_submodule_is_not_mistaken_for_this_repo,
          test_it_refuses_rather_than_guess_when_git_will_not_name_the_variables,
+         test_the_unbroken_copy_passes,
+         test_each_release_file_is_checked_against_its_own_base,
+         test_the_slax_wine_recipe_lists_cannot_drift,
+         test_a_profile_name_says_what_it_builds,
          test_every_test_here_is_registered]
 
 

@@ -8,12 +8,13 @@ compat:
   # 64-bit ONLY, and that is Flathub's decision, not ours: Bottles ships as a Flatpak and
   # nothing else ("We currently only offer Bottles as a flatpak package"), and its
   # flathub.json says `"only-arches": ["x86_64"]`. Debian has no bottles package in any
-  # suite. This is the whole reason slax-bottles is built on debian-64bit-12.2.0 while
-  # slax-wine stays on the 32-bit base. See docs/DECISIONS.md D-14.
+  # suite. So slax-bottles is built on debian-64bit-12.2.0 only. See docs/DECISIONS.md
+  # D-14.
   #
   # NO `requires:`, and in particular not wine.yaml. Bottles runs inside the Flatpak
   # sandbox and brings its own runners; it cannot see the host's /usr/bin/wine, so a
-  # 20-wine bundle here would be 166 MiB that nothing uses.
+  # 20-wine bundle here -- 466 MiB on this base, measured in slax64-wine -- would be
+  # something nothing uses.
   flavours: [debian]
   arch: [64bit]
   slax: ">=12.2.0 <13.0.0"
@@ -53,7 +54,8 @@ steps:
   # ONE bundle.files step, because a bundle name can be produced once.
   #
   # The payload is staged by build.sh, not committed and not installed in a chroot. That
-  # mirrors notepadpp: build.sh fetches, pins and verifies it, and this recipe copies it.
+  # mirrors the Notepad++ recipes: build.sh fetches, pins and verifies it, and this recipe
+  # copies it.
   # It is not done in bundle.script because `flatpak install` runs its triggers through
   # bwrap, and the build chroot has an empty /proc and no user namespace.
   #

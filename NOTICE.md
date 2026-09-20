@@ -51,17 +51,19 @@ and `ci/checks/96-release-consistency.sh` fails if that commit is not the curren
 ## Redistributing the ISOs
 
 slax-kitchen deliberately publishes **no** ISO, and says why: the GPLv2 source-offer obligation falls
-on whoever publishes a customized image. **slax-wine publishes two** — `slax32-wine-bios` and
-`slax32-wine-uefi` — so that obligation is ours, and this section is how it is discharged rather than
-a disclaimer.
+on whoever publishes a customized image. **slax-wine publishes four** — `slax32-wine-bios`,
+`slax32-wine-uefi`, `slax64-wine-bios` and `slax64-wine-uefi` — so that obligation is ours, and this
+section is how it is discharged rather than a disclaimer.
 
-The two images contain the **same** software: identical bundles, identical packages. The uefi one
-additionally carries a GRUB EFI binary built by `grub-mkstandalone` from the host's GRUB 2, which is
-**GPLv3+** — a licence the rest of the image does not use. It is generated at build time from
-packages the builder already has, so the corresponding source is whatever GRUB the build host
-installed. `build.sh` records which one that was on a `grub (ESP)` line in
-`out/build-summary-uefi.txt`, so the claim above points at something checkable rather than being a
-promise nothing keeps. The bios image contains no GPLv3 component at all.
+A base's two images contain the **same** software: identical bundles, identical packages. The 64-bit
+images carry the 32-bit ones' software built for their base — Wine in both halves, amd64 and i386 —
+plus the 64-bit build of Notepad++. The uefi images additionally carry a GRUB EFI binary built by
+`grub-mkstandalone` from the host's GRUB 2, which is **GPLv3+** — a licence the rest of the image
+does not use. It is generated at build time from packages the builder already has, so the
+corresponding source is whatever GRUB the build host installed. `build.sh` records which one that
+was on a `grub (ESP)` line in each uefi image's `out/build-summary-<variant>.txt`, so the claim
+above points at something checkable rather than being a promise nothing keeps. The bios images
+contain no GPLv3 component at all.
 
 **slax-bottles is a third image**, with a different software set: 64-bit Slax, flatpak from
 Debian bookworm, and the Bottles Flatpak with its runtimes, DXVK and VKD3D-Proton. It also carries the
@@ -82,8 +84,8 @@ tarballs as assets alongside the ISO, for everything whose version is known:
 
 | shipped binary | source attached |
 |---|---|
-| Wine 8.0~repack-4 and its Debian dependencies | Debian `deb-src`, bookworm — also permanently at `snapshot.debian.org` |
-| Notepad++ 8.9.8 | the `v8.9.8` tag, `notepad-plus-plus/notepad-plus-plus` |
+| Wine 8.0~repack-4 and every other Debian package `20-wine.sb` ships: its dependencies — on 64-bit for i386 and amd64 — and the base packages it upgrades to match, each listed with its version in the image's `packages.tsv` | Debian `deb-src`, bookworm — also permanently at `snapshot.debian.org` |
+| Notepad++ 8.9.8, the 32-bit and the 64-bit build | the `v8.9.8` tag, `notepad-plus-plus/notepad-plus-plus` |
 | Linux Live Kit, and the Slax build system | `Tomas-M/linux-live` at the commit pinned by the nested submodule |
 | `busybox` 1.26.2 in the initramfs | busybox.net, that release |
 | `ncurses-menu`, `mount.dynfilefs`, `mount.httpfs2`, `mc` | Tomáš's repositories, at their releases |

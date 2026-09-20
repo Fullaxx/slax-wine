@@ -1,16 +1,20 @@
-# `wine` — install Wine, and drop the browser to pay for it
+# `wine` — install Wine, on both bases
 
-**Status: runtime-verified** — applied to `debian-32bit-12.2.0`, all sixteen packages confirmed
-installed against the package database, 21 structure assertions passed, and on a full desktop boot
-**Wine ran a Windows program**: the Notepad++ installer executed and the installed editor launched.
-See [`notepadpp`](notepadpp.md) for that test. No Wine Mono / Gecko prompt appeared, which confirms
-`WINEDLLOVERRIDES` reached the session.
+**Status: runtime-verified**, on both bases. Applied to `debian-32bit-12.2.0` and to
+`debian-64bit-12.2.0`, every package each step names — sixteen and thirty-five — was confirmed
+installed against the package database, and the structure assertions passed. On a full desktop boot
+of each, **Wine ran a Windows program**: the Notepad++ installer executed and the installed editor
+launched ([`notepadpp32`](notepadpp32.md)). On 64-bit **both halves ran**: the 32-bit Notepad++ as a
+32-bit process, and the 64-bit one as a 64-bit process ([`notepadpp64`](notepadpp64.md)). No Wine
+Mono / Gecko prompt appeared on either, which confirms `WINEDLLOVERRIDES` reached the session.
 
 ```sh
 ./build.sh
 ```
 
-The recipe that defines the image: everything else here is integration around it.
+The recipe that defines the image: everything else here is integration around it. It serves both
+bases with one step each, guarded by `when: arch==32bit` and `when: arch==64bit`; both build
+`20-wine.sb`, and only the one matching the base runs ([DECISIONS.md](../DECISIONS.md) D-16).
 
 ## Two steps, and the order is the interesting part
 
@@ -48,7 +52,7 @@ Verified in the output: `98-dpkg-db.sb` declares `libpulse0`, and `20-wine.sb` s
 PulseAudio client libraries — `libpulse.so.0` and `libpulse-simple.so.0`, each with its versioned
 target, plus `pulseaudio/libpulsecommon-16.1.so`: five paths in all.
 
-## Sixteen packages, eight of which are free
+## 32-bit base: sixteen packages, eight of which are free
 
 Five are the payload. `wine32-preloader` is named explicitly because **nothing depends on it** — it
 Depends on `wine32`, not the reverse — and it is the prelinked low-address loader that old 32-bit
@@ -106,15 +110,22 @@ built slax/modules/20-wine.sb (170592 KiB, 3309 files)
 | binaries present | `/usr/bin/wine`, `/usr/bin/winecfg`, `/usr/bin/winefile`, `/usr/lib/wine/wine-preloader` |
 
 Booted under TCG (no `/dev/kvm` on the build host), all three livekit markers and every bundle in
-load order:
+load order — `slax32-wine-test` through isolinux, from its serial log:
 
 ```
-* Looking for slax data
+* Looking for slax data in /slax ...
 * Mounting bundles
-* modules/01-core.sb   01-firmware.sb   02-xorg.sb   03-desktop.sb   04-apps.sb
-* modules/20-wine.sb   21-wine-desktop.sb   30-notepadpp.sb   98-dpkg-db.sb
+* modules/01-core.sb
+* modules/01-firmware.sb
+* modules/02-xorg.sb
+* modules/03-desktop.sb
+* modules/04-apps.sb
+* modules/20-wine.sb
+* modules/21-wine-desktop.sb
+* modules/30-notepadpp32.sb
+* modules/98-dpkg-db.sb
+…
 Live Kit done, starting slax
-slax login:
 ```
 
 `05-chromium.sb` appears nowhere in the log, which is the removal half of the size claim.
@@ -124,16 +135,69 @@ installed size 563 MiB, but squashfs at 1 MiB blocks compresses it to 166.6 MiB 
 than the solid `.tar.xz` inside the `.deb`. The planning estimate of 105–120 MiB was wrong by about
 50 MiB, and [sizing.md](../sizing.md) carries the corrected ledger.
 
+## 64-bit base: both halves, thirty-five names
+
+The same Wine, `8.0~repack-4`, in its two halves: `wine64` for 64-bit Windows programs, and `wine32`
+— an **i386** package, so the step first runs `dpkg --add-architecture i386` (`apt.architectures`) —
+for 32-bit ones, each in its own 32-bit Linux process. The 64-bit Slax kernel runs those: its embedded
+config has `IA32_EMULATION=y`.
+
+**Every half is named, because Debian makes most of them optional.** `wine32` is only a *Recommends*
+of `wine64`, and both preloaders only *Suggests*; under `--no-install-recommends` a 64-bit Wine that
+does not name `wine32:i386` runs no 32-bit Windows program at all, and the build would not say so.
+So the step names eight: `wine`, `wine64`, `wine64-preloader`, `libwine`, `wine32:i386`,
+`wine32-preloader:i386`, `libwine:i386`, `fonts-wine` — and `build.sh` refuses an image whose
+package database lacks `wine64:amd64`, `wine32:i386` or `libwine` for either architecture.
+
+**The Recommends, twice.** The eleven the 32-bit step names are named again for amd64 — the 64-bit
+base has the same nine present and the same absentees — and the ten architecture-specific ones again
+for **i386**, so 32-bit programs get what the 32-bit image gives them. So do the six the 32-bit base
+carries without naming them (`libgl1-mesa-dri`, `libdbus-1-3`, `libkrb5-3`, `libxfixes3`, `libcups2`,
+`libgssapi-krb5-2`): absent from this base for i386, so named. `libpulse0:i386` arrives as a hard
+Depends of `libwine:i386`. 8 + 11 + 10 + 6 = 35 names.
+
+**Never `:i386` on an architecture-all package** (`wine`, `fonts-wine`, `fonts-liberation`). After the
+install the engine checks every name with `dpkg-query -W` as written, and an arch-all package is not
+found as `:i386`, so the step would fail after a successful install.
+
+**Lockstep.** A `Multi-Arch: same` library must be the same version on both architectures. The base
+dates from October 2023 and apt installs today's i386 copies, so it lifts each amd64 twin to match,
+and every package pinned to one of those follows: 79 packages on this build, among them glibc,
+systemd and udev, util-linux, e2fsprogs and OpenSSL ([DECISIONS.md](../DECISIONS.md) D-16 lists
+more, and `packages.tsv` every version). The 32-bit step upgrades one package, `libgnutls30`.
+
+Against `slax-64bit-debian-12.2.0.iso`:
+
+```
+removed 05-chromium.sb (-79 MiB)
+skip step 1 (bundle.packages): when arch==32bit is false [arch=64bit, flavour=debian]
+unpacked 01-core.sb + 01-firmware.sb + 02-xorg.sb + 03-desktop.sb + 04-apps.sb as the build root
+added foreign architecture i386
+verified installed: wine, wine64, wine64-preloader, libwine, wine32:i386, wine32-preloader:i386,
+  libwine:i386, fonts-wine, ... (all 35)
+delta: 9196 added, 2226 modified, 10966 kept after exclusions
+dpkg fragment: 329 package(s) declared (merged into 98-dpkg-db.sb at pack time)
+built slax/modules/20-wine.sb (477060 KiB, 10120 files)
+```
+
+| | |
+|---|---|
+| `20-wine.sb` | 488,509,440 B — **465.9 MiB**, against 166.6 MiB on the 32-bit base |
+| apt's closure | **60 new amd64 packages, 190 i386 ones, 79 base packages upgraded** — the fragment's 329 |
+| merged database | **825 entries**, from `04-apps`' 575 plus the fragment's 250 new ones; **816 installed** |
+| binaries present | `/usr/bin/wine`, `/usr/lib/wine/wine64`, `/usr/lib/wine/wine64-preloader`, `/usr/lib/wine/wine` and `/usr/lib/wine/wine-preloader` (i386) |
+| `/var/lib/dpkg/arch` | ships in this bundle, listing `amd64` and `i386` |
+
 ## What this bundle alone does not prove
 
-Sixteen packages in the right place is not a working Wine — that took a desktop boot, and the test
-that produced it lives in [`notepadpp`](notepadpp.md). This page inherits its `runtime-verified`
-status from that observation rather than from anything checkable at build time; see the ladder in the
-[cookbook index](README.md).
+Packages in the right place are not a working Wine — that takes a desktop boot, and the tests that
+produce it live in [`notepadpp32`](notepadpp32.md) and [`notepadpp64`](notepadpp64.md). This page
+inherits its status from those observations rather than from anything checkable at build time; see
+the ladder in the [cookbook index](README.md).
 
 | you want | use |
 |---|---|
 | the launcher, and Wine's environment defaults | [`wine-desktop`](wine-desktop.md) |
-| a Windows program to test it with | [`notepadpp`](notepadpp.md) |
+| a Windows program to test it with | [`notepadpp32`](notepadpp32.md), and [`notepadpp64`](notepadpp64.md) on 64-bit |
 | ISO identity and a checksum | [`slax-wine-iso`](slax-wine-iso.md) |
-| to know why the image is 507 MiB | [sizing.md](../sizing.md) |
+| to know where the image's size goes | [sizing.md](../sizing.md) |

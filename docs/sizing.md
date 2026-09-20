@@ -1,9 +1,9 @@
-# Where the 507 MiB goes
+# Where the size goes
 
-Measured on the v1.0.0 build, not estimated. The planning estimate was **wrong by about 50 MiB**, and
-the reason is worth keeping.
+Measured on the v1.0.0 builds, not estimated. The planning estimate for the first image was **wrong
+by about 50 MiB**, and the reason is worth keeping.
 
-## The ledger
+## slax32-wine
 
 | | bytes | MiB |
 |---|---|---|
@@ -11,15 +11,43 @@ the reason is worth keeping.
 | − `05-chromium.sb` | −85,659,648 | −81.7 |
 | + `20-wine.sb` | +174,686,208 | +166.6 |
 | + `21-wine-desktop.sb` | +4,096 | +0.004 |
-| + `30-notepadpp.sb` | +6,713,344 | +6.4 |
+| + `30-notepadpp32.sb` | +6,713,344 | +6.4 |
 | + `98-dpkg-db.sb` (generated at pack time) | +131,072 | +0.1 |
 | **slax32-wine-bios 1.0.0** | **531,935,232** | **507.3** |
-| + `boot/efi.img` (uefi image only — a FAT12 ESP, **not** a bundle) | +6,488,064 | +6.2 |
+| + `boot/efi.img` (uefi image only — a FAT12 ESP, **not** a bundle), and the `/boot` directory that holds it | +6,488,064 + 2,048 | +6.2 |
 | **slax32-wine-uefi 1.0.0** | **538,425,344** | **513.5** |
 
 Net **+95,875,072 bytes** — +91.4 MiB over stock for the bios image, **+102,365,184** / +97.6 MiB for
 the uefi one. Both are under `WINE32_MAX_ISO_MIB=532` (513.5 is the larger), so one cap covers both and no
 per-variant value is needed. The uefi image has 18.5 MiB of headroom, the bios image 24.7 MiB.
+
+(Every ledger here adds up to the byte. An earlier version put the ESP at +6,488,064 and did not: the
+uefi image also gains a root-level `/boot` directory, bios has none, and its extent is one 2 KiB
+sector.)
+
+## slax64-wine
+
+The same system on the 64-bit base ([DECISIONS.md](DECISIONS.md) D-16):
+
+| | bytes | MiB |
+|---|---|---|
+| stock `slax-64bit-debian-12.2.0.iso` | 435,853,312 | 415.7 |
+| − `05-chromium.sb` | −82,903,040 | −79.1 |
+| + `20-wine.sb` (both halves of Wine, and 79 base packages lifted to match their i386 twins) | +488,509,440 | +465.9 |
+| + `21-wine-desktop.sb` | +4,096 | +0.004 |
+| + `30-notepadpp32.sb` | +6,713,344 | +6.4 |
+| + `31-notepadpp64.sb` | +6,860,800 | +6.5 |
+| + `98-dpkg-db.sb` (generated at pack time) | +131,072 | +0.1 |
+| **slax64-wine-bios 1.0.0** | **855,169,024** | **815.6** |
+| + `boot/efi.img` and its `/boot` directory | +6,488,064 + 2,048 | +6.2 |
+| **slax64-wine-uefi 1.0.0** | **861,659,136** | **821.7** |
+
+`WINE64_MAX_ISO_MIB=862` is the uefi image plus 5%, and covers the bios one too.
+
+**`20-wine.sb` is 2.8 times the 32-bit one**, and not because 64-bit code is bigger: it carries Wine
+twice, `libwine` for amd64 and for i386, plus an i386 copy of the libraries 32-bit programs load —
+Mesa among them, since the 64-bit base has only its own amd64 Mesa — and the 79 base packages apt
+upgraded in lockstep, which ship in this bundle rather than in the base's.
 
 **The ESP is 6.2 MiB, not a few KiB.** `grub-mkstandalone` embeds GRUB's modules into the EFI binary,
 which is most of it. Worth stating because the obvious guess — "an ESP is a stub loader" — is wrong
@@ -63,7 +91,7 @@ which copies the compressed bundles into RAM rather than an installed tree.
 
 | | saves | cost |
 |---|---|---|
-| `noload=30-notepadpp.sb` at boot | a squashfs mount and an aufs branch — **not** 6.4 MiB of RAM: `copy_to_ram` runs at `init:43`, *before* `mount_bundles` at `:46`, and copies unconditionally, so under `toram` the bundle is in RAM either way | no test application |
+| `noload=30-notepadpp32.sb` at boot | a squashfs mount and an aufs branch — **not** 6.4 MiB of RAM: `copy_to_ram` runs at `init:43`, *before* `mount_bundles` at `:46`, and copies unconditionally, so under `toram` the bundle is in RAM either way | no test application |
 | drop `01-firmware.sb` | ~91 MiB | no network firmware at all — wifi stops working |
 | drop the two absent Recommends | a few MiB | bitmap fonts, and no PulseAudio output from Wine |
 
@@ -83,7 +111,7 @@ that ships DXVK and VKD3D:
 | + `20-flatpak.sb` (flatpak and its dependency closure: 36 packages in its dpkg fragment) | +8,372,224 | +8.0 |
 | + `30-bottles.sb` (the Flatpak installation, DXVK, VKD3D, launcher) | +934,109,184 | +890.8 |
 | + `98-dpkg-db.sb` (generated at pack time) | +126,976 | +0.1 |
-| + `boot/efi.img` (the GRUB ESP, not a bundle) | +6,488,064 | +6.2 |
+| + `boot/efi.img` (the GRUB ESP, not a bundle) and its `/boot` directory | +6,488,064 + 2,048 | +6.2 |
 | **slax-bottles 1.0.0** | **1,302,048,768** | **1241.7** |
 
 `BOTTLES_MAX_ISO_MIB=1304` is that plus 5%, the same margin slax-wine uses. DXVK 3.1 and

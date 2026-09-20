@@ -8,10 +8,11 @@ base:
   arch: 32bit
   version: "12.2.0"
 recipes:
-  # THE CORE FOUR, and the order they are applied in. `profiles/slax32-wine-uefi.yaml`
-  # carries this same list and adds `uefi-bootable` after it; gate 96 section 5 fails if
-  # the two ever disagree, because two profiles that are meant to build the same system
-  # are exactly the kind of thing that drifts silently.
+  # THE CORE LIST, and the order it is applied in. Every slax-wine profile carries it:
+  # the slax32-wine ones exactly, the slax64-wine ones with notepadpp64 directly after
+  # notepadpp32, and the uefi and test ones add `uefi-bootable` last. Gate 96 section 5
+  # fails if any of them drift, because six profiles that build one system are exactly
+  # the kind of thing that drifts silently.
   #
   # A recipe absent from EVERY profile is never built -- the same gate fails on that too.
   #
@@ -20,7 +21,7 @@ recipes:
   # remove-bundle in the submodule and would never find ours, which live in this repo.
   # (remove-bundle is written in the {name, vars} form rather than as a plain string so
   # that `drop:` is stated; both forms resolve by name.) A path resolves from the CURRENT
-  # WORKING DIRECTORY (apply.py:2842), which is why build.sh cd's to the repo root before
+  # WORKING DIRECTORY (apply.py:3305), which is why build.sh cd's to the repo root before
   # applying.
   #
   # Order matters four times over:
@@ -28,7 +29,7 @@ recipes:
   #                  against a bundle that is about to be deleted
   #   wine           the payload, built on the stack the removal leaves
   #   wine-desktop   masks the launcher the removal leaves behind, so it must follow wine
-  #   notepadpp      depends on /usr/local/bin/slax-wine from wine-desktop
+  #   notepadpp32    depends on /etc/profile.d/wine.sh from wine-desktop
   #   slax-wine-iso  boot line and pack hints; last in THIS profile
   #
   # REMOVAL FIRST, AND IT MUST BE A RECIPE OF ITS OWN. lib/validate.py refuses a recipe
@@ -55,7 +56,7 @@ recipes:
 
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
-  - recipes/available/notepadpp.yaml
+  - recipes/available/notepadpp32.yaml
   - recipes/available/slax-wine-iso.yaml
 output:
   # Not used: build.sh names the output from build.env, because {{version}} here means

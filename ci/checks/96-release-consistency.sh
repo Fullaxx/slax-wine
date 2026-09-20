@@ -58,15 +58,21 @@ want_target="$BASE64_FLAVOUR-$BASE64_ARCH-$BASE64_VERSION"
     || fail "build.env: BASE64_TARGET '$BASE64_TARGET' != '$want_target' built from its parts"
 
 # ---- 2b. the app version is not left behind ----------------------------------------
-# APP_VERSION is not decorative: build.sh writes it into /opt/notepadpp/VERSION inside
-# the ISO and into build-summary.txt. build.env once told readers that updating the app
-# was "exactly two edits: APP_URL and APP_SHA256", which would ship an image that
+# APP_VERSION is not decorative: build.sh writes it into /opt/notepadpp{32,64}/VERSION
+# inside the ISO and into build-summary.txt. build.env once told readers that updating the
+# app was "exactly two edits: APP_URL and APP_SHA256", which would ship an image that
 # misreports its own application version. The URL carries the version twice, so the two
 # can be cross-checked instead of merely asked for.
-case "$APP_URL" in
-    *"$APP_VERSION"*) : ;;
-    *) fail "build.env: APP_VERSION '$APP_VERSION' does not appear in APP_URL -- did you update the URL and forget the version?" ;;
-esac
+# TWICE since notepadpp64: one Notepad++ release supplies both installers, so one
+# APP_VERSION has to appear in both URLs.
+app_url_has_version() {  # $1 = variable name, $2 = its value
+    case "$2" in
+        *"$APP_VERSION"*) : ;;
+        *) fail "build.env: APP_VERSION '$APP_VERSION' does not appear in $1 -- did you update the URL and forget the version?" ;;
+    esac
+}
+app_url_has_version APP32_URL "$APP32_URL"
+app_url_has_version APP64_URL "$APP64_URL"
 
 # ---- 3. the base ISO matches the PINNED sources.yaml -------------------------------
 # This is the assertion that earns the gate. The submodule pin decides which
@@ -129,20 +135,64 @@ PY
 fi
 
 # ---- 4. the image cannot lie about itself ------------------------------------------
-# wine-desktop.yaml writes /etc/slax-wine-release inline. An ISO that misreports its own
-# version is worse than one that reports nothing, because it is believed.
-# The file is named in both shipped profiles, so its absence is a broken build, not a
-# reason to skip three assertions quietly.
+# wine-desktop.yaml writes /etc/slax-wine-release inline, ONCE PER BASE: two bundle.files
+# steps, `when: arch==32bit` and `when: arch==64bit`. An ISO that misreports its own
+# version or base is worse than one that reports nothing, because it is believed.
+#
+# Each step's copy is checked against ITS base -- the 32-bit one against BASE32_*, the
+# 64-bit one against BASE64_* -- so the YAML is parsed, as in section 3: a whole-file
+# grep would pass with the two BASE lines swapped between the steps, or with one step's
+# VERSION left stale while the other's matched. Each value is still compared whole-line
+# and fixed-string, after the same whitespace normalisation line_present does.
+#
+# The file is named in every slax-wine profile, so its absence is a broken build, not a
+# reason to skip quietly. Without python3-yaml the per-base binding cannot be read; the
+# whole-line checks then run over the file as a whole, which is weaker, and say so.
 WD="$REPO_ROOT/recipes/available/wine-desktop.yaml"
 if [ ! -f "$WD" ]; then
     fail "recipes/available/wine-desktop.yaml is missing, so /etc/slax-wine-release is unchecked"
+elif have python3 && python3 -c 'import yaml' 2>/dev/null; then
+    if ! python3 - "$WD" "$VERSION" "$BASE32_ISO" "$BASE32_SHA256" "$BASE64_ISO" "$BASE64_SHA256" \
+            > "$TMP/rel" 2> "$TMP/rel.err" <<'PY'
+import sys, yaml
+path, version, iso32, sha32, iso64, sha64 = sys.argv[1:7]
+want = {"arch==32bit": ("BASE32", iso32, sha32), "arch==64bit": ("BASE64", iso64, sha64)}
+doc = yaml.safe_load(open(path))
+seen = set()
+for i, step in enumerate(doc.get("steps") or [], 1):
+    for f in step.get("files") or []:
+        if f.get("dest") != "/etc/slax-wine-release":
+            continue
+        when = (step.get("when") or "").replace(" ", "")
+        if when not in want:
+            print(f"FAIL wine-desktop.yaml step {i} writes /etc/slax-wine-release under "
+                  f"when: {step.get('when')!r}, which is neither arch==32bit nor arch==64bit")
+            continue
+        seen.add(when)
+        base, iso, sha = want[when]
+        lines = [l.strip() for l in (f.get("content") or "").splitlines()]
+        for key, val, src in (("VERSION", version, "VERSION"), ("BASE_ISO", iso, base + "_ISO"),
+                              ("BASE_SHA256", sha, base + "_SHA256")):
+            if f'{key}="{val}"' not in lines:
+                print(f"FAIL wine-desktop.yaml step {i} ({when}): /etc/slax-wine-release "
+                      f"{key} does not match build.env {src}")
+for when in want:
+    if when not in seen:
+        print(f"FAIL wine-desktop.yaml has no /etc/slax-wine-release step for {when}")
+PY
+    then
+        fail "wine-desktop.yaml release check crashed: $(tr '\n' ' ' < "$TMP/rel.err" | tail -c 200)"
+    fi
+    while IFS= read -r line; do
+        case "$line" in FAIL\ *) fail "${line#FAIL }" ;; esac
+    done < "$TMP/rel"
 else
-    line_present "$WD" "VERSION=\"$VERSION\"" \
-        || fail "wine-desktop.yaml: /etc/slax-wine-release VERSION does not match build.env ($VERSION)"
-    line_present "$WD" "BASE_ISO=\"$BASE32_ISO\"" \
-        || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_ISO does not match BASE32_ISO"
-    line_present "$WD" "BASE_SHA256=\"$BASE32_SHA256\"" \
-        || fail "wine-desktop.yaml: /etc/slax-wine-release BASE_SHA256 does not match BASE32_SHA256"
+    note "python3-yaml not installed - wine-desktop.yaml release lines checked file-wide, not per base"
+    for want in "VERSION=\"$VERSION\"" "BASE_ISO=\"$BASE32_ISO\"" "BASE_SHA256=\"$BASE32_SHA256\"" \
+                "BASE_ISO=\"$BASE64_ISO\"" "BASE_SHA256=\"$BASE64_SHA256\""; do
+        line_present "$WD" "$want" \
+            || fail "wine-desktop.yaml: no /etc/slax-wine-release line $want"
+    done
 fi
 
 # The same for slax-bottles, whose release file is written by bottles.yaml. The Bottles
@@ -163,17 +213,15 @@ else
         || fail "bottles.yaml: /etc/slax-bottles-release BOTTLES_VERSION does not match build.env ($BOTTLES_VERSION)"
 fi
 
-# ---- 5. no orphan recipes, and the two shipped profiles must not drift --------------
+# ---- 5. no orphan recipes, and the slax-wine profiles must not drift ---------------
 # The profiles are authoritative (build.sh drives `kitchen apply --profile`), so a recipe
 # in NO profile is never built and never tested -- it just looks like it ships.
 #
-# There are two shipped profiles now, bios and uefi, and they are meant to build the same
-# system by two boot routes. That makes them exactly the kind of pair that drifts: add a
-# recipe to one, forget the other, and half the release quietly stops containing it. So
-# this section asserts both halves -- coverage, and agreement.
+# slax-wine is six profiles: bios, uefi and test on each of the two bases. They build one
+# system, and that makes them exactly the kind of set that drifts: add a recipe to one,
+# forget another, and part of the release quietly stops containing it. So this section
+# asserts coverage, agreement, and that each profile's name says what it builds.
 PROFDIR="$REPO_ROOT/profiles"
-CORE_A="$PROFDIR/slax32-wine-bios.yaml"
-CORE_B="$PROFDIR/slax32-wine-uefi.yaml"
 
 if [ ! -d "$REPO_ROOT/recipes/available" ]; then
     fail "recipes/available is missing, so the profiles have nothing of ours to build"
@@ -219,16 +267,18 @@ else
     # lib/validate.py refuses a recipe that mixes bundle.remove with building, so the
     # removal lives in upstream's `remove-bundle` and each profile must list it. It is
     # THEIRS, so it is named rather than pathed, which means check (b) below -- which
-    # compares recipes/available/ paths -- cannot see it: the two shipped profiles could
-    # disagree about whether the browser is removed at all and (b) would stay green. Drop it and the image silently gains 82 MiB
-    # and a three-year-old browser; list it late and check_plan_order refuses the build.
-    # slax-bottles is held to removal-first too. It is NOT part of (b): it is a different
-    # system, not a third boot route to the same one.
-    for prof in "$CORE_A" "$CORE_B" "$PROFDIR/slax-bottles.yaml"; do
+    # compares recipes/available/ paths -- cannot see it: two shipped profiles could
+    # disagree about whether the browser is removed at all and (b) would stay green. Drop
+    # it and the image silently gains 82 MiB and a three-year-old browser; list it late
+    # and check_plan_order refuses the build. Every SHIPPED profile is held to it, the
+    # four slax-wine ones and slax-bottles'; the test profiles are held to the same order
+    # by the engine itself, and legitimately list serial-console first.
+    for prof in "$PROFDIR/slax32-wine-bios.yaml" "$PROFDIR/slax32-wine-uefi.yaml" \
+                "$PROFDIR/slax64-wine-bios.yaml" "$PROFDIR/slax64-wine-uefi.yaml" \
+                "$PROFDIR/slax-bottles.yaml"; do
         rel=${prof#"$REPO_ROOT"/}
         # A shipped profile that is missing cannot be checked, and "cannot be checked" is
-        # a failure here, not a skip (8e33450 retired the others). bios and uefi also fail
-        # in (b) below; slax-bottles has no other check that would notice.
+        # a failure here, not a skip (8e33450 retired the others).
         [ -f "$prof" ] || { fail "$rel is missing, so its removal order is unchecked"; continue; }
         # Both spellings: the bare `- remove-bundle` and the object form
         # `- name: remove-bundle`, which is what these profiles actually use so that
@@ -245,22 +295,80 @@ else
         fi
     done
 
-    # (b) the two shipped profiles carry an IDENTICAL core list, in the same order.
-    # uefi adds `- uefi-bootable`, a bare name resolved from the engine, so comparing
-    # only the recipes/available/ entries is the right comparison.
-    if [ ! -f "$CORE_A" ] || [ ! -f "$CORE_B" ]; then
-        fail "expected both profiles/slax32-wine-bios.yaml and -uefi.yaml; the release is a pair"
-    else
-        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$CORE_A" \
-            | grep -E '^- recipes/available/' > "$TMP/core-a" || true
-        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$CORE_B" \
-            | grep -E '^- recipes/available/' > "$TMP/core-b" || true
-        [ -s "$TMP/core-a" ] || fail "slax32-wine-bios.yaml lists no recipes"
-        if ! cmp -s "$TMP/core-a" "$TMP/core-b"; then
-            fail "the bios and uefi profiles disagree on the core recipe list:$(
-                  diff "$TMP/core-a" "$TMP/core-b" | tr '\n' ' ')"
+    # (b) one recipe list for the whole of slax-wine.
+    #
+    # Only the recipes/available/ entries are compared: those are ours. What else a
+    # profile lists is upstream's and named, not pathed -- remove-bundle (a3 above),
+    # uefi-bootable (c below), and a test profile's serial-console and testkit -- so
+    # comparing only the paths is the right comparison.
+    #
+    # Within an architecture, bios, uefi and test list the same paths in the same order.
+    # Across the two, the 64-bit list is the 32-bit one with notepadpp64 added directly
+    # after notepadpp32, and nothing else: the x64 Notepad++ is the one thing a 64-bit
+    # image carries that a 32-bit one does not.
+    core() {  # $1 = profile, $2 = output file
+        sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" \
+            | grep -E '^- recipes/available/' > "$2" || true
+    }
+    for bits in 32 64; do
+        ref="$PROFDIR/slax$bits-wine-bios.yaml"
+        if [ ! -f "$ref" ]; then
+            fail "profiles/slax$bits-wine-bios.yaml is missing, so the slax$bits-wine recipe list is unchecked"
+            continue
+        fi
+        core "$ref" "$TMP/core-$bits"
+        [ -s "$TMP/core-$bits" ] || fail "slax$bits-wine-bios.yaml lists no recipes"
+        for kind in uefi test; do
+            prof="$PROFDIR/slax$bits-wine-$kind.yaml"
+            [ -f "$prof" ] || { fail "profiles/slax$bits-wine-$kind.yaml is missing"; continue; }
+            core "$prof" "$TMP/core-x"
+            if ! cmp -s "$TMP/core-$bits" "$TMP/core-x"; then
+                fail "slax$bits-wine-bios and slax$bits-wine-$kind disagree on the recipe list:$(
+                      diff "$TMP/core-$bits" "$TMP/core-x" | tr '\n' ' ')"
+            fi
+        done
+    done
+    if [ -s "$TMP/core-32" ] && [ -s "$TMP/core-64" ]; then
+        awk '{ print } $0 == "- recipes/available/notepadpp32.yaml" { print "- recipes/available/notepadpp64.yaml" }' \
+            "$TMP/core-32" > "$TMP/core-64-want"
+        if ! cmp -s "$TMP/core-64-want" "$TMP/core-64"; then
+            fail "the slax64-wine recipe list is not the slax32-wine one plus notepadpp64 after notepadpp32:$(
+                  diff "$TMP/core-64-want" "$TMP/core-64" | tr '\n' ' ')"
         fi
     fi
+
+    # (c) a profile's name says what it builds. build.sh picks each image's profile BY the
+    # image's name (profiles/<image>.yaml) and names the ISO file, its summary and its
+    # application id after it, so a slax64 name on a 32-bit base, or a -bios name on a
+    # profile that carries a GRUB ESP, would ship an image that is mislabelled everywhere
+    # it is labelled. The base arch is read from the base: block's own `arch:` line;
+    # uefi-bootable is matched as a list entry, not anywhere in the file, because every
+    # profile mentions it in comments.
+    while IFS= read -r prof; do
+        [ -n "$prof" ] || continue
+        n=$(basename "$prof" .yaml)
+        case "$n" in
+            slax32-*)                 want=32bit ;;
+            slax64-*|slax-bottles*)   want=64bit ;;
+            *) fail "profiles/$n.yaml: the name says no base -- expected slax32-, slax64- or slax-bottles"; continue ;;
+        esac
+        arch=$(sed -n '/^base:/,/^[^[:space:]#]/s/^[[:space:]]*arch:[[:space:]]*//p' "$prof" | head -1)
+        [ "$arch" = "$want" ] \
+            || fail "profiles/$n.yaml: base arch is ${arch:-missing}, but the name says $want"
+        case "$n" in
+            slax32-wine-*|slax64-wine-*)
+                if grep -qE '^[[:space:]]*-[[:space:]]*uefi-bootable[[:space:]]*$' "$prof"; then
+                    has=1
+                else
+                    has=0
+                fi
+                case "$n" in
+                    *-bios) [ "$has" = 0 ] || fail "profiles/$n.yaml lists uefi-bootable, but the name says bios" ;;
+                    *-uefi|*-test) [ "$has" = 1 ] || fail "profiles/$n.yaml does not list uefi-bootable, but the name says ${n##*-}" ;;
+                    *) fail "profiles/$n.yaml: a slax-wine profile ends -bios, -uefi or -test" ;;
+                esac ;;
+        esac
+    done < "$TMP/prof"
 fi
 
 # ---- 6. a tagged HEAD must be honest ------------------------------------------------

@@ -29,7 +29,7 @@ an x86_64 Flatpak, so it cannot go on slax-wine's 32-bit base
 | `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles plus 12 runtime refs), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | 890.8 MiB |
 
 `20-` is this image's platform and `30-` its application: the same split as slax-wine's
-`20-wine`/`30-notepadpp` (D-5). `noload=30-bottles.sb` gives a Slax with flatpak and nothing in it,
+`20-wine`/`30-notepadpp32` (D-5). `noload=30-bottles.sb` gives a Slax with flatpak and nothing in it,
 and no tile either, because the launcher ships in the same bundle. `noload=20-flatpak.sb` is the
 one that leaves a tile to click. The wrapper then says flatpak is missing, rather than failing
 silently.

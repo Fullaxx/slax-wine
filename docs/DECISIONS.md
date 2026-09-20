@@ -97,9 +97,9 @@ neither of its reasons survived:
 
 Proved by building rather than argued: with the list gone, all three images came out with the same
 contents as the `337f7e7` builds. That covers every entry of `20-wine.sb`, `21-wine-desktop.sb`,
-`30-notepadpp.sb` and `98-dpkg-db.sb` by type, mode, owner, size, link target and sha256, and the
-five PulseAudio paths are still in `20-wine.sb`. The default stack left `05-chromium` out exactly as
-the named one did.
+`30-notepadpp.sb` (as `30-notepadpp32.sb` was named then) and `98-dpkg-db.sb` by type, mode, owner,
+size, link target and sha256, and the five PulseAudio paths are still in `20-wine.sb`. The default
+stack left `05-chromium` out exactly as the named one did.
 
 ## D-4 · No Wine Mono, no Wine Gecko
 
@@ -113,7 +113,7 @@ control do not work.
 **What would change this:** a target application needing .NET. The MSIs can be added to the prefix on
 a persistent stick without rebuilding.
 
-## D-5 · Bundles at 20/21/30
+## D-5 · Bundles at 20/21/30/31
 
 slax-kitchen's canonical table allocates `00`–`09` to the platform, **`10`–`89` to forks**, `90`–`97`
 to headroom, and refuses `98` (generated database) and `99` (`savechanges`). Inside the fork band this
@@ -122,16 +122,24 @@ project uses `20`–`29` for its platform and `30`–`89` for applications, star
 grows**: `10`–`12` when this was written, `10`–`16` today. Ceding the low end costs nothing and makes
 a collision structurally impossible rather than merely unlikely.
 
+The application band holds `30-notepadpp32` on every slax-wine image and `31-notepadpp64` beside it on
+the 64-bit ones (D-16).
+
 An earlier draft used `07`/`08`, which are slax-kitchen's. Reading the convention back to upstream is
 what prompted them to consolidate four disagreeing statements into one table.
 
 **What would change this:** upstream re-drawing the bands.
 
-## D-6 · The installer, not the portable build
+## D-6 · The installers, not the portable builds
 
 A portable `.exe` proves Wine can load a PE binary and open a window. The NSIS installer additionally
 exercises the installer runtime, registry writes, file creation inside the prefix and shortcut
-generation — much closer to what a game needs. It also makes updating two edits in `build.env`.
+generation — much closer to what a game needs. Each installer is staged under a stable name, so
+updating Notepad++ touches `build.env` and nothing else.
+
+Two installers since D-16: the x86 one (`notepadpp32`) on every image and the x64 one (`notepadpp64`)
+on the 64-bit ones. Measured, the x64 installer is itself PE32, an NSIS stub; what it installs is
+x86-64.
 
 It cannot run at build time: `bundle.script`'s chroot has no `/proc` and `wineboot` needs it. So the
 bundle ships the installer and the live system runs it — which doubles as the persistence
@@ -155,8 +163,8 @@ proprietary case becomes "point it at a local path instead of a URL".
 filesystem booted through `isolinux.cfg`, where persistence is `MENU DISABLED` — so the one route it
 enables is the one that cannot keep a Wine prefix.
 
-**`uefi-bootable`: now applied, in `profiles/slax32-wine-uefi.yaml`** — for a **narrower** reason than
-this entry first claimed on reversing, and the correction is the useful part.
+**`uefi-bootable`: now applied, in the `-uefi` profiles** — and what it does is **narrower** than this
+entry first claimed on reversing; the correction is the useful part.
 
 The original entry called it unnecessary because *"`bootinst.sh` … relocates the EFI loader, giving
 BIOS **and** UEFI boot from an ordinary ISO."* True, and incomplete: the loader `bootinst` relocates
@@ -167,28 +175,28 @@ stick" — the filesystem that caps persistence at a 16 GB container.
 persistence coexist". **That is false, and boot-testing the image is what exposed it.** `uefi-bootable`
 puts GRUB in an El Torito ESP at `/boot/efi.img` — an *ISO* structure. A stick has no El Torito
 catalog, `bootinst` never copies it, and `slax/boot/EFI/Boot/` (what `bootinst` *does* relocate) is
-**byte-for-byte identical in both images**. Verified by diffing the two artifacts.
+**byte-for-byte identical in a base's two images**. Verified by diffing the artifacts, for each
+pair.
 
 So what the uefi image actually buys is: **the ISO boots on UEFI firmware** — optical media, or a
 virtual CD — which stock Slax cannot do at all (upstream's `known-upstream-bugs.md` entry 1). It
 changes nothing about sticks. Measured 2026-09-18: GRUB under x86-64 OVMF boots the 32-bit image to
 `Live Kit done`.
 
-That is still worth a second image — it is a superset for 6.2 MiB, and it fixes a real upstream
-limitation — but it is worth less than the previous paragraph claimed, and anyone planning a USB
-install should read it as "no difference".
+That is less than the previous paragraph claimed, and anyone planning a USB install should read it as
+"no difference". Each base ships a bios image and a uefi one (D-16); the uefi one is a superset,
+6.2 MiB larger.
 
 **This entry has now been wrong twice, both times about what the loader actually reaches**, and both
 times the error survived review and was caught by measurement. Its original "what would change this"
 predicted a read-only demo stick, which never happened. Treat predictions here as weaker evidence
 than the tables in `docs/50-cookbook/`.
 
-It is not free: a 6.2 MiB ESP and the image's only GPLv3 component (see [NOTICE.md](../NOTICE.md)) —
-which is why it is a second image rather than a change to the first.
+It adds a 6.2 MiB ESP, and the image's only GPLv3 component (see [NOTICE.md](../NOTICE.md)).
 
 **What would change this:** `bootinst` learning to install a GRUB ESP on a stick, or `syslinux.efi`
 gaining ext4 support — either would make UEFI-on-ext4 real, which it currently is not. Upstream
-shipping a `bootia32.efi` would extend both images to 32-bit UEFI firmware.
+shipping a `bootia32.efi` would extend the uefi images to 32-bit UEFI firmware.
 
 ## D-9 · No `perchsize` in the recipe
 
@@ -228,11 +236,11 @@ for three static binaries with no recorded version or build config. We publish a
 as release assets for everything identifiable, and state the gap plainly in [NOTICE.md](../NOTICE.md)
 with a written offer. An upstream issue asks for the missing provenance.
 
-Two images now, and the uefi one adds an obligation the bios one does not have: its GRUB ESP is
-**GPLv3+**, built at release time from the build host's GRUB rather than redistributed as upstream
-shipped it. `build.sh` records that GRUB's version on a `grub (ESP)` line in
-`out/build-summary-uefi.txt` so the corresponding source is identifiable — the same standard the rest
-of this entry holds everything else to.
+The uefi images add an obligation the bios ones do not have: their GRUB ESP is **GPLv3+**, built at
+release time from the build host's GRUB rather than redistributed as upstream shipped it. `build.sh`
+records that GRUB's version on a `grub (ESP)` line in each uefi image's build summary
+(`out/build-summary-32-uefi.txt`, `-64-uefi`, `-bottles`) so the corresponding source is
+identifiable — the same standard the rest of this entry holds everything else to.
 
 **What would change this:** upstream answering that issue — which closes the gap for every Slax
 derivative, not just this one.
@@ -250,31 +258,32 @@ is chosen at `pack`.
 
 ## D-14 · slax-bottles: a second system on the 64-bit base, with no Debian Wine
 
-**Bottles cannot run on slax-wine's base.** It ships only as a Flatpak (its docs: *"We currently
-only offer Bottles as a flatpak package"*), its Flathub manifest is `"only-arches": ["x86_64"]`, and
-Debian packages it in no suite at all. slax-wine is 32-bit (why is an open question, see
-[Q-1](#q-1--why-is-slax-wine-32-bit)), so there is no way to put Bottles "on top of" it.
-slax-kitchen's pinned `sources.yaml` also carries `debian-64bit-12.2.0`, and `slax-bottles` is
-built on that.
+**Bottles is x86-64 only.** It ships only as a Flatpak (its docs: *"We currently only offer
+Bottles as a flatpak package"*), its Flathub manifest is `"only-arches": ["x86_64"]`, and Debian
+packages it in no suite at all, so it cannot go on the 32-bit base. slax-kitchen's pinned
+`sources.yaml` carries `debian-64bit-12.2.0`, and `slax-bottles` is built on that — the base the
+`slax64-wine` images now share (D-16).
 
 **And it carries no Debian Wine.** The obvious plan was slax-wine's recipes plus Bottles. It does
 not work: Bottles runs inside the Flatpak sandbox and uses its own runners, so it cannot see
-`/usr/bin/wine`, and a `20-wine` bundle would be 166 MiB that nothing uses. Our other recipes do
-not transfer either. `notepadpp` requires `wine-desktop`, which requires `wine`, so naming either
-one pulls in the 32-bit Wine. What does transfer is upstream's: `remove-bundle`, `uefi-bootable`,
-`serial-console` and `testkit`, all unchanged. From `slax-wine-iso` we copied two steps, the
-automount removal and the checksum, into `slax-bottles-iso`. We did not turn a recipe that two
-shipped images depend on into a template.
+`/usr/bin/wine`, and a `20-wine` bundle would be Wine that nothing uses — 465.9 MiB of it on this
+base (D-16). Our other recipes do not transfer either. `notepadpp32` requires `wine-desktop`, which
+requires `wine`, so naming either one pulls in Debian's Wine. What does transfer is upstream's:
+`remove-bundle`, `uefi-bootable`, `serial-console` and `testkit`, all unchanged. From
+`slax-wine-iso` we copied two steps, the automount removal and the checksum, into
+`slax-bottles-iso`, rather than giving a recipe the slax-wine images depend on a branch for another
+product. (D-16 later gave `slax-wine-iso` a step per base — for slax-wine itself, one product on two
+bases.)
 
-So this is **a different system**, not a third boot route to the same one. Gate 96 §5(b), which
-holds bios and uefi to one recipe list, deliberately does not compare it. §5(a3) does hold it to
+So this is **a different system**, not another variant of slax-wine. Gate 96 §5(b), which holds
+the slax-wine profiles to one recipe list, deliberately does not compare it. §5(a3) does hold it to
 removal-first.
 
-**One image, not a pair.** It is built uefi-bootable, which is a strict superset (D-8), and
-hardware that runs x86_64 Bottles is almost always UEFI-era.
+**One image**, built uefi-bootable, so it boots BIOS and UEFI (D-8).
 
-**What would change this:** an i386 build of Bottles (its Flathub manifest allows x86_64 only today),
-or a Debian package. Either would make "slax-wine plus Bottles" possible, and this entry moot.
+**What would change this:** a Bottles that can use the system's Wine — a Debian package rather than
+the Flatpak — which would make `slax64-wine` plus Bottles one system instead of two. An i386 build
+(its Flathub manifest allows x86_64 only today) would extend that to `slax32-wine`.
 
 ## D-15 · Bottles baked into the image, not installed on first run
 
@@ -321,38 +330,68 @@ command creates a bottle offline, and `notepad.exe` runs in it.
 **What would change this:** the ISO size mattering more than working offline. The first-run
 installer is a small recipe away.
 
----
+## D-16 · slax-wine is four ISOs
 
-## Open questions
+slax-wine ships **bios and uefi images on each of the two bases**, the same system on all four:
 
-Choices this file does not record a reason for yet. An entry here is a question with a plan to
-answer it, not a decision, and it moves up as a `D-` entry once it is answered.
+| image | base | boots |
+|---|---|---|
+| `slax32-wine-bios` | `debian-32bit-12.2.0` | BIOS |
+| `slax32-wine-uefi` | `debian-32bit-12.2.0` | BIOS, and 64-bit UEFI |
+| `slax64-wine-bios` | `debian-64bit-12.2.0` | BIOS |
+| `slax64-wine-uefi` | `debian-64bit-12.2.0` | BIOS, and 64-bit UEFI |
 
-## Q-1 · Why is slax-wine 32-bit?
+That is the whole decision, and it is not argued: the set is consistent, so that anyone can pick
+whichever image they want, for any reason. Everything below is how it is built.
 
-**Not answered.** slax-wine is built on `debian-32bit-12.2.0`, and nothing in this repository
-records why. `wine.yaml` and `build.env` carry the assumption in comments: the point is running 32-bit
-Windows programs with Debian's i386 `wine32`, and a 64-bit base would need `wine64` plus i386
-multiarch — "a larger image and a different project". Nothing in that is measured.
+**One set of recipes on both bases.** `wine`, `wine-desktop` and `slax-wine-iso` carry one step per
+base, guarded by `when: arch==32bit` or `arch==64bit` — upstream's own pattern (`enable-ssh`,
+`memtest86plus`, `locale-timezone-keyboard`). Copies would have cascaded, because `notepadpp32`
+requires `wine-desktop`, which requires `wine`. Gate 96 §5(b) holds the profiles of each base to one
+recipe list, and the 64-bit list to the 32-bit one plus `notepadpp64`; §5(c) holds each profile's name
+to its base and firmware.
 
-**The hypothesis behind it, untested:** old win32 programs are more trouble on a 64-bit OS, going
-by the maintainer's own experience of running them there.
+**Notepad++ in both widths.** `notepadpp32`, the x86 installer, is on all four images; `notepadpp64`,
+the x64 installer, on the two slax64 ones. Measured: the x64 installer is itself PE32, an NSIS stub,
+and installs x86-64 binaries — so its tile runs a 32-bit installer under WoW64 before it runs a 64-bit
+program. Every name of each — recipe, bundle, `/opt` directory, installer, command, tile, `build.env`
+variables — carries its 32 or 64.
 
-**What it costs, as measured so far** ([software.md](software.md) has the requirements side by side):
+**The 64-bit Wine is both halves.** Debian's 8.0~repack-4 runs a 32-bit Windows program in a separate
+32-bit Linux process, `wine32`, and makes that package only a *Recommends* of `wine64`: under
+`no_recommends`, a 64-bit Wine that does not name it runs no 32-bit program at all. `wine.yaml`'s
+64-bit step names `wine64`, `wine32:i386`, `libwine` for both architectures and both preloaders, and
+`build.sh` refuses an image whose package database lacks `wine64`, `wine32:i386` or `libwine` for
+either architecture. The kernel supports the 32-bit half: the 64-bit base's `/slax/boot/vmlinuz`
+embeds its configuration, which has `IA32_EMULATION=y`, `MODIFY_LDT_SYSCALL=y`, `X86_16BIT=y` and
+`X86_ESPFIX64=y`. Debian's `/usr/bin/wine` starts the 32-bit loader whenever `wine32` is installed,
+and Wine hands a 64-bit program to `wine64` itself — measured, the x64 Notepad++ runs as a 64-bit
+process, while `wine cmd` is the 32-bit `cmd` ([using-wine.md](using-wine.md#on-slax64-wine)).
 
-- the image cannot run 64-bit Windows programs;
-- its kernel is Debian's `686-pae`, so it needs a CPU with PAE.
+**i386 parity.** 32-bit programs get what the 32-bit image gives them: the step names an i386 copy of
+every library slax32's Wine has, whether named there or already in its base. The amd64 list is the
+32-bit step's, name for name — measured, the 64-bit base has the same nine of those libraries, and
+lacks the same ones (`libpulse0`, `fonts-liberation`, `libasound2-plugins`, `libvulkan1`).
 
-(32-bit UEFI firmware is not on that list. No image here boots on it, slax-bottles included, because
-upstream ships no `bootia32.efi` (D-8), so it is not a cost of choosing 32-bit.)
+**No `WINEARCH` on the 64-bit base.** New prefixes are win64, and 32-bit programs run in them through
+`wine32`. A user's own `WINEARCH=win32` makes a 32-bit prefix instead, and the `slax-wine` wrapper,
+which re-sources `/etc/profile.d/wine.sh`, passes it through. slax32 keeps `WINEARCH=win32`.
 
-**How to answer it:**
+**Lockstep, measured.** A `Multi-Arch: same` library must be the same version on both architectures.
+The base's amd64 packages date from October 2023 and apt installs today's i386 ones, so apt lifts
+each amd64 twin to match, and every package pinned to one of those follows. Measured on this build:
+**79 base packages**, every one an upgrade within bookworm, shipped in `20-wine.sb` — glibc
+(`libc6`, `libc-bin`, `locales`: `2.36-9+deb12u3` → `+deb12u14`), systemd and udev (252.17 → 252.39,
+with `libsystemd0`, `libudev1` and `libpam-systemd`), util-linux with `mount` and its libraries,
+e2fsprogs, OpenSSL (3.0.11 → 3.0.20), Mesa, krb5, GnuTLS, GLib, libxml2, libcurl, FreeType, libpng
+and libtiff among them. The full list is every amd64 row of the image's `packages.tsv` whose version
+differs from `04-apps`'. slax32 has one such upgrade, `libgnutls30`. So slax64-wine boots a newer
+systemd and glibc than stock Slax — its boot tests are what show that still boots — and with
+`noload=20-wine.sb` its package database claims versions whose files are not loaded.
 
-1. Build a matching **64-bit slax-wine** target: `debian-64bit-12.2.0`, `wine` + `wine64` +
-   `wine32:i386`. The engine supports the i386 multiarch through `bundle.packages`'
-   `apt.architectures`, and `wine.yaml` can carry both package lists behind `when: arch==…`.
-2. Pick a set of **old win32 binaries**, the ones the hypothesis is about.
-3. Run the same set on both images, and record per program whether it installs, starts, and works.
+**Measured sizes:** `20-wine.sb` 465.9 MiB, against 166.6 MiB on the 32-bit base; `31-notepadpp64.sb`
+6.5 MiB; slax64-wine-bios 815.6 MiB and slax64-wine-uefi 821.7 MiB. See [sizing.md](sizing.md).
 
-The result either becomes a `D-` entry for 32-bit, with the measurement as its reason, or the
-reason to move slax-wine to 64-bit.
+**What would change this:** Debian shipping a Wine built for the new WoW64, which runs 32-bit Windows
+code inside a 64-bit process — it would need no i386 libraries, and the lockstep would go away. A
+bookworm point release changes the lockstep set, which the next build's `packages.tsv` lists.

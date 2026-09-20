@@ -1,0 +1,149 @@
+apiVersion: slax-kitchen/v1
+kind: Recipe
+metadata:
+  name: notepadpp32
+  summary: Ship the 32-bit (x86) Notepad++ installer as a swappable application layer
+  tags: [bundle, app, wine]
+compat:
+  flavours: [debian]
+  # Both bases. A 32-bit Windows program runs under the 32-bit base's Wine natively and
+  # under the 64-bit base's through wine32, so the same bundle serves every slax-wine
+  # image. Its 64-bit counterpart is notepadpp64.yaml, 64-bit base only.
+  arch: [32bit, 64bit]
+  slax: ">=12.2.0 <13.0.0"
+  privilege: none
+  # The launcher below sources /etc/profile.d/wine.sh, which 21-wine-desktop supplies,
+  # and runs the Wine that 20-wine does. Stating that in prose was not enough: `kitchen
+  # apply notepadpp`, as this recipe was named before it was tagged 32, once happily built
+  # a bundle whose launcher depended on files that were not in the image. resolve() walks
+  # this list before applying (apply.py:3331), so the dependency is real rather than
+  # documentary.
+  #
+  # PATHS, not bare names. Bare-name resolution searches the ENGINE's recipes/
+  # directories plus the current working directory (apply.py:3626), and ours live in this
+  # repo -- so a bare "wine-desktop" would not be found. build.sh cd's to the repo root
+  # for exactly this reason.
+  requires:
+    - recipes/available/wine-desktop.yaml
+vars:
+  bundle: 30-notepadpp32
+steps:
+  # A SWAPPABLE LAYER. Bundle numbering is the mechanism, not a naming convention: load
+  # order is the numeric prefix, higher wins, and union_append_bundles inserts each
+  # bundle at aufs branch index 1 so each arrival outranks the last. Delete this one file
+  # from /slax/modules/ on a stick and drop another 30-*.sb in its place -- no rebuild, no
+  # remaster -- or swap it live with `slax activate`.
+  #
+  # 30 because this project uses 20-29 for its platform (20-wine, 21-wine-desktop) and
+  # 30-89 for applications, inside the 10-89 band slax-kitchen allocates to forks. The
+  # 64-bit build is 31-notepadpp64, on the 64-bit base only.
+  #
+  # EVERYTHING HERE SAYS 32: the recipe, the bundle, /opt/notepadpp32, the installer, the
+  # command and the tile. notepadpp64.yaml says 64 in the same places, so which is which
+  # is never a question on an image that carries both.
+  #
+  # Notepad++ is a smoke test, not a proof. It exercises PE loading, the NSIS runtime,
+  # registry writes, file creation in the prefix and the common-controls GUI. It does
+  # NOT exercise DirectDraw/Direct3D, DirectSound, MSI or 16-bit code -- which for an
+  # old game are precisely the risky parts. docs/using-wine.md says so plainly.
+  #
+  # The payload is fetched and verified by build.sh, not committed: APP32_URL,
+  # APP32_SHA256 and APP_VERSION in build.env, staged under the stable name
+  # npp32-installer.exe so updating Notepad++ changes build.env and nothing here.
+  # APP_VERSION is not decorative: build.sh writes it into /opt/notepadpp32/VERSION
+  # inside the ISO, so leaving it behind ships an image that misreports its own
+  # application version.
+  #
+  # ONE bundle, one step. bundle.files takes a directory for `src:` and copies it
+  # recursively, so the payload and the two launcher files go in together -- a bundle
+  # name can only be produced once, and a second step targeting the same name is refused
+  # (correctly: two steps silently overwriting each other is how a bundle ends up with
+  # only half of what the recipe says).
+  #
+  # The launcher lives HERE rather than in 21-wine-desktop, so swapping the app bundle
+  # swaps its launcher too. That property is what makes a games variant a file swap.
+  #
+  # `src:` resolves against this recipe's own directory, so the staging dir travels with
+  # the recipe. build.sh populates it; it is gitignored.
+  - verb: bundle.files
+    bundle: "{{bundle}}"
+    files:
+      - dest: /opt/notepadpp32
+        src: ./notepadpp32.files/opt/notepadpp32
+
+      # Installs on first use, launches thereafter. Terminal=false on the .desktop for
+      # the same reason as the Wine entry: fbappselect decides whether to wrap a command
+      # in an xterm with `ldd | grep libX11`, and a shell script reports none.
+      #
+      # On a non-persistent boot the install lands in RAM and must be repeated every
+      # boot; on a persistent USB it happens once. That is the clearest demonstration of
+      # what persistence is for, and INSTALL.md leans on it.
+      - dest: /usr/local/bin/notepadpp32
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Launch the 32-bit (x86) Notepad++, installing it into the Wine prefix the
+          # first time. The prefix itself is created implicitly by the first `wine` call,
+          # which is slow (docs/using-wine.md). "$@" goes to the EDITOR, never to the
+          # installer.
+          [ -r /etc/profile.d/wine.sh ] && . /etc/profile.d/wine.sh
+          PREFIX=${WINEPREFIX:-$HOME/.wine}
+
+          # Where a 32-bit program lands is decided by the PREFIX, not by this image: a
+          # win64 prefix (it has syswow64) puts it under "Program Files (x86)", a win32
+          # prefix under "Program Files". Asked of the prefix, never found by trying both
+          # directories: in a win64 prefix "Program Files" is where notepadpp64 installs,
+          # and trying it would start the wrong build.
+          npp() {
+              if [ -d "$PREFIX/drive_c/windows/syswow64" ]; then
+                  echo "$PREFIX/drive_c/Program Files (x86)/Notepad++/notepad++.exe"
+              else
+                  echo "$PREFIX/drive_c/Program Files/Notepad++/notepad++.exe"
+              fi
+          }
+
+          # The guard means a cancelled install does not loop.
+          if [ ! -f "$(npp)" ]; then
+              wine /opt/notepadpp32/npp32-installer.exe
+          fi
+          NPP=$(npp)
+          # Report failure somewhere a user can SEE it. The .desktop entry sets
+          # Terminal=false, so a bare `exit 1` is completely silent -- a cancelled or
+          # failed install looked identical to nothing happening. xmessage is in the
+          # base image (02-xorg.sb ships usr/bin/xmessage, on both bases); the guard
+          # keeps the wrapper usable from a plain console too.
+          if [ ! -f "$NPP" ]; then
+              msg="Notepad++ (32-bit) is not installed: the installer was cancelled or failed.
+          Run it again to retry."
+              echo "notepadpp32: $msg" >&2
+              if command -v xmessage >/dev/null 2>&1; then
+                  xmessage -center "$msg" 2>/dev/null || true
+              fi
+              exit 1
+          fi
+          exec wine "$NPP" "$@"
+
+      # Icon= IS AN ABSOLUTE PATH, for the same reason as 21-wine-desktop's launcher.
+      # xlunch_genquick:34-46 searches only numeric size directories under
+      # hicolor/pixmaps/icons-gnome and only ever appends ".png". The only
+      # accessories-text-editor icon in the union lives under
+      # /usr/share/icons/Adwaita/*/legacy/ -- wrong theme, wrong path shape -- so a bare
+      # `Icon=accessories-text-editor` matched none of the 36 candidates and :52's
+      # `if [ -e "$Icon" ]` dropped this entry entirely. Measured, not inferred.
+      #
+      # An absolute path is never reassigned by the search loop and reaches :52 intact.
+      # This one is a real PNG, so unlike the Wine entry it does not depend on imlib2's
+      # svg.so loader at all.
+      - dest: /usr/share/applications/7notepadpp32.desktop
+        mode: "0644"
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Notepad++ (32-bit)
+          GenericName=Text Editor
+          Comment=The 32-bit build; runs under Wine and installs itself on first use
+          Exec=notepadpp32
+          TryExec=notepadpp32
+          Icon=/usr/share/icons/Adwaita/48x48/legacy/accessories-text-editor.png
+          Terminal=false
+          Categories=Utility;TextEditor;
