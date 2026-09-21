@@ -12,14 +12,19 @@ Both work — the tile has been confirmed on a full desktop boot.
 The first `wine` call creates the prefix at `/root/.wine`, and until that is done the program you
 asked for does not appear: a busy cursor, and at most a small *"The Wine configuration … is being
 updated"* window. It is not stuck. Wine copies its Windows-side libraries into the prefix —
-**1,265 MiB for a 64-bit prefix, 589 MiB for a 32-bit one** — and that is slow. Under
-emulation (QEMU without KVM) on an otherwise idle host, slax64 took about 4 minutes for a 64-bit
-prefix and 90 seconds for a 32-bit one; slax32, on a host that was also building, took 7 to 9
-minutes. Real hardware has not been timed. It happens once per prefix.
+**1,265 MiB for a 64-bit prefix, 589 MiB for a 32-bit one** — and it takes a while. Measured
+2026-09-21 **under KVM**, on an idle host: **65 seconds** for a 64-bit prefix on slax64, **32
+seconds** for a 32-bit one there, and **23 seconds** on slax32. Real hardware has not been timed.
+It happens once per prefix.
+
+Under **emulation** (QEMU without KVM) the same steps took about 4 minutes, 90 seconds and — on a
+host that was also building — 7 to 9 minutes. Those numbers still describe a machine without an
+accelerator, which is what CI and a container are.
 
 **If it takes more than 5 minutes, the first launch fails.** Wine waits at most that long for the
-prefix, then gives up (`boot event wait timed out` in the journal). It happened once here, under
-emulation on a busy host; the Notepad++ tile said so in a window, and the second launch worked.
+prefix, then gives up (`boot event wait timed out` in the journal). Under KVM that limit is a long
+way off; under emulation on a busy host it was reached once, and the Notepad++ tile said so in a
+window, with the second launch working.
 
 **Without persistence the prefix lives in RAM**, so a 64-bit one costs 1.2 GiB of memory, and every
 extra prefix as much again ([software.md](software.md#requirements)). `rm -rf` one you no longer need.

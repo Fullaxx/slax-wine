@@ -1186,25 +1186,32 @@ not read a single UEFI failure as a regression without checking what else the ma
 Worth filing upstream? The harness's lead is a fixed 2 s and nothing measures whether the menu is up
 before the keys go. Reported, not filed: an outward-facing report is the user's call.
 
-**Still queued, deliberately.** Re-measuring what emulation distorted is its own piece of work, and
-these pages still carry TCG numbers, each true of a machine without KVM:
+**The queue is worked, on 2026-09-21.** Re-measuring what emulation distorted was its own piece of
+work, and it is done: the numbers below were taken on `bacon` under KVM, in a guest driven over its
+serial console, and every page that quoted a TCG figure now carries both, with the TCG one labelled
+as what a machine without an accelerator does — which CI and a container still are.
 
-| page | what to re-measure |
-|---|---|
-| [`slax-wine-iso`](50-cookbook/slax-wine-iso.md), [`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md) | the boot-route tables (21–31 s per route), and the `--keys` instructions, which are now only needed on a busy host |
-| [`using-wine`](using-wine.md), [`testing-on-both`](testing-on-both.md) | prefix creation — about 4 minutes for a 64-bit prefix, 90 s for a 32-bit one — and Wine's 5-minute `wineboot` limit, which should stop being reachable |
-| [`notepadpp32`](50-cookbook/notepadpp32.md), [`notepadpp64`](50-cookbook/notepadpp64.md) | the first launch that failed against that limit, and the second that worked |
-| [`software.md`](software.md) | nothing. Its figures are memory, not speed, and RAM does not care about the accelerator |
+| what | under TCG | under KVM |
+|---|---|---|
+| a boot route to `Live Kit done` | 21–31 s | **4–6 s** |
+| a 64-bit Wine prefix | ~4 min | **65 s** |
+| a 32-bit prefix on slax64 | 90 s | **32 s** |
+| a 32-bit prefix on slax32 | 90 s idle, 7–9 min busy | **23 s** |
+| the Notepad++ x86 installer, `/S` | 29 s | **1.3–1.6 s** |
+| the Notepad++ x64 installer, `/S` | 29–32 s | **1.7 s** |
+| Wine's 5-minute `wineboot` limit | reached once, on a busy host | nowhere near |
 
-And the work that was waiting on the accelerator, which is desktop runtime work rather than boot
-evidence:
+Unchanged, because they are memory rather than speed: a fresh 64-bit prefix is 1,265 MiB and a
+32-bit one 587–589 MiB. Pages updated: [`using-wine`](using-wine.md),
+[`testing-on-both`](testing-on-both.md), [`notepadpp32`](50-cookbook/notepadpp32.md),
+[`notepadpp64`](50-cookbook/notepadpp64.md), [`slax-wine-iso`](50-cookbook/slax-wine-iso.md) and
+[`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md).
 
-```sh
-gh issue list -R Fullaxx/slax-wine --label "blocked: needs KVM"
-```
-
-Today that is [#1](https://github.com/Fullaxx/slax-wine/issues/1) — the two Notepad++ tiles replacing
-each other in one prefix.
+**And the work that was waiting on the accelerator is done too.**
+[slax-wine#1](https://github.com/Fullaxx/slax-wine/issues/1) — the two Notepad++ tiles replacing
+each other in one prefix — is implemented as [D-17](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)
+and verified in the same session, in both directions and with its negative control on slax32. The
+issue is left open for the user to close: that is an outward-facing action.
 
 **What did not change**, and should not be re-opened while doing the above:
 

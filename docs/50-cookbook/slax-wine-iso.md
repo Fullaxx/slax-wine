@@ -43,59 +43,63 @@ evidence files, only the means to regenerate them:
 K=vendor/slax-kitchen/kitchen; I="$PWD/out/slax32-wine-test-1.0.0.iso"
 $K test "$I" --kernel                  # the control: its cmdline HAS automount
 $K test "$I" --bios
-KEYS=$(printf '1s,home,%.0s' $(seq 24))down,down,ret   # under TCG only; see below
-$K test "$I" --uefi --keys "$KEYS"
+$K test "$I" --uefi                    # no --keys: see below
 grep -a '^Kernel command line:' out/boot-tests/slax32-wine-test-1.0.0-*.serial.log
 ```
 
-Expect `automount` on the `-kernel` line and on neither of the others. The rows above were measured on
-a KVM host, where `--uefi` needs no `--keys`.
+Expect `automount` on the `-kernel` line and on neither of the others. **No `--keys`**: with a boot
+host configured these run on `bacon` under KVM, where the harness's own keystrokes land — re-run
+2026-09-21 on all three images and all four routes, twelve for twelve.
 
-**Under TCG, the harness's own UEFI keystrokes miss the menu.** It sends `down,down,ret` after a
-fixed 2-second lead, and when GRUB's 5-second menu appears depends on the host. Measured on this build
-host it is drawn by 3.2 s, so the keys come too *early*. With the vCPU sharing a core it is 6.9 s.
-Leads of 3–6 s pass on the idle host, and fail on the busy one. A missed menu boots the *default*
-entry, so the test fails with nothing on the serial log.
+**The `--keys` chore is over here, with one caveat worth keeping.** Under KVM the menu is up in
+about a second and the harness's fixed 2-second lead lands inside it. Under TCG on this build host
+it did not: the menu is drawn by 3.2 s, so the keys came too *early*, and with the vCPU sharing a
+core it was 6.9 s. Leads of 3–6 s passed on the idle host and failed on the busy one, and the
+workaround was `home` once a second for 24 presses — `KEYS=$(printf '1s,home,%.0s' $(seq 24))down,down,ret`
+— which still works if you are booting without an accelerator.
 
-`KEYS` above is what to do instead, measured on both hosts. It is `home` once a second for 24
-presses, then `down,down,ret`. Presses that land before GRUB are dropped. The first one GRUB sees
-stops its countdown, and `home` is idempotent, so the menu waits on its first entry; the serial entry
-is two below.
-
-**This is a TCG-only chore.** Under KVM the menu is up in about a second, the harness's own 2-second
-lead lands inside it, and `--uefi` needs no `--keys` — which is how the rows above were measured. It
-was deliberately not filed upstream for that reason; the measurements are in
-[UPSTREAM.md](../UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg).
+**The caveat is load, not emulation.** Both UEFI routes missed on 2026-09-21 under KVM while this
+machine was building images at a load average of 12, and passed three times in a row on the same
+machine once it was idle. A missed menu boots the *default* entry, so the test fails with nothing on
+the serial log. Do not run boot tests against a build in progress, and do not read one UEFI failure
+as a regression without asking what else the machine was doing. The measurements are in
+[UPSTREAM.md](../UPSTREAM.md#when-kvm-lands-it-did-on-2026-09-21-and-this-is-what-it-changed).
 
 **Earlier runs here passed `'3s,(home,1s)x22,down,down,ret'` and described it as that loop. It was
-not one.** The harness has no `(…)xN` syntax, and QEMU refused `(home` and `1s)x22` without a word,
-because the harness discards QEMU's reply — that half *is* filed, as
-[slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28). What ran was a 3-second lead,
-inside this host's window. Those boots still selected the serial entry, as their kernel command lines
-show, so the results in this page stand; only the explanation was wrong.
+not one.** The harness had no `(…)xN` syntax, and QEMU refused `(home` and `1s)x22` without a word,
+because the harness discarded QEMU's reply — that half was filed as
+[slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28) and fixed in `a613b3b`, which
+now refuses such a spec before anything boots. What ran was a 3-second lead, inside this host's
+window. Those boots still selected the serial entry, as their kernel command lines show, so the
+results in this page stand; only the explanation was wrong.
 
 **What this does not cover:** the shipped images byte-for-byte — the tested image adds
 `serial-console` and `testkit`. The boot configs are otherwise identical, and the removal is applied
 to *every* `APPEND` line in both files, so it transfers.
 
-**On the 64-bit base**, measured 2026-09-19 under TCG on this build host (no KVM), against
-`slax64-wine-test`:
+**On the 64-bit base**, measured 2026-09-21 on `bacon` under KVM, against `slax64-wine-test`; the
+seconds in brackets are the same routes under TCG on this build host, 2026-09-19:
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
 |---|---|---|---|
-| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes, 28 s |
-| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes, 31 s |
-| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes, 29 s |
+| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes, 4 s (28 s) |
+| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes, 6 s (31 s) |
+| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes, 6 s (29 s) |
+| `kitchen test --persistence` | the harness, two boots on one disk | **present** | yes, 4 s each |
 
 The UEFI row ran against the **shipped** 5-second menu, with the 3-second lead described above.
 Every run also printed testkit's report: every file this image's recipes ship reached the union,
 both Wine loaders and `/var/lib/dpkg/arch` included.
 
-**Re-run on the images as finally built**, 2026-09-19 under TCG, both test images on all three
-routes: all six reached `Live Kit done`, in 21–26 s, and `automount` was on the two `--kernel` lines
-and on none of the four bootloader lines. The UEFI runs again had the 3-second lead. Then both
-passed with `KEYS`, real `home` presses: `slax32-wine-test` on the idle host, and `slax64-wine-test`
-idle and with its vCPU sharing a core.
+**Re-run under KVM at the `7f9c4f8` bump**, 2026-09-21: every route of both test images and of
+`slax-bottles-test` — `--kernel`, `--bios`, `--uefi` and `--persistence`, twelve in all — reached
+`Live Kit done` in 4–6 s, with **no `--keys`**. `automount` was on the three `--kernel` lines and on
+none of the six bootloader lines, and every `--uefi` log carried `console=ttyS0`, which is what
+proves the keystrokes selected the serial entry rather than the default.
+
+The earlier TCG runs, 2026-09-19, reached it in 21–26 s and needed the 3-second lead described
+below; both test images also passed there with `KEYS` and real `home` presses, `slax64-wine-test`
+both idle and with its vCPU sharing a core.
 
 ```sh
 ./build.sh

@@ -57,8 +57,10 @@ three — slax32, slax64 with its 64-bit prefix, slax64 with a 32-bit prefix —
 
 ## Results
 
-Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card) on fresh non-persistent boots of
-`slax32-wine-uefi` and `slax64-wine-uefi`, 2026-09-19. "32-bit process" and "64-bit process" are
+Measured in QEMU on fresh non-persistent boots of `slax32-wine-uefi` and `slax64-wine-uefi`,
+2026-09-19 under TCG (`-cpu Nehalem`, 3 GiB, no network card); the widths and the loaders were
+re-confirmed on the test images under KVM on 2026-09-21, which is where the timings above come
+from. "32-bit process" and "64-bit process" are
 the ELF class of the running program's Wine loader.
 
 | program | `.exe` | slax32-wine | slax64-wine, 64-bit prefix | slax64-wine, 32-bit prefix |
@@ -70,10 +72,12 @@ the ELF class of the running program's Wine loader.
 
 Worth knowing before a run of your own:
 
-- **Creating a prefix is the slow part**, and happens once per prefix: about 4 minutes for a 64-bit
-  one here, 90 seconds for a 32-bit one on slax64. Wine waits at most 5 minutes for it, and on
-  slax32, on a busy host, it took about 9, so that first launch failed (`boot event wait timed out`)
-  and the second worked. Under emulation, give the host nothing else to do, or run twice.
+- **Creating a prefix is the slow part**, and happens once per prefix. Measured 2026-09-21 under
+  **KVM**: 65 s for a 64-bit prefix, 32 s for a 32-bit one on slax64, 23 s on slax32. Under
+  **emulation** the same three were about 4 minutes, 90 seconds and — on a host that was also
+  building — 9, which is past the 5 minutes Wine waits, so that first launch failed
+  (`boot event wait timed out`) and the second worked. Without an accelerator, give the host nothing
+  else to do, or run twice.
 - **Each prefix lives in RAM** on a non-persistent boot: 1,265 MiB for a 64-bit one, 589 MiB for a
   32-bit one. A run that kept two and was making a third stalled a 3 GiB VM until it was reset.
   Delete one before making the next, or boot persistent.

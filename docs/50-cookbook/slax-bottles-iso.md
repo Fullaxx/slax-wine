@@ -32,31 +32,33 @@ appends `toram`, which on a 1.2 GiB image means copying all of it to RAM before 
 
 ## How the `automount` removal was proven
 
-Measured 2026-09-18 against `slax-bottles-test` (this image plus `serial-console` and `testkit`),
-under TCG on a host without KVM. The observable is the kernel's own `Kernel command line:` line in
-the serial log, as for slax-wine:
+Measured 2026-09-21 against `slax-bottles-test` (this image plus `serial-console` and `testkit`),
+on `bacon` under KVM. The observable is the kernel's own `Kernel command line:` line in the serial
+log, as for slax-wine:
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
 |---|---|---|---|
-| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes |
-| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes |
-| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes |
+| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes, 4 s |
+| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes, 6 s |
+| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes, 6 s |
+| `kitchen test --persistence` | the harness, two boots on one disk | **present** | yes, 4 s each |
 
-All three also printed testkit's report: every file `bottles` ships reached the assembled union.
+All of them also printed testkit's report: every file `bottles` ships reached the assembled union.
+**No `--keys`**: under KVM the harness's own keystrokes select the serial entry, which every
+`--uefi` log shows by carrying `console=ttyS0`.
 
-**The UEFI row needed different keystrokes.** Under TCG, OVMF takes longer than the harness's
-default `2s` lead, so the first run missed GRUB's 5-second menu. It booted the default entry to the
-desktop (the screenshot shows it), but with nothing on serial there was nothing to assert. The
-**shipped** 5-second timeout was the one tested; it was not raised for the test.
+**Under TCG it needed different keystrokes**, and the first run there, 2026-09-18, missed GRUB's
+5-second menu because OVMF takes longer than the harness's fixed `2s` lead. It booted the default
+entry to the desktop (the screenshot shows it), with nothing on serial to assert. The **shipped**
+5-second timeout was the one tested; it was not raised for the test.
 
-The run that passed used `--keys '3s,(home,1s)x22,down,down,ret'`, and this page called it `home`
-once a second for 22 seconds. **It was not.** The harness has no `(…)xN` syntax, and QEMU refused
-both of those tokens without a word, because the harness discards QEMU's reply — filed as
-[slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28). What ran was a 3-second lead,
-which falls inside this host's menu window: GRUB is up by 3.2 s and gone by 8.3 s. That the window
-moves with the host is a TCG problem only, so it was not filed; the measurements are in
-[UPSTREAM.md](../UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg).
-That run still selected the serial entry, so the row stands.
+The run that passed then used `--keys '3s,(home,1s)x22,down,down,ret'`, and this page called it
+`home` once a second for 22 seconds. **It was not.** The harness had no `(…)xN` syntax, and QEMU
+refused both of those tokens without a word, because the harness discarded QEMU's reply — filed as
+[slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28) and fixed in `a613b3b`. What
+ran was a 3-second lead, inside that host's menu window: GRUB was up by 3.2 s and gone by 8.3 s.
+That run still selected the serial entry, so the row it produced stood, and the KVM re-run above
+has now replaced it.
 
 Re-run 2026-09-19 with real `home` presses, the `KEYS` of
 [`slax-wine-iso`](slax-wine-iso.md#how-the-automount-removal-was-proven): it passed, with the serial

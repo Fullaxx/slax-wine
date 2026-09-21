@@ -126,15 +126,20 @@ Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card), 2026-09-19:
 | installed to | `C:\Program Files\Notepad++` | `C:\Program Files (x86)\Notepad++` |
 | `notepad++.exe` | PE machine `0x14c`: i386 | the same |
 | the editor | ELF class 1, `wine-preloader.static` | ELF class 1, `wine-preloader.static` |
-| in a `WINEARCH=win32` prefix | — | installs to `C:\Program Files\Notepad++` (silently, `/S`, in 29 s) and launches, ELF class 1 |
+| in a `WINEARCH=win32` prefix | — | installs to `C:\Program Files\Notepad++` and launches, ELF class 1 |
+| the same installer, silent (`/S`) | **1.3 s** under KVM, 29 s under emulation | **1.6 s** under KVM |
 
-**On slax32 the first launch failed, and the failure path did its job.** Creating the prefix took
-about 9 minutes there, under emulation on a host that was also building, and Wine waits at most 5
-minutes for it: the journal said `boot event wait timed out`. The installer never appeared, and the
-launcher showed its window — *"Notepad++ (32-bit) is not installed: the installer was cancelled or
-failed. Run it again to retry."* — rather than nothing. The second launch used the finished prefix,
-and installed and ran. On an idle host the same step took about 4 minutes; on real hardware it has
-not been timed.
+**Under KVM the first launch is quick**: measured 2026-09-21 on `slax32-wine-test`, the prefix
+takes **23 seconds** and the editor's window follows the install immediately. Wine's five-minute
+limit is nowhere near.
+
+**Under emulation it once failed, and the failure path did its job.** Creating the prefix took about
+9 minutes on a host that was also building, past the 5 minutes Wine waits: the journal said
+`boot event wait timed out`. The installer never appeared, and the launcher showed its window —
+*"Notepad++ (32-bit) is not installed: the installer was cancelled or failed. Run it again to
+retry."* — rather than nothing. The second launch used the finished prefix, and installed and ran.
+On an idle emulated host the same step took about 4 minutes; on real hardware it has not been
+timed.
 
 On slax64 the 64-bit build shares the prefix, and does not coexist with this one: each installer
 removes the other build ([`notepadpp64`](notepadpp64.md#the-two-builds-replace-each-other)).
