@@ -69,7 +69,7 @@ suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by
 | `work/bottles/` | 0.4 GB unpacked base, plus the 0.9 GB bundle |
 | `out/slax-bottles-<ver>.iso` | 1.2 GB |
 
-The squashed bundle is small again (890.8 MiB) because mksquashfs stores identical files once. Flatpak
+The squashed bundle is small again (889.5 MiB) because mksquashfs stores identical files once. Flatpak
 runs its install triggers through `bwrap`, and on a host without user namespaces (a container, for
 instance) that prints `bwrap: Creating new namespace failed`. That is harmless: the triggers only
 rebuild caches under `exports/` that Slax never reads, and `build.sh` checks what matters, the
@@ -137,8 +137,9 @@ Run them by hand any time:
 > is a *file*, not a directory. It fails with `error: not a git repo`. The two `ln -sf` lines above
 > are the supported way.
 
-Six gates are copied verbatim from slax-kitchen, four are adapted, and
-`96-release-consistency.sh` is ours. Each copied file's header names the upstream commit it came
+Seven gates are copied verbatim from slax-kitchen, four are adapted, and
+`96-release-consistency.sh` is ours. Two helpers they call, `ci/md-links.py` and `ci/unit-run.py`,
+are copied verbatim as well. Each copied file's header names the upstream commit it came
 from, and gate 96 fails if that commit is not the current submodule pin — so a pin bump that forgets
 to re-copy (or to re-cite) cannot pass silently.
 

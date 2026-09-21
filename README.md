@@ -58,7 +58,7 @@ runs sandboxed with its own Wine, so it cannot use our Debian Wine
 | Bottles | 67.3 from Flathub, with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono; every ref pinned by commit |
 | offline extras | DXVK 3.1 and VKD3D-Proton 3.0.1, without which Bottles will not create a bottle offline (measured) |
 | no browser | `05-chromium.sb` removed, as in slax-wine |
-| size | **1241.7 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
+| size | **1240.4 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
 
 Using it: **[docs/using-bottles.md](docs/using-bottles.md)**.
 

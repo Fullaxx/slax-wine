@@ -384,7 +384,7 @@ each amd64 twin to match, and every package pinned to one of those follows. Meas
 (`libc6`, `libc-bin`, `locales`: `2.36-9+deb12u3` → `+deb12u14`), systemd and udev (252.17 → 252.39,
 with `libsystemd0`, `libudev1` and `libpam-systemd`), util-linux with `mount` and its libraries,
 e2fsprogs, OpenSSL (3.0.11 → 3.0.20), Mesa, krb5, GnuTLS, GLib, libxml2, libcurl, FreeType, libpng
-and libtiff among them. The full list is every amd64 row of the image's `packages.tsv` whose version
+and libtiff among them. The full list is every **amd64 or `all`** row of the image's `packages.tsv` whose version
 differs from `04-apps`'. slax32 has one such upgrade, `libgnutls30`. So slax64-wine boots a newer
 systemd and glibc than stock Slax — its boot tests are what show that still boots — and with
 `noload=20-wine.sb` its package database claims versions whose files are not loaded.

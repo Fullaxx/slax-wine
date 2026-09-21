@@ -86,8 +86,13 @@ if [ -n "$want" ]; then
     words='one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty'
     # ANCHORED, and the anchor is load-bearing in both directions. "gates" is an ordinary
     # word, and this repo has lines that legitimately count a SUBSET -- docs/build.md's
-    # "Six gates are copied verbatim from slax-kitchen, four are adapted" is true and must
-    # not fail. A line claims the TOTAL only if it also names the thing that runs them.
+    # "Seven gates are copied verbatim from slax-kitchen, four are adapted" is one, and
+    # must not fail. A line claims the TOTAL only if it also names the thing that runs them.
+    #
+    # That example is quoted from the tree, and the tree was wrong: it read "Six" from the
+    # day it was written until the 7f9c4f8 bump, with seven verbatim gates in ci/checks/.
+    # Nothing checks a subset count -- this rule cannot, since it does not know which
+    # subset -- so quoting one here is a comment, not a guarantee.
     anchor='commit gates|selftest|ci/checks|ci/|run-checks|doctor --strict|checks live in|build script'
     check_files_nl | grep -E '\.md$' | grep -v '^vendor/' > "$TMPD/md" || true
     while IFS= read -r f; do

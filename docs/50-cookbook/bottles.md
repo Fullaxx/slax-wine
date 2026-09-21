@@ -26,7 +26,7 @@ an x86_64 Flatpak, so it cannot go on slax-wine's 32-bit base
 | bundle | verb | what | size |
 |---|---|---|---|
 | `20-flatpak.sb` | `bundle.packages` | `flatpak` from bookworm main, and its closure (36 packages, bubblewrap among them) | 8.0 MiB |
-| `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles plus 12 runtime refs), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | 890.8 MiB |
+| `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles plus 12 runtime refs), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | 889.5 MiB |
 
 `20-` is this image's platform and `30-` its application: the same split as slax-wine's
 `20-wine`/`30-notepadpp32` (D-5). `noload=30-bottles.sb` gives a Slax with flatpak and nothing in it,
@@ -51,7 +51,7 @@ empty `/proc` and no user namespace. Instead `build.sh`:
 `bundle.files` then copies the tree with `copytree(symlinks=True)`, so flatpak's `active`/`current`
 links survive. Hardlinks do not. The ostree repo's objects are the same inodes as the deployed
 files, so the 3.2 GB stage becomes a 7.4 GB copy while the bundle is built. mksquashfs then stores
-each identical file once, which is why the bundle is 890.8 MiB. [build.md](../build.md) has the disk
+each identical file once, which is why the bundle is 889.5 MiB. [build.md](../build.md) has the disk
 budget.
 
 Measured in the guest: `flatpak list` shows all eleven visible refs at their locked commits, and

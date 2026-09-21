@@ -138,7 +138,7 @@ And from Bottles' own components index, because it will not create a bottle offl
 (measured, [bottles](50-cookbook/bottles.md)): **DXVK 3.1** (Direct3D 8/9/10/11 on Vulkan) and
 **VKD3D-Proton 3.0.1** (Direct3D 12 on Vulkan).
 
-[sizing.md](sizing.md) breaks the 890.8 MiB bundle down by ref.
+[sizing.md](sizing.md) breaks the 889.5 MiB bundle down by ref.
 
 ### What it runs
 
@@ -161,7 +161,7 @@ everything else is stated as what it is.
 | **Firmware** | BIOS: both images. UEFI: `slax32-wine-uefi` only, and only **64-bit** UEFI firmware, because no `bootia32.efi` exists upstream ([INSTALL.md](../INSTALL.md)) | BIOS: both images. UEFI: `slax64-wine-uefi` only | BIOS or 64-bit UEFI. It is always built UEFI-bootable |
 | **Memory** | Measured booting in 2 GiB (the boot harness's default). In 3 GiB, after the first prefix and Notepad++: 1,273 MiB used, 645 MiB of it the RAM layer. No minimum established | Measured in 3 GiB: 452 MiB used at the idle desktop, 1.8 GiB after the Wine tile's first run. **Without persistence every Wine prefix lives in RAM**, and Wine copies its Windows-side libraries into each: a fresh 64-bit prefix is 1,265 MiB, a 32-bit one 589 MiB. A test that kept two prefixes and was making a third ran the 3 GiB machine out of memory; the kernel never invoked its OOM killer, and the desktop stayed unresponsive until the VM was reset. No minimum established | Measured booting in 3 GiB. In a 6 GiB VM: 550 MiB used at the idle desktop, 738 MiB with Bottles open, 1.75 GiB after creating a bottle. No minimum established. Without persistence everything written, bottles included, also lives in RAM |
 | **GPU** | None required. Wine draws through Mesa's OpenGL, software-rendered without GPU firmware (D-10) | The same; 32-bit programs use the i386 Mesa in `20-wine.sb` | None required to *run* Bottles: it ran with software rendering. **DXVK 3.x needs a Vulkan 1.4 driver** (per DXVK: RADV 25.0+, ANV 25.1+, NVIDIA 575.51.02+). The runtime's Mesa 26.2.2 meets that; whether a real GPU initialises under Slax's 6.1 kernel with no GPU firmware (D-10) is **untested**. Without Vulkan, Direct3D goes through Wine's OpenGL path, or fails |
-| **Storage** | The ISO: 507.3 or 513.5 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 815.6 or 821.7 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 1241.7 MiB. A fresh bottle measured **386 and 491 MiB** on two runs, before anything is installed into it |
+| **Storage** | The ISO: 507.3 or 513.5 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 815.6 or 821.7 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 1240.4 MiB. A fresh bottle measured **386 and 491 MiB** on two runs, before anything is installed into it |
 | **Network at runtime** | None | None | None. Bottles says "offline" and offers to retry; everything a bottle needs ships (measured) |
 | **Kernel features** | — | 32-bit program support (`IA32_EMULATION`), which the stock kernel has | Namespaces for `bubblewrap`, and a D-Bus session: the stock Slax kernel and session provide both (measured) |
 

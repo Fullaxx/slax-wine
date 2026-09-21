@@ -29,13 +29,13 @@ Torito ESP, which `bootinst` never copies, so every image falls back to the stoc
 `syslinux.efi` there. The 32-bit images carry nine bundles; the 64-bit ones the same nine plus the
 64-bit Notepad++. The 64-bit images run 64-bit Windows programs as well as 32-bit ones.
 
-**And a different system: `slax-bottles-1.0.0.iso` (1241.7 MiB)**, on the 64-bit base, because
+**And a different system: `slax-bottles-1.0.0.iso` (1240.4 MiB)**, on the 64-bit base, because
 Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles runs its own. See
 [docs/DECISIONS.md](docs/DECISIONS.md) D-14 and D-15.
 
 ### Added
 - `bottles` (slax-bottles only). `flatpak` from bookworm as `20-flatpak.sb` (8.0 MiB), and as
-  `30-bottles.sb` (890.8 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
+  `30-bottles.sb` (889.5 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
   pinned by ostree commit in `BOTTLES_LOCK`, plus DXVK 3.1 and VKD3D-Proton 3.0.1, a launcher tile and
   `/etc/slax-bottles-release`. **Runtime-verified in QEMU with no network**: a bottle is created with
   the bundled `sys-wine-11.0` runner from only what the image ships, and `cmd /c ver` runs in it

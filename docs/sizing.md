@@ -21,6 +21,15 @@ Net **+95,875,072 bytes** — +91.4 MiB over stock for the bios image, **+102,36
 the uefi one. Both are under `WINE32_MAX_ISO_MIB=532` (513.5 is the larger), so one cap covers both and no
 per-variant value is needed. The uefi image has 18.5 MiB of headroom, the bios image 24.7 MiB.
 
+**These are one build's bytes, and a rebuild does not always land on the same total.** A squashfs
+stores an mtime per file and a creation time of its own, so two runs of one tree differ in bytes and
+sometimes in size, by a 4 KiB padding block. Measured 2026-09-21 while bumping the engine to
+`7f9c4f8`: rebuilding the 2026-09-20 tree gave a 64-bit `20-wine.sb` 4,096 bytes larger and a
+`30-bottles.sb` 1,372,160 bytes smaller, with the same 816 and 597 packages at the same versions and
+all 13 Flatpak refs at their locked commits — `BOTTLES_LOCK` pins *what* is installed, not the bytes
+that result. Every number here is from the 2026-09-21 build, the one the boot evidence describes.
+`mksquashfs -mkfs-time 0 -all-time 0` would make the squashfs half reproducible, and is not used.
+
 (Every ledger here adds up to the byte. An earlier version put the ESP at +6,488,064 and did not: the
 uefi image also gains a root-level `/boot` directory, bios has none, and its extent is one 2 KiB
 sector.)
@@ -33,14 +42,14 @@ The same system on the 64-bit base ([DECISIONS.md](DECISIONS.md) D-16):
 |---|---|---|
 | stock `slax-64bit-debian-12.2.0.iso` | 435,853,312 | 415.7 |
 | − `05-chromium.sb` | −82,903,040 | −79.1 |
-| + `20-wine.sb` (both halves of Wine, and 79 base packages lifted to match their i386 twins) | +488,509,440 | +465.9 |
+| + `20-wine.sb` (both halves of Wine, and 79 base packages lifted to match their i386 twins) | +488,513,536 | +465.9 |
 | + `21-wine-desktop.sb` | +4,096 | +0.004 |
 | + `30-notepadpp32.sb` | +6,713,344 | +6.4 |
 | + `31-notepadpp64.sb` | +6,860,800 | +6.5 |
 | + `98-dpkg-db.sb` (generated at pack time) | +131,072 | +0.1 |
-| **slax64-wine-bios 1.0.0** | **855,169,024** | **815.6** |
+| **slax64-wine-bios 1.0.0** | **855,173,120** | **815.6** |
 | + `boot/efi.img` and its `/boot` directory | +6,488,064 + 2,048 | +6.2 |
-| **slax64-wine-uefi 1.0.0** | **861,659,136** | **821.7** |
+| **slax64-wine-uefi 1.0.0** | **861,663,232** | **821.7** |
 
 `WINE64_MAX_ISO_MIB=862` is the uefi image plus 5%, and covers the bios one too.
 
@@ -99,7 +108,7 @@ And what would grow it: slax-kitchen's `firmware-refresh` adds **+90 MiB** for t
 Slax ships none of. Not applied here — Notepad++ needs no GPU — but a games variant will want it, and
 should budget ~600 MiB. See [DECISIONS.md](DECISIONS.md).
 
-## slax-bottles: where the 1241.7 MiB goes
+## slax-bottles: where the 1240.4 MiB goes
 
 A different image on a different base ([DECISIONS.md](DECISIONS.md) D-14). Measured on the build
 that ships DXVK and VKD3D:
@@ -109,10 +118,10 @@ that ships DXVK and VKD3D:
 | stock `slax-64bit-debian-12.2.0.iso` | 435,853,312 | 415.7 |
 | − `05-chromium.sb` | −82,903,040 | −79.1 |
 | + `20-flatpak.sb` (flatpak and its dependency closure: 36 packages in its dpkg fragment) | +8,372,224 | +8.0 |
-| + `30-bottles.sb` (the Flatpak installation, DXVK, VKD3D, launcher) | +934,109,184 | +890.8 |
+| + `30-bottles.sb` (the Flatpak installation, DXVK, VKD3D, launcher) | +932,737,024 | +889.5 |
 | + `98-dpkg-db.sb` (generated at pack time) | +126,976 | +0.1 |
 | + `boot/efi.img` (the GRUB ESP, not a bundle) and its `/boot` directory | +6,488,064 + 2,048 | +6.2 |
-| **slax-bottles 1.0.0** | **1,302,048,768** | **1241.7** |
+| **slax-bottles 1.0.0** | **1,300,676,608** | **1240.4** |
 
 `BOTTLES_MAX_ISO_MIB=1304` is that plus 5%, the same margin slax-wine uses. DXVK 3.1 and
 VKD3D-Proton 3.0.1 account for **16.0 MiB** of the bundle: the build without them came to 874.8 MiB

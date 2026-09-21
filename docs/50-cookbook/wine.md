@@ -182,7 +182,7 @@ built slax/modules/20-wine.sb (477060 KiB, 10120 files)
 
 | | |
 |---|---|
-| `20-wine.sb` | 488,509,440 B — **465.9 MiB**, against 166.6 MiB on the 32-bit base |
+| `20-wine.sb` | 488,513,536 B — **465.9 MiB**, against 166.6 MiB on the 32-bit base |
 | apt's closure | **60 new amd64 packages, 190 i386 ones, 79 base packages upgraded** — the fragment's 329 |
 | merged database | **825 entries**, from `04-apps`' 575 plus the fragment's 250 new ones; **816 installed** |
 | binaries present | `/usr/bin/wine`, `/usr/lib/wine/wine64`, `/usr/lib/wine/wine64-preloader`, `/usr/lib/wine/wine` and `/usr/lib/wine/wine-preloader` (i386) |
