@@ -134,6 +134,7 @@ reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
 | to use Wine, and what is missing | [docs/using-wine.md](docs/using-wine.md) |
 | to use Bottles on slax-bottles | [docs/using-bottles.md](docs/using-bottles.md) |
 | what is on each ISO, and what it needs to run | [docs/software.md](docs/software.md) |
+| what all eight images share, and where they differ | [docs/variants.md](docs/variants.md) |
 | how it all works | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | why it looks like that | [docs/DECISIONS.md](docs/DECISIONS.md) |
 | how we raise engine problems upstream | [docs/UPSTREAM.md](docs/UPSTREAM.md) |

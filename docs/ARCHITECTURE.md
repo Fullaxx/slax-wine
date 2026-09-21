@@ -9,7 +9,9 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 ## The shape of the thing
 
 slax-wine owns no engine code. It is seven recipes, eight profiles, a build script and twelve gates,
-laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`.
+laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`. The eight images those
+profiles build, what they hold in common and where they part, are in
+[variants.md](variants.md).
 
 ```
 build.env          version + base identity (both bases) + the Bottles pin -- the single source of truth

@@ -264,6 +264,27 @@ def test_every_test_here_is_registered():
           [])
 
 
+def test_a_variant_missing_from_the_register_is_refused():
+    """Section 11(a). The register is the only page that answers "what are all of these,
+    and how do they differ"; one missing row makes it answer wrongly while looking whole.
+    Breaking the row's SHAPE rather than deleting it is the realistic failure: a reformat
+    that drops the backticks leaves the name on the page and out of the register."""
+    refuses("a variant with no row in docs/variants.md",
+            lambda fx: replace_once(fx, "docs/variants.md",
+                                    "| `slax32-wine-test` |", "| slax32-wine-test |"),
+            "profiles/slax32-wine-test.yaml has no row")
+
+
+def test_a_register_row_for_no_profile_is_refused():
+    """Section 11(b), the other direction: a rename that reached the page and not the tree,
+    or a row somebody wrote for an image that was never built."""
+    refuses("a row naming a profile that does not exist",
+            lambda fx: replace_once(
+                fx, "docs/variants.md", "| `slax-bottles-test` |",
+                "| `slax99-wine-bios` | x | x | no | x | x | x | x |\n| `slax-bottles-test` |"),
+            "profiles/slax99-wine-bios.yaml does not exist")
+
+
 TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_an_uninitialised_submodule_is_not_mistaken_for_this_repo,
          test_it_refuses_rather_than_guess_when_git_will_not_name_the_variables,
@@ -271,6 +292,8 @@ TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_each_release_file_is_checked_against_its_own_base,
          test_the_slax_wine_recipe_lists_cannot_drift,
          test_a_profile_name_says_what_it_builds,
+         test_a_variant_missing_from_the_register_is_refused,
+         test_a_register_row_for_no_profile_is_refused,
          test_every_test_here_is_registered]
 
 

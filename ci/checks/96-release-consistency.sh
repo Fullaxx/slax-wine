@@ -650,4 +650,40 @@ else
     fi
 fi
 
+# ---- 11. the variant register names every variant, and only real ones ----------------
+# docs/variants.md is the one page that answers "what do all of these have in common, and
+# where do they differ". A register that quietly misses a variant is worse than no
+# register: the reader believes they have seen the whole set. Adding the ninth profile and
+# forgetting the page is exactly how that happens, so it is checked rather than remembered.
+#
+# BOTH DIRECTIONS, like section 5(a) and (a2) and like gate 90's recipe-to-page rule, which
+# is the precedent this repo already trusts: a profile with no row, and a row naming a
+# profile that does not exist. The second catches a rename that touched the page and not
+# the tree, or the other way round.
+#
+# The name is read from the FIRST CELL of a table row, in backticks -- `| \`name\` |` --
+# which is the register's own shape. Prose that mentions a profile elsewhere on the page
+# does not count as a row, for the same reason section 5(a) matches a list entry and not a
+# name anywhere in the file: this gate carried that bug once already.
+VARIANTS="$REPO_ROOT/docs/variants.md"
+if [ ! -d "$PROFDIR" ]; then
+    :
+elif [ ! -f "$VARIANTS" ]; then
+    fail "docs/variants.md is missing, so nothing says what the variants share or how they differ"
+else
+    sed -n 's/^|[[:space:]]*`\([a-z0-9-]*\)`[[:space:]]*|.*/\1/p' "$VARIANTS" | sort -u > "$TMP/vrows"
+    [ -s "$TMP/vrows" ] || fail "docs/variants.md has no variant rows -- its table is the register"
+    find "$PROFDIR" -maxdepth 1 -name '*.yaml' -exec basename {} .yaml \; | sort -u > "$TMP/vprof"
+    while IFS= read -r p; do
+        [ -n "$p" ] || continue
+        grep -qxF "$p" "$TMP/vrows" || \
+            fail "profiles/$p.yaml has no row in docs/variants.md -- every variant is in the register"
+    done < "$TMP/vprof"
+    while IFS= read -r r; do
+        [ -n "$r" ] || continue
+        grep -qxF "$r" "$TMP/vprof" || \
+            fail "docs/variants.md has a row for '$r', but profiles/$r.yaml does not exist"
+    done < "$TMP/vrows"
+fi
+
 check_result
