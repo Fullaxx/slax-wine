@@ -45,6 +45,10 @@ steps:
           [ -r /etc/profile.d/wine.sh ] && . /etc/profile.d/wine.sh
           PREFIX=${WINEPREFIX:-$HOME/.wine}
           NPP="$PREFIX/drive_c/Program Files/Notepad++/notepad++.exe"
+          # The 32-bit build, where it lands in a 64-bit prefix. Only meaningful there:
+          # in a win32 prefix that build owns "Program Files" itself, and this launcher
+          # refuses such a prefix outright below, so this path is never consulted in one.
+          OTHER="$PREFIX/drive_c/Program Files (x86)/Notepad++/notepad++.exe"
           fail() {
               echo "notepadpp64: $1" >&2
               if command -v xmessage >/dev/null 2>&1; then
@@ -72,6 +76,36 @@ steps:
           elif [ -d "$PREFIX/drive_c/windows" ] && [ ! -d "$PREFIX/drive_c/windows/syswow64" ]; then
               fail "Notepad++ (64-bit) needs a 64-bit Wine prefix, and $PREFIX is 32-bit.
           Use notepadpp32 there, or a prefix made without WINEARCH=win32."
+          fi
+
+          # ASK BEFORE THE INSTALL THAT REMOVES THE OTHER BUILD. Notepad++'s own
+          # installers do that -- ours do not, and cannot stop it -- so the choice is
+          # between doing it silently and saying so first. slax-wine#1 chose to ask, and
+          # to keep the single prefix: one Windows running both widths is the thing a
+          # 64-bit image demonstrates, and a second prefix costs 1,265 MiB of RAM.
+          #
+          # Cancel exits 0 and says nothing more. The "cancelled or failed" message below
+          # is right after an installer that failed and wrong after someone declined
+          # here, so that path must not be reached from this one.
+          #
+          # Cancel is the DEFAULT, because a stray Return should not pick the answer that
+          # removes something. With no display there is nobody to ask, and going ahead
+          # anyway would be the silent removal this exists to prevent.
+          if [ ! -f "$NPP" ] && [ -f "$OTHER" ]; then
+              msg="Notepad++ (64-bit) is not installed in $PREFIX, and the 32-bit build is.
+          Notepad++'s installer will remove the 32-bit build.
+
+          To keep both, give one its own prefix:
+              WINEPREFIX=$HOME/.wine-npp64 notepadpp64"
+              if [ -n "${DISPLAY:-}" ] && command -v xmessage >/dev/null 2>&1; then
+                  xmessage -center -default Cancel \
+                           -buttons 'Install anyway:10,Cancel:20' "$msg"
+                  [ "$?" = 10 ] || exit 0
+              else
+                  echo "notepadpp64: $msg" >&2
+                  echo "notepadpp64: no display to ask on, so nothing was installed." >&2
+                  exit 1
+              fi
           fi
 
           # The guard means a cancelled install does not loop.

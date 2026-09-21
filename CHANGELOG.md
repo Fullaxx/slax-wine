@@ -34,6 +34,13 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 [docs/DECISIONS.md](docs/DECISIONS.md) D-14 and D-15.
 
 ### Added
+- **Each Notepad++ launcher asks before the install that removes the other build**
+  ([DECISIONS.md](docs/DECISIONS.md) D-17, slax-wine#1). Notepad++'s own installers remove each
+  other; the prefix stays single, and the flip becomes a choice: a dialog naming what will go and
+  offering `WINEPREFIX=/root/.wine-npp64`, with **Cancel as the default** and Cancel exiting 0
+  silently. With no display nothing is installed. On slax32 nothing asks at all — there the x86
+  build owns `Program Files` itself. Verified under KVM in both directions, with the slax32
+  negative control.
 - `bottles` (slax-bottles only). `flatpak` from bookworm as `20-flatpak.sb` (8.0 MiB), and as
   `30-bottles.sb` (889.5 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
   pinned by ostree commit in `BOTTLES_LOCK`, plus DXVK 3.1 and VKD3D-Proton 3.0.1, a launcher tile and

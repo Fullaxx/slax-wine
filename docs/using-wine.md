@@ -137,8 +137,9 @@ and the tiles run each program in its own width. Wine's own tools are the except
 `Program Files (x86)`, `notepadpp64` the 64-bit one to `Program Files`, and each launcher looks only
 where its own build installs. But **each Notepad++ installer removes the other build**: in one prefix,
 whichever was installed last is the only one left, measured in both orders. So picking the other
-tile starts its installer again. To keep both, give one its own prefix:
-`WINEPREFIX=/root/.wine-npp64 notepadpp64`.
+tile starts its installer again — and **asks first**, naming what is about to go, with Cancel as the
+default ([DECISIONS.md](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)). To keep both, give
+one its own prefix: `WINEPREFIX=/root/.wine-npp64 notepadpp64`, which is what the dialog suggests.
 
 **The Linux underneath is newer than on 32-bit.** Installing Wine's i386 half lifted 79 of the base's
 own packages — glibc, systemd, OpenSSL among them — to today's bookworm versions ([DECISIONS.md](DECISIONS.md)

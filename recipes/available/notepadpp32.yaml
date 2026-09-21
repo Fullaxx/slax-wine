@@ -102,6 +102,42 @@ steps:
               fi
           }
 
+          # The 64-bit build, and ONLY in a 64-bit prefix. There it owns "Program Files"
+          # while this one goes to "Program Files (x86)"; in a win32 prefix those are the
+          # SAME directory, so without the syswow64 condition slax32 would warn that
+          # installing Notepad++ is about to remove Notepad++. That is the trap
+          # slax-wine#1 names, and this condition is the whole of avoiding it.
+          other() {
+              [ -d "$PREFIX/drive_c/windows/syswow64" ] || return 1
+              [ -f "$PREFIX/drive_c/Program Files/Notepad++/notepad++.exe" ]
+          }
+
+          # ASK BEFORE THE INSTALL THAT REMOVES THE OTHER BUILD -- Notepad++'s installer
+          # does that, ours cannot stop it, and slax-wine#1 chose to say so rather than
+          # let it happen silently. Cancel exits 0 and says nothing more, so the
+          # "cancelled or failed" message below is never reached from here: it is right
+          # after an installer that failed and wrong after someone declined.
+          #
+          # Cancel is the DEFAULT, because a stray Return should not pick the answer that
+          # removes something. With no display there is nobody to ask, and installing
+          # anyway would be the silent removal this exists to prevent.
+          if [ ! -f "$(npp)" ] && other; then
+              msg="Notepad++ (32-bit) is not installed in $PREFIX, and the 64-bit build is.
+          Notepad++'s installer will remove the 64-bit build.
+
+          To keep both, give one its own prefix:
+              WINEPREFIX=$HOME/.wine-npp32 notepadpp32"
+              if [ -n "${DISPLAY:-}" ] && command -v xmessage >/dev/null 2>&1; then
+                  xmessage -center -default Cancel \
+                           -buttons 'Install anyway:10,Cancel:20' "$msg"
+                  [ "$?" = 10 ] || exit 0
+              else
+                  echo "notepadpp32: $msg" >&2
+                  echo "notepadpp32: no display to ask on, so nothing was installed." >&2
+                  exit 1
+              fi
+          fi
+
           # The guard means a cancelled install does not loop.
           if [ ! -f "$(npp)" ]; then
               wine /opt/notepadpp32/npp32-installer.exe

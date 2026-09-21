@@ -395,3 +395,33 @@ systemd and glibc than stock Slax — its boot tests are what show that still bo
 **What would change this:** Debian shipping a Wine built for the new WoW64, which runs 32-bit Windows
 code inside a 64-bit process — it would need no i386 libraries, and the lockstep would go away. A
 bookworm point release changes the lockstep set, which the next build's `packages.tsv` lists.
+
+## D-17 · One prefix, and the flip is a choice
+
+On `slax64-wine-*` both Notepad++ tiles run with no `WINEPREFIX` set, so both use `/root/.wine`:
+one 64-bit prefix, which is the point of a 64-bit image. **Notepad++'s own installers remove each
+other** — install the x64 build and the x86 one is gone, and the other way round. Our launchers do
+not do this and cannot stop it; each simply looks where its own build lives, finds nothing, and runs
+its installer again.
+
+**The prefix stays single.** One Windows running both widths is what a 64-bit image demonstrates,
+and [testing-on-both.md](testing-on-both.md) uses that one prefix to show a 32-bit program and a
+64-bit one in the same place. A second prefix would end the flip and cost **1,265 MiB of RAM** on a
+non-persistent boot, plus another first-run creation — a steep price for a test application.
+
+**So the flip is made a choice.** When a launcher's own build is missing *and* the other one is
+present, it asks before running the installer that will remove it, with the `xmessage` the image
+already ships. **Cancel is the default**, because a stray Return should not pick the answer that
+removes something, and Cancel exits 0 saying nothing more — the "cancelled or failed" message that
+follows an installer is wrong after a deliberate decline. With no display there is nobody to ask, so
+nothing is installed.
+
+**The trap, and the reason this is a decision rather than a patch:** the check must be conditioned on
+the prefix being 64-bit — `drive_c/windows/syswow64` — because in a **win32** prefix the x86 build
+owns `Program Files` itself, the same directory the x64 build owns in a 64-bit one. Without that
+condition slax32 would announce that installing Notepad++ is about to remove Notepad++. That
+negative is worth more than the positive here, and it is tested as such.
+
+**What would change this:** Notepad++ installers that coexist, or a prefix cheap enough to give each
+build its own. `WINEPREFIX=$HOME/.wine-npp64 notepadpp64` is that second prefix today, and the dialog
+names it.

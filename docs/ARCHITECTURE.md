@@ -260,7 +260,10 @@ on all three test images, each reaching `Live Kit done` in 4–6 s.
 `runtime-verified`, on a full desktop boot of each base: the **Wine tile opens from the launcher**
 with no xterm wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches,
 there is **no Mono/Gecko prompt**, and the **browser is absent** from the launcher. On 64-bit the
-**64-bit Notepad++** installs and runs as a 64-bit process too. All five slax-wine recipes claim this
+**64-bit Notepad++** installs and runs as a 64-bit process too, and since
+[D-17](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice) each launcher **asks before the
+install that removes the other build** — seen both ways round on `slax64-wine-test` under KVM on
+2026-09-21, and seen *not* to ask on `slax32-wine-test`, which is the half worth testing. All five slax-wine recipes claim this
 rung. `slax-wine-iso` was the last, once the *effect* of removing `automount` was observed on both
 bootloaders ([its page](50-cookbook/slax-wine-iso.md)), on each base.
 

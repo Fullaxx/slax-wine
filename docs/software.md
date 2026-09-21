@@ -92,8 +92,9 @@ slax32-wine. The list is in D-16, and every version is in the image's `packages.
 - **A 32-bit prefix, when asked for**: `WINEARCH=win32 WINEPREFIX=/root/.wine32 slax-wine …`
   ([testing-on-both.md](testing-on-both.md)). Measured: the 32-bit Notepad++ installs and runs in
   one, and the 64-bit one's launcher refuses it, saying why.
-- **Not both Notepad++ builds in one prefix.** Each one's installer removes the other
-  ([notepadpp64](50-cookbook/notepadpp64.md#the-two-builds-replace-each-other)).
+- **Not both Notepad++ builds in one prefix.** Each one's installer removes the other, and the
+  launcher asks before letting it
+  ([notepadpp64](50-cookbook/notepadpp64.md#the-two-builds-replace-each-other), D-17).
 - **Not .NET, and not Wine's embedded HTML control**, as on 32-bit (D-4).
 - **3D is software-rendered on most modern GPUs**, as on 32-bit (D-10).
 

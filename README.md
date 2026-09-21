@@ -106,7 +106,8 @@ and opens without an xterm wrapper, the Notepad++ installer runs under Wine and 
 launches, there is **no** Wine Mono / Gecko download prompt, and the browser is gone from the
 launcher. On slax64-wine the **64-bit** Notepad++ installs and runs too, as a 64-bit process, and
 32-bit and 64-bit programs run in the same prefix. The two Notepad++ builds are the exception: each
-one's installer removes the other ([docs/using-wine.md](docs/using-wine.md#on-slax64-wine)).
+one's installer removes the other, so each launcher asks before running it
+([docs/using-wine.md](docs/using-wine.md#on-slax64-wine)).
 
 **UEFI and both bootloaders are now measured too** — GRUB under OVMF and isolinux each boot to
 `Live Kit done`, and `automount` is confirmed gone from the kernel command line on both, against a

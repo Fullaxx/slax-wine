@@ -76,6 +76,7 @@ Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card) on `slax64-wine-u
 | the same installer, silent (`/S`), in a fresh 64-bit prefix | exit 0, in 29–32 s |
 | `notepadpp64` in a `WINEARCH=win32` prefix | refused, with its message, exit 1 |
 | `WINEARCH=win32 notepadpp64` with **no prefix yet** | refused before one is created, exit 1 |
+| `notepadpp64` when only the 32-bit build is installed | asks first, Cancel by default ([D-17](../DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)) |
 
 ## The two builds replace each other
 
@@ -86,13 +87,24 @@ Measured in fresh 64-bit prefixes, each installer run silently, in both orders:
 | the 32-bit build, then the 64-bit one | only `Program Files\Notepad++`, x86-64 |
 | the 64-bit build, then the 32-bit one | only `Program Files (x86)\Notepad++`, x86 |
 
-The tiles did the same: installing the 64-bit build from its tile removed the 32-bit build installed
-there minutes before. It is Notepad++'s installers doing it, not the launchers. Each launcher looks
-only where its own build installs and, finding nothing there, runs its installer again, which then
-removes the other build in turn.
+It is Notepad++'s installers doing it, not the launchers: each launcher looks only where its own
+build installs and, finding nothing there, runs its installer again, which removes the other in
+turn. The tiles did the same — installing the 64-bit build from its tile removed the 32-bit build
+put there minutes before.
 
-To keep both, give one its own prefix: `WINEPREFIX=/root/.wine-npp64 notepadpp64`. On a
-non-persistent boot that is another 1.2 GiB of RAM ([software.md](../software.md#requirements)).
+**Since [D-17](../DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice) each launcher asks first.**
+When its own build is missing and the other one is present, it says what the installer is about to
+remove and offers the second prefix, with **Cancel as the default** — a stray Return does not pick
+the answer that removes something. Cancel exits 0 and says nothing more. Measured 2026-09-21 on
+`slax64-wine-test` under KVM, in both directions: the dialog appears, Return leaves the other build
+in place and installs nothing, and choosing to go ahead starts the installer as before. On
+`slax32-wine-test` the same launcher asks nothing at all, which is the half that matters — there the
+x86 build owns `Program Files` itself, and a warning would be about removing what is being
+installed.
+
+To keep both, give one its own prefix: `WINEPREFIX=/root/.wine-npp64 notepadpp64`, which is what the
+dialog suggests. On a non-persistent boot that is another 1.2 GiB of RAM
+([software.md](../software.md#requirements)).
 
 | you want | use |
 |---|---|
