@@ -51,12 +51,17 @@ Expect `automount` on the `-kernel` line and on neither of the others. **No `--k
 host configured these run on `bacon` under KVM, where the harness's own keystrokes land — re-run
 2026-09-21 on all three images and all four routes, twelve for twelve.
 
-**The `--keys` chore is over here, with one caveat worth keeping.** Under KVM the menu is up in
-about a second and the harness's fixed 2-second lead lands inside it. Under TCG on this build host
-it did not: the menu is drawn by 3.2 s, so the keys came too *early*, and with the vCPU sharing a
-core it was 6.9 s. Leads of 3–6 s passed on the idle host and failed on the busy one, and the
-workaround was `home` once a second for 24 presses — `KEYS=$(printf '1s,home,%.0s' $(seq 24))down,down,ret`
-— which still works if you are booting without an accelerator.
+**The `--keys` chore is over here, with one caveat worth keeping.** On an idle KVM host the
+harness's fixed 2-second lead lands inside the menu — measured by the lead working, three runs in a
+row, with 3 s, 4 s and 6 s landing too. How early the menu is drawn there has not been timed here,
+only that 2 s is late enough; upstream's own figure is about a second
+([UPSTREAM.md](../UPSTREAM.md#filed-at-the-86d27d5-pin-building-slax64-wine--27-and-28) cites where).
+
+Under TCG on this build host it was not: the menu is drawn by 3.2 s, so the keys came too *early*,
+and with the vCPU sharing a core it was 6.9 s. Leads of 3–6 s passed on the idle host and failed on
+the busy one, and the workaround was `home` once a second for 24 presses —
+`KEYS=$(printf '1s,home,%.0s' $(seq 24))down,down,ret` — which still works if you are booting
+without an accelerator.
 
 **The caveat is load, not emulation.** Both UEFI routes missed on 2026-09-21 under KVM while this
 machine was building images at a load average of 12, and passed three times in a row on the same

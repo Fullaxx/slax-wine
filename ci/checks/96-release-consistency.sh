@@ -662,17 +662,26 @@ fi
 # the tree, or the other way round.
 #
 # The name is read from the FIRST CELL of a table row, in backticks -- `| \`name\` |` --
-# which is the register's own shape. Prose that mentions a profile elsewhere on the page
-# does not count as a row, for the same reason section 5(a) matches a list entry and not a
-# name anywhere in the file: this gate carried that bug once already.
+# INSIDE THE MATRIX SECTION AND NOWHERE ELSE. Prose that mentions a profile does not count
+# as a row, for the same reason section 5(a) matches a list entry and not a name anywhere
+# in the file: this gate carried that bug once already.
+#
+# The section bound is not decoration. The page's other tables have prose in their first
+# cell today, but a later one with a backticked name there -- `| \`testkit\` | ... |`, an
+# upstream recipe rather than a variant -- was read as a variant and failed this gate with
+# "profiles/testkit.yaml does not exist", which is a true sentence about the wrong thing.
+# Found by planting exactly that row. So the scan stops at the next heading, and a missing
+# heading is a failure rather than an empty scan that passes.
 VARIANTS="$REPO_ROOT/docs/variants.md"
 if [ ! -d "$PROFDIR" ]; then
     :
 elif [ ! -f "$VARIANTS" ]; then
     fail "docs/variants.md is missing, so nothing says what the variants share or how they differ"
 else
-    sed -n 's/^|[[:space:]]*`\([a-z0-9-]*\)`[[:space:]]*|.*/\1/p' "$VARIANTS" | sort -u > "$TMP/vrows"
-    [ -s "$TMP/vrows" ] || fail "docs/variants.md has no variant rows -- its table is the register"
+    sed -n '/^## The matrix/,/^## /p' "$VARIANTS" > "$TMP/vmatrix"
+    [ -s "$TMP/vmatrix" ] || fail "docs/variants.md has no '## The matrix' section, so the register has no table"
+    sed -n 's/^|[[:space:]]*`\([a-z0-9-]*\)`[[:space:]]*|.*/\1/p' "$TMP/vmatrix" | sort -u > "$TMP/vrows"
+    [ -s "$TMP/vrows" ] || fail "docs/variants.md's matrix has no variant rows -- that table is the register"
     find "$PROFDIR" -maxdepth 1 -name '*.yaml' -exec basename {} .yaml \; | sort -u > "$TMP/vprof"
     while IFS= read -r p; do
         [ -n "$p" ] || continue

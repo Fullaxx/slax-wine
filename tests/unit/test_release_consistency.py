@@ -285,6 +285,22 @@ def test_a_register_row_for_no_profile_is_refused():
             "profiles/slax99-wine-bios.yaml does not exist")
 
 
+def test_a_backticked_name_outside_the_matrix_is_not_a_variant():
+    """Section 11's scan stops at the matrix. The page's other tables carry prose in their
+    first cell today, but one of them could carry a name -- an upstream recipe, a script --
+    and reading that as a variant fails the gate with a true sentence about the wrong
+    thing. Planted exactly that and watched it happen before the bound was added."""
+    def add_row(fx):
+        path = os.path.join(fx, "docs/variants.md")
+        with open(path, "a") as fh:
+            fh.write("\n| `testkit` | an upstream recipe, not a variant | x |\n")
+    rc, out = gate_in_fixture(add_row)
+    check("a backticked non-variant below the matrix is ignored", rc, 0)
+    if rc != 0:
+        FAILURES.append("  the gate said: " + " | ".join(
+            l.strip() for l in out.splitlines() if "FAIL" in l)[:300])
+
+
 TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_an_uninitialised_submodule_is_not_mistaken_for_this_repo,
          test_it_refuses_rather_than_guess_when_git_will_not_name_the_variables,
@@ -294,6 +310,7 @@ TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_a_profile_name_says_what_it_builds,
          test_a_variant_missing_from_the_register_is_refused,
          test_a_register_row_for_no_profile_is_refused,
+         test_a_backticked_name_outside_the_matrix_is_not_a_variant,
          test_every_test_here_is_registered]
 
 

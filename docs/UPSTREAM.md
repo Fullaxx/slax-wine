@@ -1124,7 +1124,9 @@ so `home` once a second passes on both.
 **Why it is not an issue upstream.** It is a property of running without KVM. Under KVM the menu
 appears in about a second (upstream's own figure, `docs/50-cookbook/uefi-bootable.md:79-80`), the
 2-second lead lands inside GRUB's 5-second window, and our own KVM-host runs on 2026-09-18 passed
-with the harness's keys and no `--keys` at all. This project is moving to a KVM-capable host, and
+with the harness's keys and no `--keys` at all. **Read with the later finding**, below: under KVM
+the lead lands on an *idle* machine, and missed twice on one at a load average of 12 — so the
+property is the host's speed at that moment, not the accelerator alone. This project is moving to a KVM-capable host, and
 [#28](https://github.com/Fullaxx/slax-kitchen/issues/28) was edited down to the half that is
 independent of the accelerator. The measurements stay here for whoever meets it under TCG.
 
@@ -1167,10 +1169,9 @@ checklist asked for, on all three test images as built at `7f9c4f8`:
 
 Twelve routes, twelve passes, each reaching `Live Kit done`. The timings are the whole command, the
 transfer to `bacon` included. The boot itself, which is what the harness times, was **4 to 6
-seconds** on every one of the fifteen (six at 6 s, six at 4 s, three at 5 s, ceiling 32 s) where TCG
-took 21–31. **Every `--bios` and
-`--uefi` log carries `console=ttyS0` and no `automount`**, and every `--kernel` log carries both —
-the control that proves the check can fail. So the `automount` removal is now demonstrated through
+seconds** on every one of the fifteen (six at 6 s, six at 4 s, three at 5 s, ceiling 32 s) where
+TCG took 21–31. **Every `--bios` and `--uefi` log carries `console=ttyS0` and no `automount`**, and
+every `--kernel` log carries both — the control that proves the check can fail. So the `automount` removal is now demonstrated through
 both bootloaders on both bases *and* on slax-bottles, under KVM, with the shipped 5-second menu.
 
 **The `--keys` chore is over, with one measured caveat.** The harness's derived
@@ -1213,12 +1214,14 @@ each other in one prefix — is implemented as [D-17](DECISIONS.md#d-17--one-pre
 and verified in the same session, in both directions and with its negative control on slax32. The
 issue is left open for the user to close: that is an outward-facing action.
 
-**What did not change**, and should not be re-opened while doing the above:
+**What did not change**, and should not be re-opened on the strength of any of it:
 
 - [#28](https://github.com/Fullaxx/slax-kitchen/issues/28) — QEMU refuses an unknown key name on any
   accelerator. Fixed upstream in `a613b3b`; the harness now says so instead of discarding the reply.
-- The images. Nothing here rebuilt anything for KVM's sake; the five shipped images are identical in
-  content across this bump, and what changed is the evidence's cost, not the artifact.
+- The images, *at this bump*. Nothing was rebuilt for KVM's sake and all five shipped images are
+  identical in content across it; what changed is the evidence's cost, not the artifact. The two
+  launcher changes that followed on the same day are their own commits, and they changed exactly
+  two files inside two bundles.
 - The TCG measurements themselves. They stay, dated and labelled: they are true of CI, of a
   container, and of this machine before `bacon` took the boots.
 ## Filed at the `86d27d5` pin, from this repo's own test tooling — [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and [#30](https://github.com/Fullaxx/slax-kitchen/issues/30)

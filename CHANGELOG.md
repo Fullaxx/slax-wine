@@ -123,11 +123,13 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 - **slax64-wine has only been run in QEMU**, under TCG, like slax-bottles. Real hardware is untested.
 - **The two Notepad++ builds do not share a prefix.** On slax64-wine each one's installer removes the
   other build, measured in both orders, so the two tiles reinstall over each other in `/root/.wine`.
-  A separate prefix for one of them keeps both.
+  Since D-17 the launcher **asks before letting that happen**, with Cancel as the default, and a
+  separate prefix for one of them keeps both — but the installers' behaviour is theirs, and nothing
+  here changes it.
 - **A Wine prefix is large, and without persistence it lives in RAM**: Wine copies its Windows-side
-  libraries into it, 1,265 MiB for a 64-bit prefix and 589 MiB for a 32-bit one. Making one took
-  about 4 minutes under emulation, and Wine waits at most 5: past that, the first launch fails and
-  the second works.
+  libraries into it, 1,265 MiB for a 64-bit prefix and 589 MiB for a 32-bit one. Making one takes
+  65 s under KVM and about 4 minutes under emulation, and Wine waits at most 5: past that, the
+  first launch fails and the second works, which happened once on a busy emulated host.
 - slax-wine has no Wine Mono or Wine Gecko, so .NET and embedded-HTML applications do not run.
   Debian packages neither; the first-run prompt is suppressed rather than satisfied. (slax-bottles
   ships both, as Flathub runtimes.)

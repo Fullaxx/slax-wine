@@ -26,6 +26,7 @@ touches is narrower:
 | `git` | the submodule, and the provenance/tag checks in gate 96 |
 | `python3` ≥ 3.9 with `yaml` and `jsonschema` | the recipe engine itself |
 | `shellcheck`, `yamllint` | the commit gates only — not the build |
+| `qemu-system-x86`, `ovmf` | the **boot tests** only (`kitchen test`), not the build — and not even those if they run on a boot host, which needs `ssh`, `rsync` and `git` here instead |
 | `flatpak` | **the slax-bottles variants only.** `build.sh` installs Bottles from Flathub into a staging dir with it. Not needed for slax-wine |
 
 On Debian/Ubuntu:
@@ -124,6 +125,14 @@ each clone and is not tracked — so **after cloning, do this once**:
 ln -sf ../../ci/hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../ci/hooks/pre-push   .git/hooks/pre-push
 ```
+
+Boot tests are separate from both, and they do not have to run on this machine: if
+`vendor/slax-kitchen/boot-host.ini` names one, every `kitchen test` is carried there over ssh and
+booted with KVM, which is how the timings in the cookbook were taken. The file is gitignored and
+refused by `10-no-dnc.sh` if it is ever staged, because it names somebody's machine; the template
+is `vendor/slax-kitchen/boot-host.example.ini`, `kitchen boot-host check` says whether it works, and
+`KITCHEN_BOOT_HOST=local` boots here instead. A configured host that cannot be reached **fails the
+command** rather than quietly falling back.
 
 Run them by hand any time:
 

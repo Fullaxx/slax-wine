@@ -68,6 +68,12 @@ slax64 sets nothing: new prefixes are win64, 32-bit programs run in them through
 and a user's own `WINEARCH=win32` passes through. `notepadpp64` refuses such a prefix, and
 refuses `WINEARCH=win32` before one is created.
 
+**Only the 64-bit images ever ask about Notepad++.** Both builds share one prefix there, and
+each installer removes the other, so each launcher asks first
+([D-17](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)). On slax32 the question cannot
+arise — one build, and it owns `Program Files` itself — and the launchers are conditioned on
+`syswow64` so that it never does. That negative is checked on the image, not assumed.
+
 **The test images do not ship.** They are the uefi recipes plus `serial-console` and
 `testkit`: a serial entry to assert on, and a boot-time report of the files a recipe claims
 to install. Everything automated is run against them, which is why they exist; they are not
