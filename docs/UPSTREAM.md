@@ -120,11 +120,14 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
 
 - **Build inputs.** These are `kitchen`, `lib/`, `schema/`, `compat/`, `tools/`, and the upstream
   recipes our profiles use.
-  - If any of them changed, rebuild all three images. Compare them file by file with the previous
-    build, content rather than bytes, since the build stamps directory mtimes. `kitchen diff
-    --bundles` cannot answer this on its own ([#30](https://github.com/Fullaxx/slax-kitchen/issues/30)):
-    it compares the file list inside a bundle, so a rebuild reads the same as a change. Re-run the boot
-    routes only if the contents changed.
+  - If any of them changed, rebuild **every shipped image** — the four slax-wine ones and
+    slax-bottles — and compare them with the previous build, **content rather than bytes**: the
+    build stamps directory mtimes, and a squashfs is not byte-reproducible even from one run to the
+    next. `kitchen diff <before> <after> --bundles` is the tool since
+    [#30](https://github.com/Fullaxx/slax-kitchen/issues/30) was fixed: it compares type, mode,
+    owner, size, link target and sha256 per entry and names the field that moved. **Build the
+    baseline first, at the old pin**, because `out/` may hold nothing and the numbers in the docs
+    are one build's, not the release's. Re-run the boot routes only if the contents changed.
   - If none changed, say so, and the previous evidence stands.
 - **Copied files.** Find which of our copies changed upstream, with
   `git rev-list --count <pin>..<target> -- <path>` on each source. Those are re-copied; the rest are
@@ -187,7 +190,7 @@ retired row stays, so the next reader can see what we once carried and why it we
 | [#22](https://github.com/Fullaxx/slax-kitchen/issues/22) | `ci/lib.sh` | `file_size` answers 0 for a gitlink, where upstream's at `8adfca6` answered `MISSING` | retired at `337f7e7` |
 | [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `build.sh` | staged DXVK/VKD3D under `bottles-data/` instead of a `root/.var/…` mirror of where they go | retired at `86d27d5` |
 | [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `recipes/available/bottles.yaml` | took that stage from `bottles-data/`, the `src:` half of the same workaround | retired at `86d27d5` |
-| [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) | `build.sh` | refuses a variant whose profile declares another base, and a work tree unpacked from another ISO -- `kitchen apply --profile` checks neither | active since `86d27d5` |
+| [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) | `build.sh` | refuses a variant whose profile declares another base, and a work tree unpacked from another ISO -- `kitchen apply --profile` checked neither | retired at `7f9c4f8`; `949074b` reads the profile's `base:` and refuses the mismatch itself, and `cc28622` measures the arch, so the recorded-source half went. The three-part comparison stays in `build.sh` **unmarked**: upstream compares flavour and arch and deliberately not version, and here the version is not free |
 
 ---
 
@@ -1046,6 +1049,10 @@ facts. All three trees read `64bit`, and the stock 32-bit ISO still reads `32bit
 names another base and a 64-bit one without `wine32:i386`. Nothing else here depends on the path, and
 `ISO_DIR` is ours. So there is no marker and no row.
 
+**Closed by `cc28622`**, taken at the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump), with the fix as
+filed: the ELF class of `01-core`'s `ls`, then the ISO's **file name** alone, then `unknown`. The
+five trees built at that pin each resolve the arch they should, and the skip lines say so.
+
 ### [#28](https://github.com/Fullaxx/slax-kitchen/issues/28): a key QEMU refuses is dropped in silence
 
 **Found by being wrong about it.** Every UEFI boot test here under TCG, and slax-bottles' before it,
@@ -1067,6 +1074,11 @@ would file under "qemu died". `--keys '2s,Down,ret'` now exits at once naming `'
 unit-test files pass, and 13 of 13 gates.
 
 **Not worked around.** Nothing here passes a key name QEMU does not know, now that we have checked.
+
+**Closed by `a613b3b`**, taken at the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump). A malformed
+spec now exits 2 before anything boots, and under a boot host before the tree is even sent. Every
+`--keys` string in this repo parses under the new grammar; the one that does not, `'3s,(home,1s)x22,…'`,
+survives only in prose that says it was refused, which is this issue's own record.
 
 ### Measured, and deliberately not filed: the UEFI keystroke lead under TCG
 
@@ -1112,89 +1124,72 @@ because there is no issue to retire it against; on a KVM host it is simply unnec
 - The lesson is the one already on this page: attack a finding before relying on it. A key spec that
   "worked" was never checked against what the harness accepts.
 
-### When KVM lands: the checklist, and what this page becomes
+### When KVM lands: it did, on 2026-09-21, and this is what it changed
 
-This build host has no `/dev/kvm` today: `kitchen doctor --report` says `kvm=no`, and every boot
-test prints `note: no /dev/kvm, running under TCG -- this is slow`. A KVM-capable framework is
-expected. When it arrives, this is the checklist — and the last step is this page editing itself,
-because a procedure that outlives its reason is how a workaround becomes folklore.
+**It arrived as a boot host, not as a device.** This container still has no `/dev/kvm`; `bacon` has
+one, and since the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump) `vendor/slax-kitchen/boot-host.ini`
+sends every `kitchen test` there. `kitchen doctor` now prints `boot tests ... KVM on bacon
+(qemu 8.2.2)` where it printed the TCG note, which is the signal
+[`CLAUDE.md`](../CLAUDE.md) said to watch for.
 
-**0. Confirm it is really there**, by the test the harness itself makes before adding
-`-enable-kvm` (`tests/boot/qemu_boot.py:266`):
+**Every route was re-run with the harness's own keys — no `--keys` at all**, which is what the
+checklist asked for, on all three test images as built at `7f9c4f8`:
 
-```sh
-vendor/slax-kitchen/kitchen doctor --report | grep -E 'kvm|privilege: kvm'
-python3 -c "import os; print(os.access('/dev/kvm', os.W_OK))"      # must be True
-```
+| image | `--kernel` | `--bios` | `--uefi` | `--persistence` |
+|---|---|---|---|---|
+| `slax32-wine-test` | 8 s | 14 s | 12 s | 13 s |
+| `slax64-wine-test` | 8 s | 14 s | 13 s | 12 s |
+| `slax-bottles-test` | 15 s | 14 s | 13 s | 13 s |
 
-`kvm=yes`, and the TCG note gone from the next boot test, are the two signals. A `/dev/kvm` that
-exists but is not writable by this user is the trap: the harness silently stays on TCG.
+Twelve routes, twelve passes, each reaching `Live Kit done`. The timings are the whole command, the
+transfer to `bacon` included. The boot itself, which is what the harness times, was **4 to 6
+seconds** on every one of the fifteen (six at 6 s, six at 4 s, three at 5 s, ceiling 32 s) where TCG
+took 21–31. **Every `--bios` and
+`--uefi` log carries `console=ttyS0` and no `automount`**, and every `--kernel` log carries both —
+the control that proves the check can fail. So the `automount` removal is now demonstrated through
+both bootloaders on both bases *and* on slax-bottles, under KVM, with the shipped 5-second menu.
 
-**1. Re-run the UEFI boot tests with the harness's own keys** — no `--keys`, since those keys are
-the thing under test:
+**The `--keys` chore is over, with one measured caveat.** The harness's derived
+`'2s,down,down,ret'` lands inside GRUB's menu on this host — but not while the machine is busy. Both
+UEFI routes failed on the first pass, run *during* a build with a load average of 12: the keys went
+out before OVMF had drawn the menu, GRUB's countdown expired, the default entry booted, and nothing
+reached the serial log. On the idle host the same command passed three times in a row, and `3s`,
+`4s` and `6s` leads all passed under load. This is the same sensitivity the TCG measurements
+recorded — *"leads of 3–6 s pass on the idle host, and fail on the busy one"* — with a smaller
+margin, not a different phenomenon. **Do not run boot tests against a build in progress**, and do
+not read a single UEFI failure as a regression without checking what else the machine was doing.
 
-```sh
-K=vendor/slax-kitchen/kitchen
-for I in out/slax32-wine-test-1.0.0.iso out/slax64-wine-test-1.0.0.iso \
-         out/slax-bottles-test-1.0.0.iso; do
-    $K test "$I" --uefi
-done
-grep -a '^Kernel command line:' out/boot-tests/*-uefi.serial.log
-```
+Worth filing upstream? The harness's lead is a fixed 2 s and nothing measures whether the menu is up
+before the keys go. Reported, not filed: an outward-facing report is the user's call.
 
-Reaching `Live Kit done` is not enough on its own: the default entry reaches it too. Each log's
-`Kernel command line:` must carry `console=ttyS0`, which only the serial entry sets — that is what
-proves the keystrokes selected it.
-
-**2. If they pass, the chore is over on this host.** Edit, in this order:
-
-- [`slax-wine-iso.md`](50-cookbook/slax-wine-iso.md): drop `KEYS` from the reproduction block, and
-  turn "Under TCG, the harness's own UEFI keystrokes miss the menu" into history — the measurements
-  stay, the instruction goes.
-- [`slax-bottles-iso.md`](50-cookbook/slax-bottles-iso.md): the same, in "The UEFI row needed
-  different keystrokes".
-- `profiles/slax32-wine-test.yaml`: the comment by `uefi-bootable` loses the `--keys` procedure and
-  keeps the reason the shipped `menu_timeout` is what gets tested.
-- **This page.** Mark the section above *superseded on `<date>`*, with the KVM timings beside the
-  TCG ones, and keep both: the TCG numbers stay true of any machine without KVM, which is what CI
-  and a container are.
-
-**3. If they fail under KVM too, that is a new finding, not this one.** Time the menu first, with
-screendumps every 0.5 s, the way the numbers above were taken. Under KVM the 2-second lead is the
-one upstream tuned and measured, so a failure there is a regression rather than a host difference,
-and it is worth filing — with the timings, under [our own bar](#our-own-bar-which-is-higher).
-
-**4. Re-measure what emulation distorted**, and label what stays TCG-only:
+**Still queued, deliberately.** Re-measuring what emulation distorted is its own piece of work, and
+these pages still carry TCG numbers, each true of a machine without KVM:
 
 | page | what to re-measure |
 |---|---|
-| [`slax-wine-iso`](50-cookbook/slax-wine-iso.md) | the boot-route tables, 21–31 s per route |
+| [`slax-wine-iso`](50-cookbook/slax-wine-iso.md), [`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md) | the boot-route tables (21–31 s per route), and the `--keys` instructions, which are now only needed on a busy host |
 | [`using-wine`](using-wine.md), [`testing-on-both`](testing-on-both.md) | prefix creation — about 4 minutes for a 64-bit prefix, 90 s for a 32-bit one — and Wine's 5-minute `wineboot` limit, which should stop being reachable |
-| [`notepadpp32`](50-cookbook/notepadpp32.md) | the first launch that failed against that limit, and the second that worked |
+| [`notepadpp32`](50-cookbook/notepadpp32.md), [`notepadpp64`](50-cookbook/notepadpp64.md) | the first launch that failed against that limit, and the second that worked |
 | [`software.md`](software.md) | nothing. Its figures are memory, not speed, and RAM does not care about the accelerator |
 
-**5. Work what was waiting on it.** Anything held back for the accelerator carries the
-`blocked: needs KVM` label on this repository:
+And the work that was waiting on the accelerator, which is desktop runtime work rather than boot
+evidence:
 
 ```sh
 gh issue list -R Fullaxx/slax-wine --label "blocked: needs KVM"
 ```
 
-Today that is [#1](https://github.com/Fullaxx/slax-wine/issues/1) — the two Notepad++ tiles
-replacing each other in one prefix, whose whole acceptance list is desktop runtime work, which is
-why it waited rather than being guessed at.
+Today that is [#1](https://github.com/Fullaxx/slax-wine/issues/1) — the two Notepad++ tiles replacing
+each other in one prefix.
 
-**6. What does not change**, and should not be re-opened while doing the above:
+**What did not change**, and should not be re-opened while doing the above:
 
 - [#28](https://github.com/Fullaxx/slax-kitchen/issues/28) — QEMU refuses an unknown key name on any
-  accelerator, and the harness discards the reply either way.
-- [#27](https://github.com/Fullaxx/slax-kitchen/issues/27),
-  [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and
-  [#30](https://github.com/Fullaxx/slax-kitchen/issues/30) — no QEMU is involved in any of them.
-- The images. Nothing here rebuilds anything; if a page's evidence changes, it is the timing, not
-  the artifact.
-- The [#29 ledger row](#local-workarounds), which is about `apply --profile`, not about booting.
-
+  accelerator. Fixed upstream in `a613b3b`; the harness now says so instead of discarding the reply.
+- The images. Nothing here rebuilt anything for KVM's sake; the five shipped images are identical in
+  content across this bump, and what changed is the evidence's cost, not the artifact.
+- The TCG measurements themselves. They stay, dated and labelled: they are true of CI, of a
+  container, and of this machine before `bacon` took the boots.
 ## Filed at the `86d27d5` pin, from this repo's own test tooling — [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and [#30](https://github.com/Fullaxx/slax-kitchen/issues/30)
 
 Two checks this repo carries because the engine does not. Both were filed 2026-09-20 with a fix
@@ -1219,6 +1214,11 @@ base and a tree unpacked from another ISO. Marked there, with a row in
 [Local workarounds](#local-workarounds). It can retire if #29 lands — and it is only as good as the
 arch fact, which is what #27 is about.
 
+**Closed by `949074b`**, and the workaround **retired** at the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump).
+`apply --profile` now refuses a tree that disagrees with the profile's `base:` — on `flavour` and
+`arch`, deliberately not on `version`. `build.sh` keeps the three-part comparison for that reason,
+unmarked, as a check of our own `build.env` rather than of theirs.
+
 ### [#30](https://github.com/Fullaxx/slax-kitchen/issues/30): `kitchen diff --bundles` compares file lists, not files
 
 **Read.** `_bundle_paths()` (`lib/diff.py:134`) lists paths with `unsquashfs -l`; when both lists
@@ -1234,6 +1234,10 @@ inside is identical, mtimes included.
 the answer is the same whether a bump changed a bundle or not. Our own rebuild pair — two comment
 lines in one shell script — came back as four bundles "contents differ", naming nothing.
 
+**Closed by `a941ca2`**, taken at the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump), with `1eda24e`
+and `fe17036` behind it. `kitchen diff --bundles` is now the tool step 2 of *Moving the pin* asks
+for, and that step no longer says it cannot be.
+
 **Fix tried.** Compare contents: type, mode, owner, size, link target and sha256 per entry, mtimes
 excluded, extracting only under `--bundles` and only for a bundle whose bytes already differ. It
 then names `usr/local/bin/notepadpp32` in our pair and calls the other three bundles identical. A
@@ -1244,6 +1248,129 @@ byte-identical, which would make bundle hashes stable across rebuilds.
 **Not worked around in the repo.** The comparison scripts live in this session's scratch directory,
 not in the tree; what the repo carries is the instruction in Moving the pin to compare content
 rather than bytes.
+
+## Adopted at the `7f9c4f8` bump
+
+Fifty-two commits, `86d27d5..7f9c4f8`, 79 files, +9,893/−479. Upstream's CI on `7f9c4f8` was green in
+every job before anything here moved. Four of the closures are ours — #27, #28, #29, #30 — and each
+is recorded in its own section above.
+
+| what changed upstream | here |
+|---|---|
+| **the boot host**: `lib/boot_host.py`, `boot-host.example.ini`, `docs/60-testing/boot-host.md`, `ci/run-boot.py` (`c1e65a3`, `46d163e`, `29c67b7`, `a2a3a7b`, `6b8a74e`, `ed1dbe6`) | adopted — see below. This is the bump that ends the TCG era here |
+| **the arch and flavour facts**: measured from `01-core`, not guessed from a path or defaulted (`cc28622`, `012e720`), and `--facts` reaching the steps that run (`cadcfef`, `d200538`) | build inputs: rebuilt, and every tree's facts read back |
+| **`boot.menu` refuses a payload nothing provides** (`a9e75a9`, `cb584ff`) | a build input. Our bases' menu entries all name `/slax/boot/vmlinuz`, which the ISO ships, so nothing is refused |
+| **`apply --profile` holds the tree to the profile's `base:`** (`949074b`) | retires our one active workaround |
+| **`kitchen diff --bundles` compares content** (`a941ca2`, `1eda24e`, `fe17036`) | the comparison below is the first to use it |
+| **tools are checked before a command starts** (`7f8ded8`, `5231f13`, new `lib/need.py`) | `kitchen pack` now names a missing `unsquashfs` instead of dying mid-pack |
+| **fourteen commits inside gates we copy** | nine of our sixteen copies changed; two new helpers came with them |
+| tier-c, containers, `release.yml`, upstream's own docs | not ours |
+
+**The boot host, which is the headline.** This build container has no `/dev/kvm` at all. `bacon` has
+one, writable by this account, and since this bump `vendor/slax-kitchen/boot-host.ini` sends every
+`kitchen test` there over ssh: the engine's own tree by `git ls-files`, the image by content-addressed
+rsync, everything under `<scratch>/boot-host/`, nothing outside it touched.
+
+The file lives **inside the submodule**, which is the one surprise worth writing down:
+`lib/boot_host.py` resolves `REPO_ROOT` from its own location and reads `<REPO_ROOT>/boot-host.ini`
+and nowhere else. It is `chmod 600`, ignored by the submodule's own `.gitignore` (upstream added
+`/boot-host.ini` in `c1e65a3`), invisible to this repository — the superproject does not descend into
+a submodule — and refused by `10-no-dnc.sh`, ours included, if it is ever staged. Our `.gitignore`
+carries the name too, for a copy put at the top of this repo by mistake.
+
+`kitchen boot-host check` is green on every line: the five tools, python 3.12.3, qemu 8.2.2, OVMF,
+`/dev/kvm` writable, 134.9 GiB free, and the work directory private. `kitchen doctor` now prints
+`boot tests ... KVM on bacon` where it used to print the TCG note — which is exactly the trigger
+[`CLAUDE.md`](../CLAUDE.md) pointed at. A configured host that cannot be reached **fails the
+command**; it never falls back to a local boot, and `KITCHEN_BOOT_HOST=local` is the way back here.
+
+**The build, at `7f9c4f8`.** Eight images built at the old pin first, as a baseline — `out/` was
+empty, and the numbers in the docs turned out to be one build's rather than the release's (see
+below). Then the same eight at the new pin. Every shipped image is **identical in content**:
+
+| image | size, both pins | what differs |
+|---|---|---|
+| `slax32-wine-bios` | 531,935,232 | four bundles' container bytes; 48 entries, every one matching |
+| `slax32-wine-uefi` | 538,425,344 | the same four, plus `/boot/efi.img` |
+| `slax64-wine-bios` | 855,173,120 | five bundles' container bytes; 49 entries, 10,997 inside `20-wine.sb` alone |
+| `slax64-wine-uefi` | 861,663,232 | the same five, plus `/boot/efi.img` |
+| `slax-bottles` | 1,300,676,608 | `20-flatpak`, `30-bottles` (66,254 entries), `98-dpkg-db`, plus `/boot/efi.img` |
+
+The three test images were built and compared too: `slax32-wine-test` 538,437,632 and
+`slax64-wine-test` 861,677,568, both unchanged in size and entry count, their bundles identical in
+content. They are what the boot routes below ran against.
+
+`kitchen diff --bundles` says it plainly for every one of them: *"identical content — every entry
+matches; only the container's own bytes differ, as a rebuild's do"*. The five stock bundles are
+byte-identical and are not even listed. `/boot/efi.img` differs in **36 bytes**, all between offsets
+40 and 32,856 — the FAT volume serial and the create and write times of eight directory entries —
+in a 6,488,064-byte image, so `EFI/BOOT/BOOTX64.EFI` is untouched. Both builds ran on one day; a
+build a day later differs in 24 more, the date fields, as the `86d27d5` bump measured.
+
+**The new facts, read back.** This is what `cc28622` and `012e720` change, and the apply log states
+it per skipped step: `[arch=32bit, flavour=debian]` on both 32-bit trees and `[arch=64bit,
+flavour=debian]` on the three 64-bit ones. Measured from the ELF class of `01-core`'s `ls` now, not
+from the path the ISO sat in — and the right halves of `wine`, `wine-desktop` and `slax-wine-iso`
+ran on each. `21/21` and `22/22` structure assertions, as before.
+
+**What the baseline caught, which is not about this bump.** Rebuilding at the *old* pin did not
+reproduce three of the five documented sizes: the 64-bit pair came out 4,096 bytes larger and
+slax-bottles 1,372,160 bytes smaller, with identical package sets. A squashfs is not
+byte-reproducible run to run — the bios and uefi images of one run already carry different sha256
+for an identically sized `20-wine.sb` — and the Flatpak stage is not byte-stable across installs
+either, though `BOTTLES_LOCK` pins every ref. Upstream measured the cure while fixing
+[#30](#30-kitchen-diff---bundles-compares-file-lists-not-files): `mksquashfs -mkfs-time 0
+-all-time 0`. Nothing here depends on those byte counts; the documents that quote them do.
+
+**Copied files.** Nine of the sixteen changed upstream: `ci/lib.sh` (new `require_python3`),
+`10-no-dnc.sh` (which now also refuses a committed `boot-host.ini`), `40-schema.sh`, `60-links.sh`,
+`80-unit.sh`, `90-doc-coverage.sh`, `test_ci_lib.py`, `test_desktop_entries.py`, `test_unit_gate.py`.
+The other seven were re-cited only.
+
+**Two new files, copied rather than borrowed**, because both gates now call a helper:
+
+- `ci/md-links.py`, which `60-links.sh` runs. It **must** be copied: it resolves its own root from
+  its location and runs `git -C ROOT ls-files "*.md"`, so the vendored copy would check the
+  submodule's documentation instead of ours.
+- `ci/unit-run.py`, which `80-unit.sh` runs to report a test defined but never called. It takes a
+  path and derives no root, so borrowing would have worked — it is copied for symmetry, and because
+  `ci/` here is a self-contained gate suite.
+
+Both carry the usual header, so sections 7 and 9 of gate 96 hold them like the rest: eighteen cited
+files now, not sixteen.
+
+**Adaptations re-applied, not worked around.** `80-unit.sh` keeps its one difference, the `# desc:`
+line, and takes upstream's `KITCHEN_BOOT_HOST=local` — which matters here for the first time, since
+this tree now has a boot host. `40-schema.sh` takes `require_python3` with our wording, since we have
+no `compat/`. `90-doc-coverage.sh` does **not** take the new TARGET-count rule: it counts
+`kind: Fingerprint` files in `compat/`, and this repo has none, so the rule would stand down on every
+run — the same reason the recipe-count and upstream-issue rules were left out. `test_desktop_entries.py`
+gains a **third** local change: upstream's new "no .desktop files found at all" guard is not taken,
+because every `.desktop` entry here is a recipe `content:` block and no real `.desktop` file is
+tracked under `recipes/` — the guard would fail every run, and the scan that does have inputs carries
+the same assertion already.
+
+**The link gate now checks the half after the `#`** (`f6d07fa`), which nothing here had ever
+verified. On the tree as this bump leaves it: **213 internal links, 40 of them with a fragment**,
+across 23 files, all resolving. It was 207 and 36 before this bump's own writing, and none of those
+36 needed fixing — an anchor gate arriving to find nothing broken is worth recording, because the
+next rename is what it is for.
+
+**Retired:** the [#29 row](#local-workarounds), the only active one. **Kept, unmarked:** `build.sh`'s
+three-part base comparison, because upstream compares `flavour` and `arch` and deliberately not
+`version`.
+
+**Tests.** Upstream's five changed or new tests that touch what we copy — `test_ci_lib`,
+`test_desktop_entries`, `test_unit_gate`, `test_md_links`, `test_doc_coverage` — pass inside the
+pinned submodule under `python3 -B` with a private `TMPDIR`, leave zero entries behind, and the
+submodule stays pristine. The five changed gates pass here as root **and** as uid 65534. Run as that
+user *without* a git config they refuse outright — "every file-scoped gate would examine ZERO files
+and report success" — which is `ci/lib.sh` failing closed, and worth having seen.
+
+**Landed upstream after this pin, and deliberately out of scope:** `12d0f9c` fixes the target-count
+rule's empty-list refusal, which is the rule this repo does not adopt; `18294f5` guards each test
+call so one crash cannot hide the rest, in files we copy and in twenty-one we do not. Neither is
+needed here, and both come with the next bump.
 
 ## Two findings were dropped before filing, in round one
 

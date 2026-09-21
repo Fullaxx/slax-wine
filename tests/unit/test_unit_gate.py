@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (tests/unit/test_unit_gate.py).
+# Copied verbatim from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (tests/unit/test_unit_gate.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """ci/checks/80-unit.sh must not hand git's repository variables to the tests it runs.
 
@@ -39,6 +39,7 @@ import tempfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 LIB = os.path.join(ROOT, "ci", "lib.sh")
+RUNNER = os.path.join(ROOT, "ci", "unit-run.py")
 GATE = os.path.join(ROOT, "ci", "checks", "80-unit.sh")
 
 FAILURES = []
@@ -61,6 +62,18 @@ LITTER or shutil.rmtree(d, ignore_errors=True)
 sys.exit(EXIT)
 '''
 
+# A test nobody runs, in the shape that actually happens: the name is still mentioned in
+# code -- here in a list the file keeps and never iterates -- so every version of this
+# check that read the source rather than the run called it registered.
+STRAY = '''
+
+def test_never_called():
+    raise AssertionError("a test nobody ran cannot fail, which is the bug")
+
+
+_LEFTOVER = [test_never_called]
+'''
+
 
 def check(name, got, want):
     if got != want:
@@ -72,6 +85,9 @@ def git(repo, *args):
                           env=clean_env())
 
 
+_LOCAL_ENV_VARS = None
+
+
 def local_env_vars():
     """The names git calls repository-local -- the exact set the gate scrubs.
 
@@ -80,9 +96,18 @@ def local_env_vars():
     friends are not repository-local and are not git's to clear, so a test asserting "no
     GIT_* at all survived" asserts something the fix never promised. This file's first run
     did exactly that and failed on an ambient GIT_EDITOR.
+
+    Asked once. clean_env() calls this and git() calls clean_env(), so the answer was
+    re-derived by a subprocess on every git invocation in this file -- measured
+    2026-09-20 at about 70 processes per run, to recompute a list that cannot change
+    while the interpreter is alive.
     """
-    return subprocess.run(["git", "rev-parse", "--local-env-vars"], capture_output=True,
-                          text=True).stdout.split()
+    global _LOCAL_ENV_VARS
+    if _LOCAL_ENV_VARS is None:
+        _LOCAL_ENV_VARS = subprocess.run(
+            ["git", "rev-parse", "--local-env-vars"],
+            capture_output=True, text=True).stdout.split()
+    return _LOCAL_ENV_VARS
 
 
 def clean_env():
@@ -109,20 +134,33 @@ def victim_repo(tmp):
     return repo
 
 
-def gate_fixture(tmp, probe_exit=0, litter=False):
-    """A REPO_ROOT for the gate: the real lib.sh and the real gate, plus one probe test.
+def gate_fixture(tmp, probe_exit=0, litter=False, stray=False):
+    """A REPO_ROOT for the gate: the real lib.sh, the real runner and the real gate, plus
+    one probe test.
 
     litter=True leaves the probe's fixture behind, which is what a badly-behaved test does
     and what the gate's detector exists to name.
+
+    THE REAL RUNNER, not a stand-in. The gate runs every test through ci/unit-run.py, so a
+    fixture without it is a fixture where nothing runs at all -- which shows up here as a
+    probe that wrote no report, several assertions away from the cause.
     """
     fx = os.path.join(tmp, "fixture")
     os.makedirs(os.path.join(fx, "ci", "checks"))
     os.makedirs(os.path.join(fx, "tests", "unit"))
     shutil.copy2(LIB, os.path.join(fx, "ci", "lib.sh"))
+    shutil.copy2(RUNNER, os.path.join(fx, "ci", "unit-run.py"))
     shutil.copy2(GATE, os.path.join(fx, "ci", "checks", "80-unit.sh"))
     p = os.path.join(fx, "tests", "unit", "test_probe.py")
+    body = PROBE.replace("LITTER", str(bool(litter))).replace("EXIT", str(probe_exit))
+    if stray:
+        # A test the file defines and never calls -- and one that WOULD fail, so the run
+        # reporting success is the whole defect in one file. It is appended after the
+        # sys.exit, which is exactly how the real thing looks: the function is there, and
+        # nothing reaches it.
+        body += STRAY
     with open(p, "w") as fh:
-        fh.write(PROBE.replace("LITTER", str(bool(litter))).replace("EXIT", str(probe_exit)))
+        fh.write(body)
     os.chmod(p, 0o755)
     return fx
 
@@ -286,9 +324,9 @@ def test_the_gate_still_has_teeth_through_the_subshell():
 def test_a_test_leaves_nothing_behind():
     """The gate gives each test a TMPDIR of its own and removes it. Issues #24 and #25.
 
-    Five of the fifteen tests here never remove their fixtures -- 46 directories per run of
-    this gate, 238 MB on the machine where it was found, because the gate runs at both
-    pre-commit and pre-push. Nothing would have noticed the fix going again: every test
+    Five of the fifteen tests here on 2026-09-18 never removed their fixtures -- 46
+    directories per run of this gate, 238 MB on the machine where it was found, because the
+    gate runs at both pre-commit and pre-push. Dated: it was true then, not a claim about now. Nothing would have noticed the fix going again: every test
     passes with or without it.
 
     Asserted on the TMPDIR the gate handed out rather than on a fixture inside it: that
@@ -360,7 +398,42 @@ def test_every_test_here_is_registered():
           [])
 
 
+def test_a_test_that_never_runs_is_named():
+    """The gate's oldest silent failure, and the one it kept half-catching.
+
+    A function written, reviewed and committed while main()'s hand-maintained list never
+    gained it: the suite prints "all checks passed", because the check that would have
+    disagreed was never called. This probe's stray test raises on sight, so if anything
+    ran it the run would be red -- it is green, and the gate has to say why.
+
+    The name IS mentioned in code, in a list the probe keeps and never iterates. That is
+    what a half-finished edit to a TESTS list looks like, and it is what the two earlier
+    versions of this check accepted: the grep counted a mention anywhere, the ast pass
+    counted any reference in code. Neither could have failed here.
+    """
+    tmp = tempfile.mkdtemp(prefix="unitgate-")
+    try:
+        victim = victim_repo(tmp)
+        fx = gate_fixture(tmp, stray=True)
+        rc, out = run_gate(fx, victim, os.path.join(tmp, "report"))
+        check("the gate fails", rc, 1)
+        check("...naming the test that did not run",
+              "test_never_called is defined but never ran" in out, True)
+        check("...and saying which file it is in", "test_probe.py" in out, True)
+        # The gate keeps a failing test's box on purpose, and it made that box outside
+        # `tmp`, so the finally below cannot reach it. Same removal as the teeth case
+        # above, for the same reason: this test drives the gate to red, and a test that
+        # leaks while proving a leak detector works has traded issue #25 for issue #24.
+        kept = out.split("fixtures kept for debugging:", 1)[-1].split("\n")[0].strip() \
+            if "fixtures kept" in out else ""
+        if kept:
+            shutil.rmtree(kept, ignore_errors=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 TESTS = [test_a_test_cannot_reach_the_commit_in_progress,
+         test_a_test_that_never_runs_is_named,
          test_a_test_leaves_nothing_behind,
          test_a_test_that_litters_is_named,
          test_it_refuses_to_run_when_git_will_not_name_the_variables,

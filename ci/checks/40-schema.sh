@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: yamllint + JSON Schema validation of our recipes and profiles.
 #
-# Adapted from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (ci/checks/40-schema.sh). Two differences: the
+# Adapted from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (ci/checks/40-schema.sh). Two differences: the
 # scope is ours only (this repo has no compat/ or schema/ of its own), and the
 # validator comes from the submodule -- lib/validate.py resolves its schema directory
 # relative to its own location, so it works from here without configuration.
@@ -10,6 +10,14 @@
 
 VALIDATE="$REPO_ROOT/vendor/slax-kitchen/lib/validate.py"
 have yamllint || warn "yamllint not installed - skipping lint half"
+# This gate already refused without python3, but only by accident: lib/validate.py's
+# `#!/usr/bin/env python3` cannot exec, so the `|| fail` below fired once per file, saying
+# "/usr/bin/env: 'python3': No such file or directory" -- 47 of them upstream on
+# 2026-09-20, for one cause. Said once now, here, before the file list is built -- which
+# also costs the yamllint half on such a machine, and that is the trade: the gate is
+# refusing either way. (Upstream's wording names compat/ too; this repo has neither
+# compat/ nor schema/ of its own, which is difference one in the header.)
+require_python3 "no recipe or profile is schema-checked at all"
 
 check_files_nl | grep -E '^(recipes|profiles)/.*\.ya?ml$' > /tmp/.slaxwine-yaml.$$ || true
 

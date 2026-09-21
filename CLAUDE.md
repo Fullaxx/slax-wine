@@ -35,12 +35,20 @@ Read [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *The lifecycle*: file the issue, 
 nobody marked is invisible at the next bump — the one for slax-kitchen #23 was, until its header
 was read.
 
-## When the build host gains KVM
+## Where boot tests run
 
-Every boot test prints `note: no /dev/kvm, running under TCG -- this is slow` today, and the UEFI
-ones need hand-written `--keys` because of it. When that note stops appearing, read
-[`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When KVM lands* before re-running anything: it is a
-checklist, and its last step is the docs retiring the workaround — including that section itself.
+On `bacon`, since the `7f9c4f8` bump: this container has no `/dev/kvm`, that machine does, and
+`vendor/slax-kitchen/boot-host.ini` sends every `kitchen test` there. The file is gitignored,
+`chmod 600`, and lives inside the submodule because that is the only place the engine reads it
+from. `kitchen boot-host check` says whether it is usable, and `KITCHEN_BOOT_HOST=local` boots
+here instead — slowly, under TCG.
+
+A boot host that cannot be reached **fails the command**; it never quietly boots here. So when
+`kitchen test` says "boot host unavailable", read that before anything else.
+
+The TCG era left measurements behind, and [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When KVM
+lands* is the checklist for retiring them — what to re-run, which timings were emulation
+artefacts, and which pages retire themselves once it passes.
 
 ## Before reviewing anything
 

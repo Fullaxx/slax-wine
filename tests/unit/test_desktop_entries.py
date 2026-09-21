@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# Adapted from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (tests/unit/test_desktop_entries.py).
-# MIT, same author. TWO local changes, marked LOCAL below: the fenced-block reader is
+# Adapted from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (tests/unit/test_desktop_entries.py).
+# MIT, same author. THREE local changes, marked LOCAL below: the fenced-block reader is
 # imported from the VENDORED copy rather than a copy of our own, because this repo has
-# no ci/doc-yaml.py; and the walk over recipes/ skips gitignored build stages. See
-# docs/UPSTREAM.md. Re-adapt on a submodule bump.
+# no ci/doc-yaml.py; the walk over recipes/ skips gitignored build stages; and that walk
+# does not carry upstream's no-inputs guard, because every .desktop entry here is a
+# recipe `content:` block and no real .desktop file is tracked under recipes/ at all.
+# See docs/UPSTREAM.md. Re-adapt on a submodule bump.
 """A .desktop this repo writes must survive Slax's launcher generator.
 
 WHY THIS EXISTS. `xlunch_genquick`, in 03-desktop.sb, ends every entry with:
@@ -204,7 +206,27 @@ def _in_scope(paths):
 
 
 def test_desktop_files_shipped_by_recipes():
-    """Real .desktop files under recipes/."""
+    """Real .desktop files under recipes/.
+
+    The guard below is the one this file's other test already carries, and the reason is
+    the same: a check with no inputs is a check that cannot fail. Measured 2026-09-20 --
+    this walk finds exactly one .desktop on the tree, that one takes check_entry's
+    absolute-icon branch and reaches no assertion, so deleting every .desktop from
+    recipes/ left this printing "all checks passed". The scan being broken and the tree
+    being clean looked identical.
+
+    LOCAL CHANGE, and it is upstream's no-inputs guard that does not come with it. Every
+    .desktop entry this repo ships is a `content:` block inside a recipe -- six of them,
+    in four recipes -- and there are ZERO real .desktop files under recipes/ tracked here.
+    So a walk for real files finding none is this tree, not a broken scan, and upstream's
+    guard would fail every run. The inputs that exist are the YAML blocks, and the scan
+    that reads those carries the same guard at the bottom of this file, where it can
+    fire for the reason it was written.
+
+    The walk stays, because build.sh stages payloads under recipes/ and one of them could
+    grow a real .desktop; it goes through _in_scope() first, so Flathub's runtime entries
+    inside the gitignored bottles.files/ are not mistaken for ours.
+    """
     found = []
     for dirpath, _d, names in os.walk(os.path.join(ROOT, "recipes")):
         for n in names:

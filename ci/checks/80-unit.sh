@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (ci/checks/80-unit.sh). ONE difference,
+# Adapted from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (ci/checks/80-unit.sh). ONE difference,
 # the `# desc:` line; re-adapt on a submodule bump, see docs/UPSTREAM.md.
 #
 #   Upstream's reads "the recipe engine's pure logic", which this repo does not have: it owns
@@ -62,8 +62,9 @@ fi
 
 # AND A TMPDIR OF ITS OWN, FOR THE SAME REASON, IN THE SAME PLACE.
 #
-# Five of the fifteen tests here build fixtures with tempfile.mkdtemp() and never remove
-# them: 46 directories per run of this gate, measured with TMPDIR pointed somewhere empty.
+# Five of the fifteen tests here ON 2026-09-18 built fixtures with tempfile.mkdtemp() and
+# never removed them: 46 directories per run of this gate, measured with TMPDIR pointed
+# somewhere empty. The count is dated because it was true then and is not a claim about now.
 # This gate runs at pre-commit AND pre-push, so a machine with the hooks installed collects
 # them at every commit and every push -- 238 MB of them since 2026-09-13 on the machine
 # where it was found. CI runners are thrown away, which is why nothing noticed. Issue #24.
@@ -76,10 +77,49 @@ fi
 # KEPT WHEN THE TEST FAILS, and the path printed: a failure is exactly when the fixtures
 # are worth having, and a red gate blocks the commit, so they cannot pile up. The leak then
 # only happens when someone is already looking for it.
+
+# AND THE BOOT HOST IS OFF, FOR THE SAME REASON, IN THE SAME PLACE.
+#
+# A boot-host.ini is one developer's machine, it is untracked, and it changes what the code
+# under test DOES: `kitchen test` hands its boot modes to ssh, and ci/tier-c.sh then checks
+# for ssh and rsync rather than qemu and mkfs.ext4. A gate whose answer depends on an
+# untracked file in the tester's working tree is not a gate.
+#
+# HONEST ABOUT ITS OWN WEIGHT: every test here builds its own fixture checkout, which has
+# no boot-host.ini, so all of them pass without this line today -- measured, not assumed.
+# It is here for the test not written yet, the one that drives the real `kitchen` from the
+# real root, and because the alternative is remembering.
+#
+# It is not free, and that is the point: test_tier_c_run's remote-path case has to clear
+# it again, in its own body, saying why. A test that means to exercise the boot host has
+# to say so where someone reading that test can see it.
+KITCHEN_BOOT_HOST=local
+export KITCHEN_BOOT_HOST
+
+# A TEST NOBODY REGISTERED IS A TEST THAT REPORTS SUCCESS WITHOUT RUNNING.
+#
+# Most files here keep an explicit list of their test functions in main() and call it.
+# That list is hand-maintained, so a function can be written, reviewed and committed
+# while never being called once -- and the file still prints "all checks passed",
+# because nothing ran to disagree. The failure is silent at exactly the moment someone
+# believes they have added coverage.
+#
+# ASKED OF THE RUN, NOT OF THE SOURCE, and that is the third answer here. Grepping for
+# the name counted a mention in a comment. Parsing for an ast.Name counted any reference
+# in code, so a name left behind in a list nothing iterates -- what a half-finished edit
+# to that list looks like -- still read as registered. Each version made the inference
+# sharper without making it true, because "did this function run" is not a question about
+# the source text. ci/unit-run.py measures it: every unit test file below is run through
+# it, sys.setprofile records what was entered, and what is left over is named.
+#
+# That is also why there is no globals() exemption any more. A file that discovers its
+# tests that way runs them, and the measurement sees it.
+
 for t in "$REPO_ROOT"/tests/unit/test_*.py; do
     [ -f "$t" ] || continue
     _tmp=$(mktemp -d) || { fail "$(basename "$t"): cannot create its TMPDIR"; continue; }
-    ( unset $_repo_env; TMPDIR=$_tmp; export TMPDIR; exec python3 "$t" ) \
+    ( unset $_repo_env; TMPDIR=$_tmp; export TMPDIR; \
+      exec python3 "$REPO_ROOT/ci/unit-run.py" "$t" ) \
         >/dev/null 2>/tmp/.kitchen-unit.$$ || {
         fail "$(basename "$t")"
         sed 's/^/      /' /tmp/.kitchen-unit.$$ >&2
@@ -91,8 +131,14 @@ for t in "$REPO_ROOT"/tests/unit/test_*.py; do
         # PASSED was left behind rather than cleaned up, and removing it quietly is how the
         # four tests in issue #25 went on littering every by-hand run with nothing to say
         # so. Free, because the directory is already in hand: a behavioural census would
-        # re-run the whole suite, and at 16 s dominated by test_qemu_boot's deliberate
-        # sleeps that would double a gate which runs at pre-commit AND pre-push.
+        # re-run the whole suite, and doubling a gate that runs at pre-commit AND
+        # pre-push is not free at all.
+        #
+        # NO NUMBER HERE ON PURPOSE. This used to say what the suite cost, and so did
+        # CONTRIBUTING.md; they were measured at different times and drifted to 16 s and
+        # 18 s without either being wrong when it was written. CONTRIBUTING.md's
+        # "Seconds, not milliseconds" paragraph is the one copy, and it says how to
+        # re-measure. A number kept in two places is a number that disagrees with itself.
         #
         # Only after a PASS. A failing test keeps everything by the branch above, and
         # complaining about its fixtures there would be noise on top of a real failure.

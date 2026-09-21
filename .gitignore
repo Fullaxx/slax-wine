@@ -34,3 +34,10 @@ kitchen-bf-*/
 kitchen-bt-*/
 kitchen-bs-*/
 kitchen-esp-*/
+
+# A personal boot host. slax-kitchen reads `boot-host.ini` from the directory that holds
+# its own lib/, which here is vendor/slax-kitchen/ -- the submodule ignores it there, and
+# its ci/checks/10-no-dnc.sh (ours too, copied) refuses one that is ever staged. This line
+# is for a copy put at the top of THIS repository by mistake, where nothing would read it:
+# it names a machine and an account, so it should not be committed from here either.
+/boot-host.ini

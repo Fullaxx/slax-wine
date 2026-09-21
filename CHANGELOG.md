@@ -10,7 +10,7 @@ See [docs/base-versions.md](docs/base-versions.md).
 Built on two bases, `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`) and
 `slax-64bit-debian-12.2.0.iso` (`61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70`),
-with slax-kitchen pinned at `86d27d5`.
+with slax-kitchen pinned at `7f9c4f8`.
 
 **Four slax-wine images, one system: bios and uefi on each base** ([docs/DECISIONS.md](docs/DECISIONS.md)
 D-16).

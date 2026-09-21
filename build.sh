@@ -457,14 +457,20 @@ build_variant() {
     rm -rf "$work"
     "$K" unpack "$ISO_DIR/$V_ISO" -o "$work" --force
 
-    # (a) THE PROFILE'S BASE IS THE ONE UNPACKED. `kitchen apply --profile` reads only a
-    # profile's recipe list and vars (read_profile_recipes); its `base:` block is checked
-    # nowhere, so a slax64 profile would build on the 32-bit ISO without a word. And the
-    # engine decides `when: arch==...` from the source ISO that unpack recorded, so that
-    # has to be this variant's ISO.
-    # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/29
-    # The arch half of it is https://github.com/Fullaxx/slax-kitchen/issues/27, which is
-    # why this checks the recorded ISO too rather than trusting the engine's fact.
+    # (a) THE PROFILE'S BASE IS THE ONE THIS VARIANT BUILDS ON, ALL THREE PARTS.
+    #
+    # This was a workaround for slax-kitchen#29 and #27, and most of it is not needed any
+    # more: at 7f9c4f8 `kitchen apply --profile` reads the profile's `base:` and refuses a
+    # tree that disagrees (lib/apply.py's base_mismatch), and the `when: arch==` fact is
+    # measured from an ELF inside 01-core rather than from the path the ISO was unpacked
+    # from -- so the recorded-source check this used to carry has nothing left to catch.
+    #
+    # What upstream compares is flavour and arch. It does NOT compare version, on purpose:
+    # a profile is allowed to apply to a newer base. Here the version is not free -- the
+    # variant's base is build.env's BASE*_TARGET, the same string the ISO is fetched and
+    # verified by -- so this keeps the whole comparison, which is a check of our own
+    # config rather than a workaround for anything of theirs. docs/UPSTREAM.md, "Local
+    # workarounds", records the retirement.
     pbase=$(python3 -c 'import sys, yaml
 b = yaml.safe_load(open(sys.argv[1]))["base"]
 print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
@@ -472,12 +478,7 @@ print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
         echo "build.sh: [$v] ${profile#"$REPO_ROOT"/} says base $pbase; this variant builds on $V_TARGET" >&2
         exit 1
     }
-    src=$(sed -n 's/^source_iso: *//p' "$work/.kitchen/origin.yaml")
-    [ "${src##*/}" = "$V_ISO" ] || {
-        echo "build.sh: [$v] unpack recorded ${src##*/}, expected $V_ISO" >&2
-        exit 1
-    }
-    echo "  ok   profile base $pbase is the ISO unpacked"
+    echo "  ok   profile base $pbase is this variant's base"
 
     # The profile is authoritative: it carries the ordered recipe list, so there is
     # exactly one place that says what this image is.

@@ -2,13 +2,18 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (ci/checks/90-doc-coverage.sh).
+# Adapted from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (ci/checks/90-doc-coverage.sh).
 #
 # NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
 # recipes here that lookup table is more machinery than the drift it prevents -- left
 # out deliberately rather than forgotten. Nor the UPSTREAM-ISSUE count, which anchors on
 # a link to docs/30-inventory/known-upstream-bugs.md; we have no such page, so the rule
 # would skip forever and be a gate that cannot fail.
+#
+# Nor, from 79ca8dd, the TARGET-count check: it counts `kind: Fingerprint` files in
+# compat/, and this repo has no compat/ at all, so `n` is 0 and the rule stands down on
+# every run -- the same reason as the two above. slax-wine's targets are its four images,
+# and gate 96 section 5 holds those to the profiles rather than to prose.
 #
 # TAKEN: the GATE-count check, because four files here state that number in prose and
 # nothing else checks them. The anchor is WIDER than upstream's, measured against this

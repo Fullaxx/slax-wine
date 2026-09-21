@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 86d27d5fe1815f471a81c922e9da01466e888c7f (ci/run-checks.sh): banner renamed only.
+# Adapted from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (ci/run-checks.sh): banner renamed only.
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # Run every check registered for a stage.
 #
