@@ -53,10 +53,23 @@ steps:
               exit 1
           }
 
-          # A 64-bit program needs a 64-bit prefix. One that exists without syswow64 is
-          # a win32 prefix -- and its "Program Files" is where notepadpp32 installs, so
-          # going on would start the wrong build. Refuse, and say why.
-          if [ -d "$PREFIX/drive_c/windows" ] && [ ! -d "$PREFIX/drive_c/windows/syswow64" ]; then
+          # A 64-bit program needs a 64-bit prefix, and there are TWO ways not to have
+          # one. The second was missing until it was gone through by hand.
+          #
+          # ABOUT TO BE MADE. With WINEARCH=win32 exported and no prefix yet, nothing
+          # below is 32-bit *yet*: the first `wine` call CREATES the prefix, as a win32
+          # one, and runs the x64 installer inside it. That failed a minute later with
+          # "the installer was cancelled or failed" -- true, and useless, because the
+          # reason was knowable here, before anything had been created. WINEARCH=win32
+          # is wrong for this program whatever the prefix, so it is refused outright.
+          #
+          # ON DISK. A prefix that exists without syswow64 is a win32 prefix, and its
+          # "Program Files" is where notepadpp32 installs, so going on would start the
+          # wrong build.
+          if [ "${WINEARCH:-}" = win32 ]; then
+              fail "Notepad++ (64-bit) needs a 64-bit Wine prefix, and WINEARCH=win32 asks for a 32-bit one.
+          Run notepadpp32 instead, or unset WINEARCH."
+          elif [ -d "$PREFIX/drive_c/windows" ] && [ ! -d "$PREFIX/drive_c/windows/syswow64" ]; then
               fail "Notepad++ (64-bit) needs a 64-bit Wine prefix, and $PREFIX is 32-bit.
           Use notepadpp32 there, or a prefix made without WINEARCH=win32."
           fi

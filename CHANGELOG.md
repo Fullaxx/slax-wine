@@ -91,6 +91,12 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   [slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29); the other two catch what
   [#27](https://github.com/Fullaxx/slax-kitchen/issues/27) can do to an arch-guarded build.
 
+### Fixed
+- `notepadpp64` refuses `WINEARCH=win32` **before** a prefix exists. It already refused a 32-bit
+  prefix it found on disk; with the variable set and no prefix yet, `wine` created a 32-bit one and
+  ran the x64 installer in it, so the user got "the installer was cancelled or failed" a minute
+  later instead of the accurate refusal straight away.
+
 ### Known limitations
 - **Persistence: half observed, half still not.** The **ext4 native perch** path now survives a
   reboot in a VM — two boots on one disk, marker written and `sync`ed on the first, found on the

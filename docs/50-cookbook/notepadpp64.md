@@ -75,6 +75,7 @@ Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card) on `slax64-wine-u
 | the editor | a 64-bit process: ELF class 2, `/usr/lib/wine/wine64-preloader.static` |
 | the same installer, silent (`/S`), in a fresh 64-bit prefix | exit 0, in 29–32 s |
 | `notepadpp64` in a `WINEARCH=win32` prefix | refused, with its message, exit 1 |
+| `WINEARCH=win32 notepadpp64` with **no prefix yet** | refused before one is created, exit 1 |
 
 ## The two builds replace each other
 
