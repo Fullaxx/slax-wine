@@ -46,9 +46,9 @@ here instead — slowly, under TCG.
 A boot host that cannot be reached **fails the command**; it never quietly boots here. So when
 `kitchen test` says "boot host unavailable", read that before anything else.
 
-The TCG era left measurements behind, and [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When KVM
-lands* is the checklist for retiring them — what to re-run, which timings were emulation
-artefacts, and which pages retire themselves once it passes.
+The boot routes have been re-run there already. What the TCG era left behind is its *timings*,
+and [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When KVM lands* is the record of what changed plus
+the list of pages still quoting a number emulation distorted. Read it before re-measuring one.
 
 ## Before reviewing anything
 

@@ -201,12 +201,14 @@ Thirteen issues filed 2026-09-15, in two rounds. **All closed**, re-verified at 
 inferred from its subject line — a self-review found row 13 crediting the wrong one and two issues
 missing outright, in the document that exists to be the accurate register.
 
-**Later rounds have a section each, below.** Four are open as of 2026-09-20:
+**Later rounds have a section each, below.** As of the `7f9c4f8` bump on 2026-09-21, **every issue
+this repository has filed is closed** — the last four were
 [#27](https://github.com/Fullaxx/slax-kitchen/issues/27) and
 [#28](https://github.com/Fullaxx/slax-kitchen/issues/28), found building slax64-wine, and
 [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and
 [#30](https://github.com/Fullaxx/slax-kitchen/issues/30), from checks this repo carries because the
-engine does not. Everything filed before them is closed.
+engine did not. Each section below names its closing commit. Only upstream's own
+[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) is open, and it is Slackware's.
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -381,6 +383,28 @@ skipping. What changed at `8adfca6` is not the gate but the premise: `6ecf019` s
 both our launchers, and it reads recipe YAML — which is exactly where our `.desktop` content lives.
 A gate with nothing to run is worthless; a gate with something worth running is not. Both are now
 adopted, and gate 80 is green over three real entries. See *Adopted at the `8adfca6` bump* below.
+
+**Upstream's TARGET-count rule** (`79ca8dd`, in `90-doc-coverage.sh`) — **not taken at the
+`7f9c4f8` bump**, for the third time with the same reasoning. It counts `kind: Fingerprint` files
+under `compat/`; this repo has no `compat/` at all, so `n` is 0 and the rule stands down on every
+run. slax-wine's own "four targets" are its four images, and gate 96 section 5 holds those to the
+profiles rather than to prose, which is a check that can fail. Recorded in the gate's header too, so
+the next re-adaptation does not have to rediscover it.
+
+**Upstream's no-inputs guard in `tests/unit/test_desktop_entries.py`** (`2476201`) — the same shape
+and the same answer. It fails when a walk over `recipes/` finds no `.desktop` file, which is right
+for a tree that ships them as files. Here every one is a recipe `content:` block — six, in four
+recipes — and **zero** real `.desktop` files are tracked under `recipes/`, so the guard would fail
+every run rather than catch anything. The scan that does have inputs, over the YAML blocks, carries
+the identical assertion at the bottom of the same file, where it can fire for the reason it was
+written. This is the third local change in that file's header.
+
+**Two helpers were copied rather than borrowed**, which is the opposite call to `ci/doc-yaml.py`
+above, and the reason is mechanical rather than stylistic. `ci/md-links.py` resolves its own root
+from `__file__` and runs `git -C ROOT ls-files "*.md"`: run from `vendor/`, it would check the
+submodule's documentation and report success about a tree nobody asked about. `ci/unit-run.py` takes
+a path and derives no root, so borrowing would have worked; it is copied for symmetry, and because
+`ci/` here is a self-contained gate suite that `96`'s sections 7 and 9 already hold to its upstream.
 
 What we **did** take from this range is upstream's **gate-count check**, folded into our adapted
 `90-doc-coverage.sh` with a wider anchor. Four files here state that number in prose and nothing else

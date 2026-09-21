@@ -252,8 +252,10 @@ A register, because every one of these cost time to find.
 
 ## What is verified, and what is not
 
-`boot-verified`: the ISO boots under TCG to `slax login:` with all three livekit markers and all its
-bundles mounted in order — nine on 32-bit, ten on 64-bit.
+`boot-verified`: the ISO boots to `slax login:` with all three livekit markers and all its bundles
+mounted in order — nine on 32-bit, ten on 64-bit. Measured under TCG until the `7f9c4f8` bump, and
+since then on `bacon` under KVM: twelve routes, `--kernel`, `--bios`, `--uefi` and `--persistence`
+on all three test images, each reaching `Live Kit done` in 4–6 s.
 
 `runtime-verified`, on a full desktop boot of each base: the **Wine tile opens from the launcher**
 with no xterm wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches,
@@ -262,8 +264,9 @@ there is **no Mono/Gecko prompt**, and the **browser is absent** from the launch
 rung. `slax-wine-iso` was the last, once the *effect* of removing `automount` was observed on both
 bootloaders ([its page](50-cookbook/slax-wine-iso.md)), on each base.
 
-**slax-bottles**, under TCG with no network device: all three boot routes reach `Live Kit done`, with
-`automount` absent from both bootloaders' command lines. Bottles opens from its wrapper, a bottle is
+**slax-bottles**, with no network device: all three boot routes reach `Live Kit done`, with
+`automount` absent from both bootloaders' command lines — measured under TCG, and re-run under KVM at
+the `7f9c4f8` bump, `--persistence` with them. Bottles opens from its wrapper, a bottle is
 created from only what the image ships, and `cmd /c ver` runs in it (`notepad.exe` too, on the first,
 hand-seeded run). Both of its
 recipes claim `runtime-verified`, and [bottles](50-cookbook/bottles.md) says which run measured what.
