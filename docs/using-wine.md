@@ -86,8 +86,9 @@ prefix.
 installer puts things by default, so a Notepad++ installed to another directory is invisible to it:
 measured on slax32, `/S "/D=C:\npp-elsewhere"` put the editor there, the default location stayed
 empty, and the next click **ran the installer again** rather than starting what was already
-installed. If you install by hand somewhere else, start it by hand — or pass the path to the
-launcher, which forwards its arguments to the editor.
+installed. The launcher's arguments go to the **editor**, not to its location, so passing the path
+does not help: start an install of your own by hand, with
+`wine '/root/.wine/drive_c/npp-elsewhere/notepad++.exe'`.
 
 **The removal is Notepad++'s installer, not ours and not Wine's.** Measured 2026-09-23 in a 64-bit
 prefix: with the x86 build installed, `Uninstall\Notepad++` reads *Notepad++ (32-bit x86)* and its
@@ -178,9 +179,9 @@ ledger). To add one for 32-bit programs, name the architecture: `apt install lib
 
 ## On slax64-wine
 
-**The prefix is 64-bit.** `/root/.wine` is created as a 64-bit Windows, and **both** kinds of program
-run in it: 64-bit ones under `wine64`, 32-bit ones under `wine32`, as on 64-bit Windows. A 32-bit
-program installs to `C:\Program Files (x86)`, a 64-bit one to `C:\Program Files`.
+**The prefix is 64-bit, and runs both widths** — the table in
+[Which prefix you get](#which-prefix-you-get-and-what-you-can-choose) above has the defaults, the
+alternatives and what each costs, and is the one place they are written down.
 
 **A 32-bit prefix is one variable away**, for a program that misbehaves in a 64-bit one — or to
 compare the two bases like for like ([testing-on-both.md](testing-on-both.md)):
@@ -190,7 +191,6 @@ WINEARCH=win32 WINEPREFIX=/root/.wine32 slax-wine setup.exe
 ```
 
 The 64-bit images set no `WINEARCH` of their own, so this passes through the `slax-wine` wrapper.
-`notepadpp32` follows `WINEPREFIX` into it; `notepadpp64` refuses a 32-bit prefix, and says why.
 
 **`wine` starts the 32-bit loader.** Debian's `/usr/bin/wine` runs `/usr/lib/wine/wine` whenever
 `wine32` is installed, and Wine hands a 64-bit program to `wine64` itself — so `slax-wine setup.exe`
@@ -198,13 +198,13 @@ and the tiles run each program in its own width. Wine's own tools are the except
 `wine notepad` start their **32-bit** builds (`cmd` reports `PROCESSOR_ARCHITECTURE=x86`). For the
 64-bit ones, name the loader: `/usr/lib/wine/wine64 cmd` reports `AMD64`. Measured, both.
 
-**Notepad++ in both widths, one at a time.** `notepadpp32` installs the 32-bit build to
-`Program Files (x86)`, `notepadpp64` the 64-bit one to `Program Files`, and each launcher looks only
-where its own build installs. But **each Notepad++ installer removes the other build**: in one prefix,
-whichever was installed last is the only one left, measured in both orders. So picking the other
-tile starts its installer again — and **asks first**, naming what is about to go, with Cancel as the
-default ([DECISIONS.md](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)). To keep both, give
-one its own prefix: `WINEPREFIX=/root/.wine-npp64 notepadpp64`, which is what the dialog suggests.
+**Notepad++ in both widths, one at a time.** Each launcher looks only where its own build installs,
+and **each Notepad++ installer removes the other**, so picking the other tile starts its installer
+again — and **asks first**, naming what is about to go, with Cancel as the default
+([DECISIONS.md](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)). Keeping both means a
+second prefix, and which one is cheaper depends on which build moves: the table
+[above](#which-prefix-you-get-and-what-you-can-choose) has both, and it is what each dialog
+suggests.
 
 **The Linux underneath is newer than on 32-bit.** Installing Wine's i386 half lifted 79 of the base's
 own packages — glibc, systemd, OpenSSL among them — to today's bookworm versions ([DECISIONS.md](DECISIONS.md)
