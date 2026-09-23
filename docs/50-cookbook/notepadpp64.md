@@ -87,10 +87,16 @@ Measured in fresh 64-bit prefixes, each installer run silently, in both orders:
 | the 32-bit build, then the 64-bit one | only `Program Files\Notepad++`, x86-64 |
 | the 64-bit build, then the 32-bit one | only `Program Files (x86)\Notepad++`, x86 |
 
-It is Notepad++'s installers doing it, not the launchers: each launcher looks only where its own
-build installs and, finding nothing there, runs its installer again, which removes the other in
-turn. The tiles did the same — installing the 64-bit build from its tile removed the 32-bit build
-put there minutes before.
+It is Notepad++'s installer doing it, not the launchers, and that is measured rather than assumed.
+In a 64-bit prefix holding only the x86 build,
+`HKLM\Software\…\CurrentVersion\Uninstall\Notepad++` reads *Notepad++ (32-bit x86)* with an
+`UninstallString` of `C:\Program Files (x86)\Notepad++\uninstall.exe`; run the x64 installer
+silently and both that registration and the whole directory are gone, leaving only
+`C:\Program Files\Notepad++`. Each build registers under the same product name, so installing one
+removes the other's registration and its files. Our launchers delete nothing — each looks only where
+its own build installs and, finding nothing, runs its installer again. The tiles did the same:
+installing the 64-bit build from its tile removed the 32-bit build put there minutes before.
+Untested on real Windows.
 
 **Since [D-17](../DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice) each launcher asks first.**
 When its own build is missing and the other one is present, it says what the installer is about to

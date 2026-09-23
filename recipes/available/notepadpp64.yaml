@@ -95,7 +95,7 @@ steps:
               msg="Notepad++ (64-bit) is not installed in $PREFIX, and the 32-bit build is.
           Notepad++'s installer will remove the 32-bit build.
 
-          To keep both, give one its own prefix:
+          To keep both, give this one its own prefix (1.2 GiB in RAM):
               WINEPREFIX=$HOME/.wine-npp64 notepadpp64"
               # ASK ONLY WHERE THERE IS SOMEWHERE TO ASK. `xset q` opens the display
               # and fails when it cannot. Without it, a DISPLAY that is SET BUT UNUSABLE

@@ -38,6 +38,66 @@ winehq at runtime, on an image that is usually offline.
 control will not run.** If you need them, `winetricks` is reachable — the stock `sources.list`
 already enables `contrib` — or fetch the MSIs yourself onto a persistent stick.
 
+## Which prefix you get, and what you can choose
+
+A Wine prefix is a whole fake Windows: one directory, one architecture, fixed when it is created.
+`WINEARCH` decides that at creation and **cannot change it afterwards** — point Wine at an existing
+prefix with the other value and it refuses, measured:
+
+```
+wine: WINEARCH set to win32 but '/root/.wine' is a 64-bit installation.
+```
+
+A **win64** prefix runs both widths, exactly as a 64-bit Windows does: 64-bit programs in
+`C:\Program Files`, 32-bit ones in `C:\Program Files (x86)`, with `windows/system32` holding the
+64-bit DLLs and `windows/syswow64` the 32-bit ones — the same inverted naming Windows uses. A
+**win32** prefix runs 32-bit programs only, has one `Program Files`, and no `syswow64`. That is
+also how the launchers tell the two apart.
+
+Splitting programs across prefixes **by architecture is not the normal thing to do** — one prefix
+runs both. People keep separate prefixes per *application*, for its dependencies and overrides,
+which is what Bottles and Lutris automate. Here a second prefix is an escape hatch with a price,
+and the sizes below are the price.
+
+### slax32-wine — one build, one width
+
+`wine64` is not installed on this base, so there is no width to choose. The only variable is which
+prefix.
+
+| you run | prefix | what happens |
+|---|---|---|
+| `notepadpp32`, tile or command — **the default** | `/root/.wine`, **win32** | made on first run: **23 s**, **587 MiB**. Installs to `C:\Program Files\Notepad++`, runs as a 32-bit process |
+| `WINEPREFIX=/root/.npp32 notepadpp32` | yours, **win32** | a second win32 prefix, another ~587 MiB, same layout |
+| `WINEARCH=win64 …` | — | refused, measured: *"wine: WINEARCH set to win64 but '/root/.wine' is a 32-bit installation."* There is no `/usr/lib/wine/wine64` on this base to make one with |
+| the D-17 question | — | never asked: one build, and it owns `Program Files` |
+
+### slax64-wine — two builds sharing one Windows
+
+| you run | prefix | what happens |
+|---|---|---|
+| either tile — **the default** | `/root/.wine`, **win64** | made on first run: **65 s**, **1,265 MiB**. x64 → `C:\Program Files\Notepad++`, x86 → `C:\Program Files (x86)\Notepad++`; both run. Whichever is installed **second removes the first**, so the second tile asks before doing it ([D-17](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)) |
+| `WINEPREFIX=/root/.wine-npp64 notepadpp64` | yours, **win64** | a second 64-bit prefix, another 1,265 MiB; the builds stop colliding |
+| `WINEARCH=win32 WINEPREFIX=/root/.wine-npp32 notepadpp32` | yours, **win32** | **589 MiB**, less than half. The x86 build installs to `C:\Program Files` there |
+| `WINEARCH=win32 notepadpp64` | — | refused by the launcher, before a prefix is made |
+| `notepadpp64` pointed at a win32 prefix | that one | refused by the launcher, with its message |
+| `WINEARCH=win32` against the existing win64 prefix | — | refused by **Wine**, with the message above |
+
+**Install somewhere else and the tile will not find it.** Each launcher looks only where the
+installer puts things by default, so a Notepad++ installed to another directory is invisible to it:
+measured on slax32, `/S "/D=C:\npp-elsewhere"` put the editor there, the default location stayed
+empty, and the next click **ran the installer again** rather than starting what was already
+installed. If you install by hand somewhere else, start it by hand — or pass the path to the
+launcher, which forwards its arguments to the editor.
+
+**The removal is Notepad++'s installer, not ours and not Wine's.** Measured 2026-09-23 in a 64-bit
+prefix: with the x86 build installed, `Uninstall\Notepad++` reads *Notepad++ (32-bit x86)* and its
+`UninstallString` points at `C:\Program Files (x86)\Notepad++\uninstall.exe`. Run the x64
+installer silently and that registration is gone along with the whole directory, leaving only
+`C:\Program Files\Notepad++` — whose own registration, in the 64-bit view, reads *Notepad++ (64-bit
+x64)*. Each build registers under the same name in its own view, so installing one removes the
+other's registration and files. Our launchers delete nothing; they run the installer and
+start the editor. Untested on real Windows.
+
 ## Notepad++, and why it installs itself
 
 The image ships the **installer**, not an unpacked copy. Picking **Notepad++ (32-bit)** from the

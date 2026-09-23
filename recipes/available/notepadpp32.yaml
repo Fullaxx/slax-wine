@@ -125,8 +125,8 @@ steps:
               msg="Notepad++ (32-bit) is not installed in $PREFIX, and the 64-bit build is.
           Notepad++'s installer will remove the 64-bit build.
 
-          To keep both, give one its own prefix:
-              WINEPREFIX=$HOME/.wine-npp32 notepadpp32"
+          To keep both, give this one its own 32-bit prefix (589 MiB in RAM):
+              WINEARCH=win32 WINEPREFIX=$HOME/.wine-npp32 notepadpp32"
               # ASK ONLY WHERE THERE IS SOMEWHERE TO ASK. `xset q` opens the display
               # and fails when it cannot. Without it, a DISPLAY that is SET BUT UNUSABLE
               # made xmessage exit non-zero, this branch read that as "declined", and the

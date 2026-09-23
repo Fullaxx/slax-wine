@@ -420,7 +420,8 @@ display that opens: Slax's desktop is on `:1`, so a stale `:0` gets *"Can't open
 every GUI program in the image. The first version treated that like a decline and exited 0 in
 silence — measured, with nothing installed and nothing said, which is the failure this file's own
 `fail()` exists to prevent. The condition now runs `xset q` first, and when it cannot ask it says so
-and exits 1.
+and exits 1. What it suggests instead is the *cheap* prefix where there is one: a second 64-bit
+prefix costs 1,265 MiB, a 32-bit one for the 32-bit build 589 MiB.
 
 **The trap, and the reason this is a decision rather than a patch:** the check must be conditioned on
 the prefix being 64-bit — `drive_c/windows/syswow64` — because in a **win32** prefix the x86 build

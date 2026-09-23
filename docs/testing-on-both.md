@@ -70,7 +70,9 @@ the ELF class of the running program's Wine loader.
 | `wine cmd` | Wine's | `PROCESSOR_ARCHITECTURE=x86` | `x86`, with `PROCESSOR_ARCHITEW6432=AMD64`: the 32-bit `cmd`. `/usr/lib/wine/wine64 cmd`: `AMD64` | `x86` |
 | `wine notepad` | Wine's | — | 32-bit process; with `/usr/lib/wine/wine64`, 64-bit | — |
 
-Worth knowing before a run of your own:
+[using-wine.md](using-wine.md#which-prefix-you-get-and-what-you-can-choose) has the full table of
+what each base does by default and what you can choose instead. Worth knowing before a run of your
+own:
 
 - **Creating a prefix is the slow part**, and happens once per prefix. Measured 2026-09-21 under
   **KVM**: 65 s for a 64-bit prefix, 32 s for a 32-bit one on slax64, 23 s on slax32. Under
