@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (ci/unit-run.py).
+# Copied verbatim from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (ci/unit-run.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """Run one unit test file, and report any test in it that did not run.
 
@@ -41,6 +41,7 @@ import os
 import re
 import runpy
 import sys
+import traceback
 
 SKIP_STATUS = 77
 
@@ -123,6 +124,15 @@ def main(argv: list[str]) -> int:
         runpy.run_path(path, run_name="__main__")
     except SystemExit as e:
         rc = 0 if e.code is None else e.code
+    except Exception:                          # noqa: BLE001
+        # THE FILE ITSELF FELL OVER -- a crash outside its own per-test guard, in main()
+        # or at import, or a file written without one. Caught rather than allowed to take
+        # this runner down with it: an uncaught exception here exits through unit-run.py,
+        # whose traceback names unit-run.py, and the count of tests that never ran -- the
+        # fact this branch exists to report -- is never reached at all. Not BaseException,
+        # so a KeyboardInterrupt still stops everything.
+        traceback.print_exc()
+        rc = 1
     finally:
         # Off before anything is printed, so the reporting below is not itself profiled.
         sys.setprofile(None)
@@ -131,8 +141,20 @@ def main(argv: list[str]) -> int:
         print(f"{os.path.basename(path)}: skipped")
         return 0
     if rc != 0:
-        # Only over a pass. A file that failed has a real failure to report, and a test
-        # after the failing one may legitimately not have been reached.
+        # Only the "never registered" verdict is withheld over a failure: a file that
+        # failed has a real failure to report, and a test after the failing one may
+        # legitimately not have been reached.
+        #
+        # BUT SAY HOW MANY, because that is the difference between a list of failures and
+        # a list of the failures that fit. Each file guards its own loop so one crash does
+        # not stop the rest (CONTRIBUTING, "What a test here is for"), and this is what
+        # catches the residual: a crash in main() itself, outside that loop, or a file
+        # written without the guard. Information, not a second failure -- the file has
+        # already failed.
+        missed = len(want - entered)
+        if missed:
+            print(f"{os.path.basename(path)}: {missed} of {len(want)} tests did not run "
+                  f"-- the file stopped early", file=sys.stderr)
         return rc if isinstance(rc, int) else 1
 
     base = os.path.basename(path)

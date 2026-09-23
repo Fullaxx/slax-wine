@@ -27,9 +27,9 @@ and codecs extensions, and WineHQ's Gecko and Mono). **DXVK** is Philip Rebohle'
 donate link; it asks for one on first launch.
 
 The build engine is [slax-kitchen](https://github.com/Fullaxx/slax-kitchen), pinned as a submodule.
-Eighteen files here come from it. Twelve are copied verbatim (MIT → MIT): `ci/lib.sh`, seven
+Nineteen files here come from it. Twelve are copied verbatim (MIT → MIT): `ci/lib.sh`, seven
 `ci/checks/*.sh`, the two helpers those gates call (`ci/md-links.py`, `ci/unit-run.py`), and
-`tests/unit/test_ci_lib.py` and `test_unit_gate.py`. Six are adapted: `ci/run-checks.sh`, four more
+`tests/unit/test_ci_lib.py` and `test_unit_gate.py`. Seven are adapted: `ci/run-checks.sh`, five more
 gates, and `tests/unit/test_desktop_entries.py`. Each carries a header naming the upstream commit it
 came from, and `ci/checks/96-release-consistency.sh` fails if that commit is not the current
 submodule pin — or if a file claiming *copied verbatim* differs from the vendored original.

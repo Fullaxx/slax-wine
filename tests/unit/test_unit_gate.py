@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (tests/unit/test_unit_gate.py).
+# Copied verbatim from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (tests/unit/test_unit_gate.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """ci/checks/80-unit.sh must not hand git's repository variables to the tests it runs.
 
@@ -36,6 +36,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import traceback
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 LIB = os.path.join(ROOT, "ci", "lib.sh")
@@ -444,7 +445,14 @@ TESTS = [test_a_test_cannot_reach_the_commit_in_progress,
 
 def main():
     for fn in TESTS:
-        fn()
+        # One test crashing must not stop the rest: the count of failures is only honest
+        # if every test ran. The traceback still goes to stderr, because a crash's location
+        # is the useful half and a one-line summary loses it.
+        try:
+            fn()
+        except Exception as e:                 # noqa: BLE001
+            traceback.print_exc()
+            FAILURES.append(f"{fn.__name__} crashed: {type(e).__name__}: {e}")
     if FAILURES:
         for f in FAILURES:
             print(f"FAIL {f}", file=sys.stderr)

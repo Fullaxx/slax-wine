@@ -8,7 +8,7 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 
 ## The shape of the thing
 
-slax-wine owns no engine code. It is seven recipes, eight profiles, a build script and twelve gates,
+slax-wine owns no engine code. It is seven recipes, eight profiles, a build script and thirteen gates,
 laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`. The eight images those
 profiles build, what they hold in common and where they part, are in
 [variants.md](variants.md).
@@ -19,7 +19,7 @@ profiles/          eight: slax32-wine-bios, -uefi, slax64-wine-bios, -uefi and s
                    the three -test ones do not
 recipes/available/ seven recipes: five for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
-ci/                twelve gates; seven copied verbatim, four adapted, one ours
+ci/                thirteen gates; seven copied verbatim, five adapted, one ours
 tests/unit/        four tests: the .desktop trap that once cost both launchers (adapted), the
                    gate library that let a .exe and then a submodule bump through (verbatim),
                    gate 80 itself, which once let a test write into the commit running it

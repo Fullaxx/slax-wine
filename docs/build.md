@@ -26,6 +26,7 @@ touches is narrower:
 | `git` | the submodule, and the provenance/tag checks in gate 96 |
 | `python3` ≥ 3.9 with `yaml` and `jsonschema` | the recipe engine itself |
 | `shellcheck`, `yamllint` | the commit gates only — not the build |
+| a `python3` that can `import pyflakes` | the commit gates only — gate 35 lints every python file here. Stated as an **import**, not a package: apt's `python3-pyflakes` is invisible to a `python3` that resolves into a virtualenv, and on ubuntu:24.04 that package ships the module while the `pyflakes` *binary* comes from another one. The gate runs `python3 -m pyflakes`, which is true either way. Without it the gate warns and stands down, so a clone that skips this loses the check rather than failing |
 | `qemu-system-x86`, `ovmf` | the **boot tests** only (`kitchen test`), not the build — and not even those if they run on a boot host, which needs `ssh`, `rsync` and `git` here instead |
 | `flatpak` | **the slax-bottles variants only.** `build.sh` installs Bottles from Flathub into a staging dir with it. Not needed for slax-wine |
 
@@ -33,7 +34,7 @@ On Debian/Ubuntu:
 
 ```sh
 sudo apt-get install squashfs-tools xorriso curl git python3 python3-yaml python3-jsonschema \
-                     shellcheck yamllint
+                     shellcheck yamllint python3-pyflakes
 sudo apt-get install flatpak      # only for --bottles / --bottles-test / --all
 ```
 
@@ -118,7 +119,7 @@ against the **current working directory**, not the repo root.
 
 ## Commit gates
 
-Twelve checks live in `ci/checks/`. They are not installed automatically — `.git/hooks/` is local to
+Thirteen checks live in `ci/checks/`. They are not installed automatically — `.git/hooks/` is local to
 each clone and is not tracked — so **after cloning, do this once**:
 
 ```sh
@@ -146,7 +147,7 @@ Run them by hand any time:
 > is a *file*, not a directory. It fails with `error: not a git repo`. The two `ln -sf` lines above
 > are the supported way.
 
-Seven gates are copied verbatim from slax-kitchen, four are adapted, and
+Seven gates are copied verbatim from slax-kitchen, five are adapted, and
 `96-release-consistency.sh` is ours. Two helpers they call, `ci/md-links.py` and `ci/unit-run.py`,
 are copied verbatim as well. Each copied file's header names the upstream commit it came
 from, and gate 96 fails if that commit is not the current submodule pin — so a pin bump that forgets
@@ -199,5 +200,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`7f9c4f8`](https://github.com/Fullaxx/slax-kitchen/tree/7f9c4f8). Bumping the
+The engine is pinned at [`b20e07e`](https://github.com/Fullaxx/slax-kitchen/tree/b20e07e). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

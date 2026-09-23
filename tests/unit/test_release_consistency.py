@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import traceback
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 GATE = os.path.join("ci", "checks", "96-release-consistency.sh")
@@ -316,7 +317,17 @@ TESTS = [test_a_worktree_commit_cannot_move_the_pin,
 
 def main():
     for fn in TESTS:
-        fn()
+        # One test crashing must not stop the rest: the count of failures is only honest
+        # if every test ran. The traceback still goes to stderr, because a crash's location
+        # is the useful half and a one-line summary loses it. Upstream's convention since
+        # 18294f5, in every one of its test files; this is the one file here that is ours
+        # rather than a copy, and ci/unit-run.py's "N of M tests did not run" line only
+        # means anything over files that have the guard.
+        try:
+            fn()
+        except Exception as e:                 # noqa: BLE001
+            traceback.print_exc()
+            FAILURES.append(f"{fn.__name__} crashed: {type(e).__name__}: {e}")
     if FAILURES:
         for f in FAILURES:
             print(f"FAIL {f}", file=sys.stderr)

@@ -372,6 +372,13 @@ there is nothing to report. A probe `.desktop` dropped into `recipes/available/`
 tree, it exits 0 with *"tests/boot/tier-c.json not present"*. There is no `tests/boot/`, no ledger
 and no `ci/release-notes.sh` here, so it would note-and-skip forever. Still not adopted, and nor is
 its unit test, `tests/unit/test_tier_c_ledger.py` (added in `5627f2d`), which tests nothing we carry.
+`edaeff3` grew it a closed set for `target` at the `b20e07e` bump; the premise is untouched, because
+the thing it would read still does not exist here.
+
+**`ci/checks/35-pyflakes.sh` was never in this section**, and that is the point of saying so: it
+arrived in `0ba51ff` and was **adopted at the same bump it arrived in**, because unlike the four
+above it has real inputs here. Six python files, two of them ours and linted by nothing. The
+[`b20e07e` bump](#adopted-at-the-b20e07e-bump) has the argument and the mutation tests.
 
 **`ci/checks/80-unit.sh` was in this section and has left it**, which is the part worth recording.
 The reasoning was sound and is now obsolete, and those are different things. Measured at the
@@ -385,11 +392,19 @@ A gate with nothing to run is worthless; a gate with something worth running is 
 adopted, and gate 80 is green over three real entries. See *Adopted at the `8adfca6` bump* below.
 
 **Upstream's TARGET-count rule** (`79ca8dd`, in `90-doc-coverage.sh`) — **not taken at the
-`7f9c4f8` bump**, for the third time with the same reasoning. It counts `kind: Fingerprint` files
+`b20e07e` bump**, for the fourth time with the same reasoning. It counts `kind: Fingerprint` files
 under `compat/`; this repo has no `compat/` at all, so `n` is 0 and the rule stands down on every
 run. slax-wine's own "four targets" are its four images, and gate 96 section 5 holds those to the
 profiles rather than to prose, which is a check that can fail. Recorded in the gate's header too, so
 the next re-adaptation does not have to rediscover it.
+
+**And the fourth time came with a dividend.** `12d0f9c` fixed a real defect in that rule: it
+*failed* when no markdown was in scope, so every code-only commit was blocked at upstream's
+pre-commit while CI, which runs tree scope, stayed green. Three bumps of declining to copy it meant
+the defect never reached this repo — the clearest return this section has produced, and worth
+recording because "we did not take it" usually has no visible payoff. What it did prompt is one line
+in the rule we *do* take: our gate-count check said nothing at all on the same empty list, and now
+notes it.
 
 **Upstream's no-inputs guard in `tests/unit/test_desktop_entries.py`** (`2476201`) — the same shape
 and the same answer. It fails when a walk over `recipes/` finds no `.desktop` file, which is right
@@ -1324,7 +1339,7 @@ below). Then the same eight at the new pin. Every shipped image is **identical i
 
 | image | size, both pins | what differs |
 |---|---|---|
-| `slax32-wine-bios` | 531,935,232 | four bundles' container bytes; 48 entries, every one matching |
+| `slax32-wine-bios` | 531,935,232 | four bundles' container bytes, and nothing else in 48 ISO entries |
 | `slax32-wine-uefi` | 538,425,344 | the same four, plus `/boot/efi.img` |
 | `slax64-wine-bios` | 855,173,120 | five bundles' container bytes; 49 entries, 10,997 inside `20-wine.sb` alone |
 | `slax64-wine-uefi` | 861,663,232 | the same five, plus `/boot/efi.img` |
@@ -1405,6 +1420,161 @@ and report success" — which is `ci/lib.sh` failing closed, and worth having se
 rule's empty-list refusal, which is the rule this repo does not adopt; `18294f5` guards each test
 call so one crash cannot hide the rest, in files we copy and in twenty-one we do not. Neither is
 needed here, and both come with the next bump.
+
+## Adopted at the `b20e07e` bump
+
+Eleven commits, `7f9c4f8..b20e07e`, 52 files, +1,302/−176. Upstream's CI on `b20e07e` was green in
+every job before anything here moved — commit gates, all four builds, the TCG boot test — with only
+`tor assets (built, verified, never published)` skipped, as it is designed to be. Seven `Closes`
+trailers, [#35](https://github.com/Fullaxx/slax-kitchen/issues/35) to
+[#41](https://github.com/Fullaxx/slax-kitchen/issues/41), and **none of them is ours**: this is the
+first bump here where every fix taken came out of upstream's own review rather than a report from
+this repository. Two intermediate commits are worth knowing rather than pinning around —
+`524279c`'s run failed, on the pyflakes package name, and `f5a5a02` fixed it two commits later. The
+target is what gets pinned.
+
+**No recipe, profile, `schema/` or `compat/` file changed in the range**, so `remove-bundle` and
+`uefi-bootable` — the two upstream recipes our profiles name — are byte-identical to what the
+previous release was built with. What changed is engine code we run.
+
+| what changed upstream | here |
+|---|---|
+| **flavour is a file probe, not a substring match over a stringified dict** (`17a766c`, `Closes #35`) | a build input. Every recipe here declares `flavours: [debian]`, so this is consulted on every step of every build |
+| **`01-core` is resolved by exact name**, the sorted prefix scan surviving only as a fallback (`88c30b8`, `Closes #40`) | the same: it decides which bundle both facts are read from |
+| **flavour falls back to the ISO basename where the core cannot be read**, as arch already did (`b20e07e`, `Closes #41`) | nothing in the normal path; it removes the half-known state where arch guessed and flavour did not |
+| **one crashing test no longer hides the rest** (`18294f5`, `853705f`, `Closes #37`) | four of our copies changed, and our own test file took the same guard |
+| **pyflakes, a fourteenth gate** (`0ba51ff`, `f5a5a02`, `Closes #39`) | **adopted**, as our thirteenth |
+| **`bundle.script` names the files a step removed**, as `bundle.packages` does (`dca01fb`, `Closes #38`) | nothing: no recipe here uses that verb. `bottles.yaml` names it only to say why it does not |
+| **target names resolve through `compat/sources.yaml`** (`edaeff3`, `Closes #36`, new `lib/target.py`) | nothing at build time. `lib/profile.py` is reached only from `lib/build.sh`, and this project deliberately does not use `kitchen build` (`build.sh:5`); nothing here passes `--target` |
+| **the doc-coverage target count notes instead of failing on an empty list** (`12d0f9c`) | nothing: that rule is one of the three this repo does not adopt, so the defect could not reach us |
+| `524279c`'s README and `cli.md` corrections — `--base` takes a target name, never a path | re-read; no page here taught the old form |
+
+**Nothing was retired, and the ledger says why.** Every row in
+[Local workarounds](#local-workarounds) was already `retired at <pin>` before this bump, the last of
+them at `7f9c4f8`, and the only `WORKAROUND` marker left in the tree is inside this page's own prose
+describing a retired one. Gate 96 §10 ran with the new pin staged and had nothing to fire on — which
+is the check passing, not the check being absent.
+
+**All six *Adapted from* headers were re-read against the new upstream, and all six differences
+stand.** `ci/run-checks.sh` still differs by its banner and nothing else; `20-vendor-pristine.sh`
+still guards a different submodule; `40-schema.sh`'s two differences are still that this repo has no
+`compat/` or `schema/` of its own and borrows the submodule's validator; `80-unit.sh` still differs
+by exactly one line, its `# desc:`; and `test_desktop_entries.py`'s three LOCAL CHANGES are all
+untouched by this range — upstream's no-inputs guard, the one our third change sidesteps, is still
+there and would still fail every run here, because every `.desktop` this repo ships is a recipe
+`content:` block. `90-doc-coverage.sh` gained a difference rather than losing one; see below.
+
+**The facts our recipes are guarded on, read back.** `17a766c` and `88c30b8` are the two commits
+that could have bitten: between them they decide which bundle is `01-core` and how its flavour is
+read. The apply log states the answer per skipped step, and it is unchanged from the old pin on
+every tree that has one — `[arch=32bit, flavour=debian]` on all three 32-bit trees and
+`[arch=64bit, flavour=debian]` on all three 64-bit slax-wine ones. The two slax-bottles applies
+print no such line and that is not a gap: no bottles recipe carries a `when: arch==` guard, so there
+is no skipped step to report one. Had flavour gone `unknown`, every recipe here declares
+`flavours: [debian]` and the build would have refused rather than misbuilt; it did not.
+
+**The build, at `b20e07e`.** All eight images rebuilt, against the eight already in `out/` at the
+old pin — so unlike the `7f9c4f8` bump no baseline build was needed, and the comparison is one pass
+rather than two. Sizes are unchanged across the pin move, all eight:
+
+| image | size, both pins | what differs |
+|---|---|---|
+| `slax32-wine-bios` | 531,935,232 | four bundles' container bytes, and nothing else in 48 ISO entries |
+| `slax32-wine-uefi` | 538,425,344 | the same four, plus `/boot/efi.img` |
+| `slax32-wine-test` | 538,437,632 | the same five |
+| `slax64-wine-bios` | 855,173,120 | five bundles' container bytes, in 49 ISO entries; `20-wine.sb` alone holds 10,997 matching entries |
+| `slax64-wine-uefi` | 861,663,232 | the same five, plus `/boot/efi.img` |
+| `slax64-wine-test` | 861,677,568 | the same six |
+| `slax-bottles` | 1,300,676,608 | `30-bottles` (66,254 entries) and `98-dpkg-db` identical; **`20-flatpak` differs in one field of one file**, below. Plus `/boot/efi.img` |
+| `slax-bottles-test` | 1,300,688,896 | the same |
+
+The six slax-wine images are **identical in content**: `kitchen diff --bundles` answers *"identical
+content — every entry matches; only the container's own bytes differ, as a rebuild's do"* for every
+bundle of every one of them, and nothing was added or removed anywhere. The five stock bundles are
+byte-identical and are not even listed.
+
+**The two slax-bottles images are not, and the difference is a date.** `20-flatpak.sb` holds 1,005
+entries, and exactly one of them differs — `etc/shadow`, in exactly one field:
+
+```
+-_flatpak:!:20717::::::
++_flatpak:!:20719::::::
+```
+
+Days since the epoch: **20717 is 2026-09-21 and 20719 is 2026-09-23**, the last-password-change day
+of the system account installing `flatpak` creates. The slax-bottles baseline was built on the 21st
+and this rebuild on 2026-09-23. The six slax-wine images have no such field at all: `20-wine.sb`
+carries no `etc/shadow` and no `etc/passwd`, checked rather than assumed — installing Wine creates
+no system account. This is
+worth writing down rather than waving through, because a plain reading of `kitchen diff --bundles`
+calls slax-bottles *changed at this bump* and it is not — build it twice on one day and the field
+agrees. **Nothing here is attributable to the engine move.**
+
+**`/boot/efi.img`** — six of the eight images carry one; the two bios images do not. It differs in
+**36 bytes** on the four slax-wine ones, all between offsets 40 and 32,856 — the FAT volume serial
+and the create and write times of eight directory entries — and in **60 bytes** on the two
+slax-bottles ones, offsets 40 to 32,857. The extra 24 are the create, access and write *dates*, and
+they appear for the same reason the shadow field moved: those two were built two days earlier. That
+is precisely the arithmetic the [`86d27d5` bump](#adopted-at-the-86d27d5-bump) measured.
+`EFI/BOOT/BOOTX64.EFI` carries one sha256, `384be94fbfe800cb…`, across all six ESPs and both pins —
+checked across the images and not only within each pair.
+
+**No boot route was re-run, and that is the rule rather than an omission.** [Moving the
+pin](#moving-the-pin) step 2 says to re-run them only if the contents changed. Nothing in any image
+changed, so the twelve routes measured on `bacon` at the `7f9c4f8` bump stand as the evidence for
+these artifacts — they are the same artifacts.
+
+**What the tests say.** **All twenty-five** of upstream's test files changed in this range — 24 of
+them by `18294f5` alone, plus the new `test_target.py` — so all twenty-five were run rather than a
+chosen few: 25 passed, 0 failed, under `python3 -B` with a private `TMPDIR`, nothing left behind in
+it, and the submodule pristine afterwards. Ours pass here, `test_release_consistency.py` with its
+new guard included.
+
+**A finding that did not survive being attacked**, recorded because
+[the bar](#our-own-bar-which-is-higher) says disproved candidates are worth as much as findings.
+`grep -l traceback.print_exc` over upstream's test files returns 24 of 25, and the one it misses is
+`test_target.py` — added by `edaeff3`, *after* `18294f5` made the guard a convention, which is
+exactly the shape of a rule a new file quietly does not take. It has the guard. It uses
+`traceback.format_exc()` and puts the trace in the failure text instead of on stderr, so the probe
+was wrong, not the file. Two minutes of reading, and a report upstream would rightly have bounced.
+
+**A thirteenth gate: pyflakes, adapted rather than copied verbatim.** The executable half is
+byte-identical to upstream's, so the next bump can diff it. The prose is not: upstream argues from
+the size of its engine — "lib/apply.py alone is 4,000 lines, so the half that was unchecked was the
+larger half" — and this repo owns no engine code at all. Six python files here, four of them
+verbatim copies upstream already lints under this same gate. The two nothing linted are the two that
+are ours: `tests/unit/test_desktop_entries.py`, which carries three local changes, and
+`tests/unit/test_release_consistency.py`, which is the test of gate 96. That is the argument, and it
+is `80-unit.sh`'s precedent — a `# desc:` that describes upstream's tree does not belong in ours.
+
+The tree was already clean, so a green run proves nothing: **the gate was mutation-tested**, and an
+unused import, an undefined name and a brand-new untracked file each fail it by name. `python3 -m
+pyflakes`, never a binary on `PATH`, for the reason `f5a5a02` gives — and this machine is the exact
+shape that commit is about: pyflakes is in `/opt/venv`, where apt's `python3-pyflakes` would be
+invisible. So [`build.md`](build.md) states the requirement as *a `python3` that can `import
+pyflakes`*, beside the `yaml` and `jsonschema` rows that already read that way, rather than as a
+package name that is wrong on two distributions out of three.
+
+**Run as uid 65534 it stands down**, and that is worth having measured rather than assumed: `nobody`
+resolves `python3` to `/usr/bin/python3`, which has no pyflakes, so the gate warns and exits 0. It
+is honest about it — the warning says so — but on this machine it is a check that only runs for a
+`python3` with the venv on its path, which is the one the hooks use. Without a git config that user
+gets a refusal one layer down instead, `ci/lib.sh`'s "every file-scoped gate would examine ZERO
+files and report success", the same failure-closed behaviour the `7f9c4f8` bump recorded.
+
+Thirteen gates took the count from twelve, which `90-doc-coverage` then named in three files —
+`CHANGELOG.md`, `docs/ARCHITECTURE.md` and `docs/build.md`. Three more it cannot see were fixed by
+hand: `ARCHITECTURE.md` states the count a second time in its tree map, and the **subset** counts
+are anchored to nothing at all — `build.md` said "four are adapted" where five now are, and
+`NOTICE.md` said "Eighteen files here come from it" and "Six are adapted". That is exactly what
+gate 90's own header warns of: it reports one hit per file, and nothing checks a subset, because the
+rule cannot know which subset is meant.
+
+**`90-doc-coverage.sh` gained a note.** `12d0f9c` fixed upstream's *target*-count rule, which failed
+when no markdown was in scope and so blocked every code-only commit there. This repo does not carry
+that rule. But the **gate**-count rule, which it does carry, said nothing at all on the same empty
+list — correct, and silent. It notes now, and the note was seen to fire in staged scope. The quieter
+half of the same mistake.
 
 ## Two findings were dropped before filing, in round one
 

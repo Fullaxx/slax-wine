@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ 7f9c4f85d80b876a4c661fdf2154ed6574a57a9c (ci/checks/90-doc-coverage.sh).
+# Adapted from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (ci/checks/90-doc-coverage.sh).
 #
 # NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
 # recipes here that lookup table is more machinery than the drift it prevents -- left
@@ -18,8 +18,15 @@
 # TAKEN: the GATE-count check, because four files here state that number in prose and
 # nothing else checks them. The anchor is WIDER than upstream's, measured against this
 # tree rather than copied: upstream's `ci/checks|commit gates|run-checks` misses
-# docs/ARCHITECTURE.md's "ci/   twelve gates" (bare `ci/`) and docs/build.md's "Twelve
-# checks live in" (the noun is `checks`, not `gates`). Both are now covered.
+# docs/ARCHITECTURE.md's "ci/   thirteen gates" (bare `ci/`) and docs/build.md's
+# "Thirteen checks live in" (the noun is `checks`, not `gates`). Both are now covered.
+# Those two are quoted from the tree, so they move with the count; the SHAPE is the point.
+#
+# 12d0f9c FIXED THE TARGET-COUNT RULE'S EMPTY-LIST CASE, which is one of the three above
+# and therefore not carried here -- upstream's rule FAILED when no markdown was in scope,
+# blocking every code-only commit, and now notes and skips. The defect could not reach
+# this file. What it did reach is the GATE-count rule we do take, which said nothing at
+# all on an empty list; it notes now, below.
 #
 # It has now been proved in anger. Adding ci/checks/80-unit.sh took the tree from eleven
 # gates to twelve, and this check named three of the four stale files on the next run.
@@ -86,15 +93,26 @@ if [ -n "$want" ]; then
     words='one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty'
     # ANCHORED, and the anchor is load-bearing in both directions. "gates" is an ordinary
     # word, and this repo has lines that legitimately count a SUBSET -- docs/build.md's
-    # "Seven gates are copied verbatim from slax-kitchen, four are adapted" is one, and
+    # "Seven gates are copied verbatim from slax-kitchen, five are adapted" is one, and
     # must not fail. A line claims the TOTAL only if it also names the thing that runs them.
     #
     # That example is quoted from the tree, and the tree was wrong: it read "Six" from the
     # day it was written until the 7f9c4f8 bump, with seven verbatim gates in ci/checks/.
     # Nothing checks a subset count -- this rule cannot, since it does not know which
-    # subset -- so quoting one here is a comment, not a guarantee.
+    # subset -- so quoting one here is a comment, not a guarantee. It went stale a second
+    # time at the b20e07e bump, when adopting 35-pyflakes took the adapted count from four
+    # to five: THREE quotes in this file track the tree by hand, and this is the third.
     anchor='commit gates|selftest|ci/checks|ci/|run-checks|doctor --strict|checks live in|build script'
     check_files_nl | grep -E '\.md$' | grep -v '^vendor/' > "$TMPD/md" || true
+    # SAY SO WHEN THERE IS NOTHING TO READ. An empty list is ordinary in staged scope --
+    # a commit of only .sh and .py files -- and the loop below then runs zero times and
+    # reports nothing, which is correct but silent. Two different empty sets are in play:
+    # "no WORD for N", which upstream's four count rules and ours all note, and "no
+    # markdown in scope", which only upstream's TARGET rule ever mentioned -- and it
+    # FAILED on it, blocking every code-only commit there until 12d0f9c made it a note.
+    # Ours could not block anything; it could only say nothing, which is the quieter half
+    # of the same mistake.
+    [ -s "$TMPD/md" ] || note "90-doc-coverage: no markdown in scope; gate count check skipped"
     while IFS= read -r f; do
         [ -n "$f" ] || continue
         [ -f "$REPO_ROOT/$f" ] || continue

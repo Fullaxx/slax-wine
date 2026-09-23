@@ -10,7 +10,7 @@ See [docs/base-versions.md](docs/base-versions.md).
 Built on two bases, `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`) and
 `slax-64bit-debian-12.2.0.iso` (`61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70`),
-with slax-kitchen pinned at `7f9c4f8`.
+with slax-kitchen pinned at `b20e07e`.
 
 **Four slax-wine images, one system: bios and uefi on each base** ([docs/DECISIONS.md](docs/DECISIONS.md)
 D-16).
@@ -85,7 +85,7 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   `SLAX64-WINE`, one step per base), sha256 beside the image. The removal is
   **runtime-verified**: absent from the kernel command line on both the isolinux and GRUB boot
   paths, against a control boot that shows the check can detect it.
-- `build.sh`, twelve commit gates, and the engineering documentation set. Gate 80 runs
+- `build.sh`, thirteen commit gates, and the engineering documentation set. Gate 80 runs
   upstream's `tests/unit/test_desktop_entries.py`, which refuses a `.desktop` whose `Icon=` Slax's
   launcher generator would fail to resolve — the trap that silently deleted **both** of this
   image's launchers before it was caught by hand.
