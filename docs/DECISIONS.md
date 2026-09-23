@@ -413,8 +413,14 @@ non-persistent boot, plus another first-run creation — a steep price for a tes
 present, it asks before running the installer that will remove it, with the `xmessage` the image
 already ships. **Cancel is the default**, because a stray Return should not pick the answer that
 removes something, and Cancel exits 0 saying nothing more — the "cancelled or failed" message that
-follows an installer is wrong after a deliberate decline. With no display there is nobody to ask, so
-nothing is installed.
+follows an installer is wrong after a deliberate decline.
+
+**And it asks only where there is somewhere to ask.** `DISPLAY` being set is not the same as a
+display that opens: Slax's desktop is on `:1`, so a stale `:0` gets *"Can't open display"* from
+every GUI program in the image. The first version treated that like a decline and exited 0 in
+silence — measured, with nothing installed and nothing said, which is the failure this file's own
+`fail()` exists to prevent. The condition now runs `xset q` first, and when it cannot ask it says so
+and exits 1.
 
 **The trap, and the reason this is a decision rather than a patch:** the check must be conditioned on
 the prefix being 64-bit — `drive_c/windows/syswow64` — because in a **win32** prefix the x86 build

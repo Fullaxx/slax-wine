@@ -127,13 +127,23 @@ steps:
 
           To keep both, give one its own prefix:
               WINEPREFIX=$HOME/.wine-npp32 notepadpp32"
-              if [ -n "${DISPLAY:-}" ] && command -v xmessage >/dev/null 2>&1; then
+              # ASK ONLY WHERE THERE IS SOMEWHERE TO ASK. `xset q` opens the display
+              # and fails when it cannot. Without it, a DISPLAY that is SET BUT UNUSABLE
+              # made xmessage exit non-zero, this branch read that as "declined", and the
+              # tile did nothing and said nothing -- the exact failure the message below
+              # exists to prevent. It is not hypothetical: Slax's desktop is on :1, so a
+              # stale :0 does it. xset ships in 02-xorg.sb, on every image, so the test
+              # costs no dependency.
+              if [ -n "${DISPLAY:-}" ] && command -v xmessage >/dev/null 2>&1 \
+                 && xset q >/dev/null 2>&1; then
                   xmessage -center -default Cancel \
                            -buttons 'Install anyway:10,Cancel:20' "$msg"
+                  # Anything but 10 is a decline, and a decline says nothing more: the
+                  # dialog did appear, so somebody answered it.
                   [ "$?" = 10 ] || exit 0
               else
                   echo "notepadpp32: $msg" >&2
-                  echo "notepadpp32: no display to ask on, so nothing was installed." >&2
+                  echo "notepadpp32: no usable display to ask on, so nothing was installed." >&2
                   exit 1
               fi
           fi

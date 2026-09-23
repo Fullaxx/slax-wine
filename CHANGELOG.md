@@ -99,6 +99,10 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   [#27](https://github.com/Fullaxx/slax-kitchen/issues/27) can do to an arch-guarded build.
 
 ### Fixed
+- **The Notepad++ question is asked only where there is a display to ask on.** `DISPLAY` being set
+  is not the same as a display that opens — Slax's desktop is on `:1`, so a stale `:0` fails — and
+  the first version read that failure as a decline and exited 0 in silence, installing nothing and
+  saying nothing. It now tests with `xset q` first and says so instead.
 - `notepadpp64` refuses `WINEARCH=win32` **before** a prefix exists. It already refused a 32-bit
   prefix it found on disk; with the variable set and no prefix yet, `wine` created a 32-bit one and
   ran the x64 installer in it, so the user got "the installer was cancelled or failed" a minute
