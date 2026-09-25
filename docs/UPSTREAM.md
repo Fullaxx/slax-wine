@@ -1167,10 +1167,10 @@ because there is no issue to retire it against; on a KVM host it is simply unnec
 
 ### When KVM lands: it did, on 2026-09-21, and this is what it changed
 
-**It arrived as a boot host, not as a device.** This container still has no `/dev/kvm`; `bacon` has
-one, and since the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump) `vendor/slax-kitchen/boot-host.ini`
-sends every `kitchen test` there. `kitchen doctor` now prints `boot tests ... KVM on bacon
-(qemu 8.2.2)` where it printed the TCG note, which is the signal
+**It arrived as a boot host, not as a device.** This container still has no `/dev/kvm`; the KVM
+host has one, and since the [`7f9c4f8` bump](#adopted-at-the-7f9c4f8-bump)
+`vendor/slax-kitchen/boot-host.ini` sends every `kitchen test` there. `kitchen doctor` now prints
+`boot tests ... KVM on <host> (qemu 8.2.2)` where it printed the TCG note, which is the signal
 [`CLAUDE.md`](../CLAUDE.md) said to watch for.
 
 **Every route was re-run with the harness's own keys — no `--keys` at all**, which is what the
@@ -1183,7 +1183,7 @@ checklist asked for, on all three test images as built at `7f9c4f8`:
 | `slax-bottles-test` | 15 s | 14 s | 13 s | 13 s |
 
 Twelve routes, twelve passes, each reaching `Live Kit done`. The timings are the whole command, the
-transfer to `bacon` included. The boot itself, which is what the harness times, was **4 to 6
+transfer to the KVM host included. The boot itself, which is what the harness times, was **4 to 6
 seconds** on every one of the fifteen (six at 6 s, six at 4 s, three at 5 s, ceiling 32 s) where
 TCG took 21–31. **Every `--bios` and `--uefi` log carries `console=ttyS0` and no `automount`**, and
 every `--kernel` log carries both — the control that proves the check can fail. So the `automount` removal is now demonstrated through
@@ -1203,7 +1203,7 @@ Worth filing upstream? The harness's lead is a fixed 2 s and nothing measures wh
 before the keys go. Reported, not filed: an outward-facing report is the user's call.
 
 **The queue is worked, on 2026-09-21.** Re-measuring what emulation distorted was its own piece of
-work, and it is done: the numbers below were taken on `bacon` under KVM, in a guest driven over its
+work, and it is done: the numbers below were taken on the KVM host, in a guest driven over its
 serial console, and every page that quoted a TCG figure now carries both, with the TCG one labelled
 as what a machine without an accelerator does — which CI and a container still are.
 
@@ -1238,7 +1238,7 @@ issue is left open for the user to close: that is an outward-facing action.
   launcher changes that followed on the same day are their own commits, and they changed exactly
   two files inside two bundles.
 - The TCG measurements themselves. They stay, dated and labelled: they are true of CI, of a
-  container, and of this machine before `bacon` took the boots.
+  container, and of this machine before the KVM host took the boots.
 ## Filed at the `86d27d5` pin, from this repo's own test tooling — [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and [#30](https://github.com/Fullaxx/slax-kitchen/issues/30)
 
 Two checks this repo carries because the engine does not. Both were filed 2026-09-20 with a fix
@@ -1315,10 +1315,10 @@ is recorded in its own section above.
 | **fourteen commits inside gates we copy** | nine of our sixteen copies changed; two new helpers came with them |
 | tier-c, containers, `release.yml`, upstream's own docs | not ours |
 
-**The boot host, which is the headline.** This build container has no `/dev/kvm` at all. `bacon` has
-one, writable by this account, and since this bump `vendor/slax-kitchen/boot-host.ini` sends every
-`kitchen test` there over ssh: the engine's own tree by `git ls-files`, the image by content-addressed
-rsync, everything under `<scratch>/boot-host/`, nothing outside it touched.
+**The boot host, which is the headline.** This build container has no `/dev/kvm` at all. The KVM
+host has one, writable by this account, and since this bump `vendor/slax-kitchen/boot-host.ini`
+sends every `kitchen test` there over ssh: the engine's own tree by `git ls-files`, the image by
+content-addressed rsync, everything under `<scratch>/boot-host/`, nothing outside it touched.
 
 The file lives **inside the submodule**, which is the one surprise worth writing down:
 `lib/boot_host.py` resolves `REPO_ROOT` from its own location and reads `<REPO_ROOT>/boot-host.ini`
@@ -1329,7 +1329,7 @@ carries the name too, for a copy put at the top of this repo by mistake.
 
 `kitchen boot-host check` is green on every line: the five tools, python 3.12.3, qemu 8.2.2, OVMF,
 `/dev/kvm` writable, 134.9 GiB free, and the work directory private. `kitchen doctor` now prints
-`boot tests ... KVM on bacon` where it used to print the TCG note — which is exactly the trigger
+`boot tests ... KVM on <host>` where it used to print the TCG note — which is exactly the trigger
 [`CLAUDE.md`](../CLAUDE.md) pointed at. A configured host that cannot be reached **fails the
 command**; it never falls back to a local boot, and `KITCHEN_BOOT_HOST=local` is the way back here.
 
@@ -1521,8 +1521,8 @@ checked across the images and not only within each pair.
 
 **No boot route was re-run, and that is the rule rather than an omission.** [Moving the
 pin](#moving-the-pin) step 2 says to re-run them only if the contents changed. Nothing in any image
-changed, so the twelve routes measured on `bacon` at the `7f9c4f8` bump stand as the evidence for
-these artifacts — they are the same artifacts.
+changed, so the twelve routes measured on the KVM host at the `7f9c4f8` bump stand as the evidence
+for these artifacts — they are the same artifacts.
 
 **What the tests say.** **All twenty-five** of upstream's test files changed in this range — 24 of
 them by `18294f5` alone, plus the new `test_target.py` — so all twenty-five were run rather than a

@@ -256,7 +256,7 @@ A register, because every one of these cost time to find.
 
 `boot-verified`: the ISO boots to `slax login:` with all three livekit markers and all its bundles
 mounted in order — nine on 32-bit, ten on 64-bit. Measured under TCG until the `7f9c4f8` bump, and
-since then on `bacon` under KVM: twelve routes, `--kernel`, `--bios`, `--uefi` and `--persistence`
+since then on the KVM host: twelve routes, `--kernel`, `--bios`, `--uefi` and `--persistence`
 on all three test images, each reaching `Live Kit done` in 4–6 s.
 
 `runtime-verified`, on a full desktop boot of each base: the **Wine tile opens from the launcher**

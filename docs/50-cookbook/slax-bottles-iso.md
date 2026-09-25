@@ -33,8 +33,8 @@ appends `toram`, which on a 1.2 GiB image means copying all of it to RAM before 
 ## How the `automount` removal was proven
 
 Measured 2026-09-21 against `slax-bottles-test` (this image plus `serial-console` and `testkit`),
-on `bacon` under KVM. The observable is the kernel's own `Kernel command line:` line in the serial
-log, as for slax-wine:
+on the KVM host. The observable is the kernel's own `Kernel command line:` line in the serial log,
+as for slax-wine:
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
 |---|---|---|---|

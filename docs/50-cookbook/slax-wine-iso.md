@@ -48,7 +48,7 @@ grep -a '^Kernel command line:' out/boot-tests/slax32-wine-test-1.0.0-*.serial.l
 ```
 
 Expect `automount` on the `-kernel` line and on neither of the others. **No `--keys`**: with a boot
-host configured these run on `bacon` under KVM, where the harness's own keystrokes land — re-run
+host configured these run there under KVM, where the harness's own keystrokes land — re-run
 2026-09-21 on all three images and all four routes, twelve for twelve.
 
 **The `--keys` chore is over here, with one caveat worth keeping.** On an idle KVM host the
@@ -82,7 +82,7 @@ results in this page stand; only the explanation was wrong.
 `serial-console` and `testkit`. The boot configs are otherwise identical, and the removal is applied
 to *every* `APPEND` line in both files, so it transfers.
 
-**On the 64-bit base**, measured 2026-09-21 on `bacon` under KVM, against `slax64-wine-test`; the
+**On the 64-bit base**, measured 2026-09-21 on the KVM host, against `slax64-wine-test`; the
 seconds in brackets are the same routes under TCG on this build host, 2026-09-19:
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
