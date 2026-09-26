@@ -40,8 +40,8 @@ steps:
   # same shape: libpulse0 is absent from its 01-core..04-apps too.
   #
   # Two guards hold the order. check_plan_order refuses a removal that follows a build,
-  # across the whole plan and seeded from the journal so it holds across separate
-  # `kitchen apply` invocations (apply.py:254), and --skip-preflight no longer disables
+  # across the whole plan and seeded from the journal (its `work` argument) so it holds
+  # across separate `kitchen apply` invocations, and --skip-preflight no longer disables
   # it -- issues #1 and #11, both closed. And ci/checks/96-release-consistency.sh
   # §5(a3) refuses a shipped profile that lists remove-bundle late.
   #
@@ -140,12 +140,13 @@ steps:
       #
       # update: true because the stacked root's package index is from October 2023 and
       # covers only bookworm-security. (NOT because of BUNDLE_EXCLUDE: that rule --
-      # apply.py:2462, ^var/lib/(apt|slackpkg) -- governs bundles slax-kitchen BUILDS,
+      # lib/apply.py, ^var/lib/(apt|slackpkg) -- governs bundles slax-kitchen BUILDS,
       # and this stack is five upstream bundles it never built. 01-core.sb ships 15
       # var/lib/apt/lists entries. The flag is right; the old reason was not.)
       #
-      # Both keys below restate engine defaults (apply.py:2711, :2716). Kept explicit
-      # because an apt invocation that silently changed either would change what ships.
+      # Both keys below restate engine defaults: bundle.packages reads each from `apt:`
+      # with a default of true, in lib/apply.py. Kept explicit because an apt invocation
+      # that silently changed either would change what ships.
       update: true
       no_recommends: true
 
@@ -181,8 +182,8 @@ steps:
   #
   # NEVER :i386 ON AN ARCH-ALL PACKAGE (wine, fonts-wine, fonts-liberation). After the
   # install the engine checks every name with `dpkg-query -W <name as written>`
-  # (apply.py:2913), and an arch-all package is not found as :i386, so the step would
-  # fail after a successful install.
+  # (`_installed()` in lib/apply.py), and an arch-all package is not found as :i386, so
+  # the step would fail after a successful install.
   #
   # LOCKSTEP. A Multi-Arch: same library must be the same version on both architectures.
   # The base's amd64 libraries date from October 2023 and apt installs today's i386 ones,

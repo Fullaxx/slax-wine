@@ -140,7 +140,9 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
   `python3 -B`, and the submodule must stay pristine. When a gate we copy changed, run it over our
   own tests too, as root and as an unprivileged user; developing as root hides a whole class of
   failure (`f3ff3a3`).
-- **Anything we cite.** Check whether a permalinked page moved or changed.
+- **Anything we cite.** Check whether a permalinked page moved or changed, and whether a line number
+  cited into the engine still points at what its comment says. Better, name the function, constant
+  or key: line numbers drift at every bump, and the `0dd1b53` bump found eleven that had.
 
 **3. Retire what upstream has made redundant.**
 
@@ -210,12 +212,12 @@ this repository has filed is closed** — the last four were
 [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and
 [#30](https://github.com/Fullaxx/slax-kitchen/issues/30), from checks this repo carries because the
 engine did not. Each section below names its closing commit. Only upstream's own
-[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) and
-[#49](https://github.com/Fullaxx/slax-kitchen/issues/49) are open: #15 is Slackware's, and upstream
-filed #49 itself on 2026-09-26, from the one option of an unfiled draft of ours it had not taken
-([what it means here](#open-upstream-and-what-each-means-here)). #42 to #48, filed from slax-rpgs's
-planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them as superseded;
-[their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeringmd) says how.
+[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) is open, and it is Slackware's.
+[#49](https://github.com/Fullaxx/slax-kitchen/issues/49), which upstream filed itself on 2026-09-26
+from the one option of an unfiled draft of ours it had not taken, was closed the same day by
+`658e78b` and taken at [the `0dd1b53` bump](#adopted-at-the-0dd1b53-bump). #42 to #48, filed
+from slax-rpgs's planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them as
+superseded; [their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeringmd) says how.
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -238,14 +240,14 @@ planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them 
 Neither was ours. Both were assessed against this image at the `bcd4f00` bump rather than taken on
 trust, because "open upstream" is not the same as "affects us". **14 has since closed** — by
 `5e7825f` (its own `Closes` trailer; the merge commit `c455733` carries none), taken at the
-`337f7e7` bump. 15 is still open, and 49 joined it on 2026-09-26: filed by upstream, and measured
-against our own images at `7664625`.
+`337f7e7` bump. 15 is still open. 49 joined it on 2026-09-26, filed by upstream, and was closed the
+same day by `658e78b`, taken at the `0dd1b53` bump.
 
 | # | Issue | Impact on slax-wine |
 |---|---|---|
 | [14](https://github.com/Fullaxx/slax-kitchen/issues/14) | `bundle.packages` tracks additions and never looks at what left | **Closed by `5e7825f`** — apt now runs with `--no-remove`, so the engine *refuses* the case this row used to measure by hand. Historical measurement, still the evidence we held before the fix: **none on this build.** `20-wine.sb` is a `bundle.packages` bundle, so this is our exposure: a package apt removes to resolve a conflict is recorded as gone while its files stay visible from the lower bundle. Counted `install ok installed` in `04-apps.sb` (567) against `98-dpkg-db.sb` (626) — **nothing present before is missing after**. +59 is the `libgnutls30`-upgrade arithmetic. Re-measure after any recipe change; it is a property of the build, not of the recipe. |
 | [15](https://github.com/Fullaxx/slax-kitchen/issues/15) | persistence boot 2 wedges on both Slackware targets, passes on both Debian | **None — we are Debian.** Worth reading the other way round: it is the bug their new persistence harness found on its first four-target sweep, which is the reason to trust the harness on *our* target. |
-| [49](https://github.com/Fullaxx/slax-kitchen/issues/49) | `uefi-bootable` cannot run on an image that is already UEFI-bootable | **None on our own builds**, which start from stock images with no ESP: #49 says so from reading this repository, and the back-to-back build at the bump that takes its fix will show it by building. **For a project built on our images, it decides which image to use.** Until the fix lands, a `-bios` image with `uefi-bootable` last — [measured on ours](#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them). After it, the `-uefi` images and slax-bottles as well: the `slax64-wine-uefi` ESP, measured, is exactly the one the fix will accept, and slax-bottles' is built by the same recipe. |
+| [49](https://github.com/Fullaxx/slax-kitchen/issues/49) | `uefi-bootable` cannot run on an image that is already UEFI-bootable | **Closed by `658e78b`, taken at `0dd1b53`.** Nothing changed for our own builds, which start from stock images with no ESP: [the back-to-back build at that bump](#adopted-at-the-0dd1b53-bump) shows it. **For a project built on our images, either image now**, `uefi-bootable` listed last: it rebuilds the ESP a `-uefi` image or slax-bottles came with, which is exactly the shape the fix accepts — measured at `7664625`, and built on at `0dd1b53`. |
 
 | Advisory | Status |
 |---|---|
@@ -1616,7 +1618,7 @@ repository copies verbatim. slax-wine's own part went in as
 
 Upstream settled the frame with a decision rather than three engine changes: **a project builds on
 another project's released image, not its source**, and every project vendors the engine directly.
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/b4eb25b/LAYERING.md) records it, and
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md) records it, and
 what it asks of slax-wine as the first *base project* is slax-wine#2's work.
 
 | # | closed | by |
@@ -1657,9 +1659,10 @@ fails partway: it rewrites `boot/grub/grub.cfg` before `mkfs.vfat` refuses, the 
 record that, and the error names no way forward. Measured by the file's timestamp as well as read,
 since a rewrite from the same `isolinux.cfg` leaves the same bytes. LAYERING.md routes every
 consumer around it and `kitchen build` starts from a fresh tree, so it is a follow-up. Upstream filed
-it as [#49](https://github.com/Fullaxx/slax-kitchen/issues/49) on 2026-09-26. Its planned fix lets
-`uefi-bootable` replace an ESP it built itself, refuses any other, and builds the new one before
-touching `grub.cfg`.
+it as [#49](https://github.com/Fullaxx/slax-kitchen/issues/49) on 2026-09-26, and closed it the same
+day with `658e78b`, which lets `uefi-bootable` replace an ESP it built itself, refuses any other, and
+builds the new one before touching `grub.cfg` — taken at
+[the `0dd1b53` bump](#adopted-at-the-0dd1b53-bump).
 
 ## Adopted at the `b4eb25b` bump
 
@@ -1779,7 +1782,8 @@ image's, and the journal records only the three recipes before it. Without it, `
 the base had a UEFI entry this image will not, and the structure test fails the ESP that nothing
 points at. [#49](https://github.com/Fullaxx/slax-kitchen/issues/49) is upstream's answer to the
 first, and our ESP is exactly what its fix will accept: FAT12, labelled `SLAXEFI`, holding only
-`EFI/BOOT/BOOTX64.EFI`, a PE32+ whose certificate table is empty. Nothing here signs it.
+`EFI/BOOT/BOOTX64.EFI`, a PE32+ whose certificate table is empty. Nothing here signs it. The fix
+landed the same day, and at [the `0dd1b53` bump](#adopted-at-the-0dd1b53-bump) this build passes.
 
 **`kitchen sources` refuses both images.** It was deferred
 [at the `8adfca6` bump](#adopted-at-the-8adfca6-bump) until it could be run against the shipped
@@ -1809,6 +1813,87 @@ too, and it holds ELF files, which `kitchen sources` refuses as well.
 [NOTICE.md](../NOTICE.md) are this repository's own publishing policy — publish, attach source for
 everything identifiable, state the gap — and which route the first release takes is the owner's
 decision, which D-12 will record.
+
+## Adopted at the `0dd1b53` bump
+
+Two commits, `b4eb25b..0dd1b53`, 7 files, +499/−42. `658e78b` closes
+[#49](https://github.com/Fullaxx/slax-kitchen/issues/49): `uefi-bootable` rebuilds an ESP it built
+itself and refuses any other. Its CI run was red in one job, the debian:12 reference container, on
+a test that compared a symlink's mtime — which tarfile never sets — across a second that ticked
+over. `0dd1b53` compares the link by its target instead, and its run is green in every job, with
+`tor assets` skipped as it is on a push.
+
+| what changed upstream | here |
+|---|---|
+| **`uefi-bootable` rebuilds an ESP it built, and refuses any other** (`658e78b`, #49) | a project built on our images can build on either one, `uefi-bootable` last; our own builds never meet the new check |
+| `lib/isoparse.py` reads FAT12 and PE headers, for that check | reached only through `boot.uefi` on an image that already has an ESP |
+| LAYERING.md step 6, its *What it applied* row and its example, which builds on `slax64-wine-uefi` again; the `uefi-bootable` page; `cli.md` | re-read against the two sentences that cite LAYERING.md, both still true |
+| the `pack` warning no longer points at the BIOS image (`lib/hints.sh`) | never printed by our builds, at either pin |
+| a test compared a symlink's mtime (`0dd1b53`) | a test fix; the one `lib/apply.py` change in it is a docstring |
+
+**The rule, read and then run.** The check comes before anything is written, dry run included, and
+the new ESP and `grub.cfg` are staged beside the old ones and renamed over them only once both are
+whole. Run read-only against the ESP of our own `slax64-wine-uefi`, it accepts it; a copy with one
+extra file, another label, a long-named loader, or a certificate table patched into the loader is
+refused, and each refusal names what it found. Noted, not filed: the two renames are one after the
+other, so a failure between them would leave the new ESP beside the old `grub.cfg`, unjournaled.
+Inside one work tree that is not a realistic failure, and `kitchen build` starts from a fresh tree.
+
+**The build, at `0dd1b53`.** All eight images, back to back with a baseline of the same eight at
+`b4eb25b` — `13dc2db`, 15:06–15:31 UTC, then the new pin 15:31–15:56 UTC, both on 2026-09-26 — on one
+toolchain, with no apt operation between them. Every size is unchanged, and matches
+[the `b4eb25b` record](#adopted-at-the-b4eb25b-bump). `kitchen diff --bundles` answers *identical
+content* for every bundle of every image, and the package lists match: 626, 816 and 597.
+`/boot/efi.img` differs in 36 bytes on the six images that carry one, the FAT volume serial and
+directory timestamps as at the last bump, and `BOOTX64.EFI` keeps its sha256, `384be94fbfe800cb…`;
+`grub.cfg` is identical. The sidecars differ in what a pin move and a rebuild explain: the kitchen
+commit, the project described as dirty because the pin is staged, the submodule pin, the ISO's own
+sha256, and each rebuilt container's hash. `uefi-bootable` ran six times and replaced an ESP none of
+those times, and `pack` gave no boot warning, because the stock bases have none. **No boot route was
+re-run**, by the rule: nothing in any image changed.
+
+**Building on our `-uefi` image now works.** The scratch project that failed on it at `7664625`
+built on the new `slax64-wine-uefi`, with `serial-console` added so that the rebuilt menu would
+have an entry our image lacks. Green, 16 of 16, and no `pack` warning; `uefi-bootable` said it was
+*replacing the one the image came with*, and the new ESP has our shape and our loader, 36 bytes
+apart from the one it replaced. `grub.cfg` mirrors all three of the project's entries, its serial
+one included, and the sidecar names our image by sha256 and size beside `kitchen.commit`
+`0dd1b53`. The first profile, without `serial-console`, is green on `slax64-wine-bios` again, and one
+that only sets an identity and lists `uefi-bootable` is green on `slax-bottles`, replacing its ESP. The
+negative control, an extra file planted in our ESP, is refused by `kitchen apply uefi-bootable`
+and by its dry run, naming the file, with `efi.img` and `grub.cfg` unchanged by sha256 and mtime
+and nothing journaled.
+
+**One consequence for a project built on ours.** No boot entry our image carries has `automount` —
+`slax-wine-iso` removed it — but the one `serial-console` added has it, because that recipe's
+`append:` is stock Slax's command line. That is why our own test profiles list `serial-console`
+first (`profiles/slax32-wine-test.yaml`). A project building on our image cannot reorder a recipe
+that already ran, so if it adds entries and wants our default, it lists the removal again after them.
+
+**Anything we cite: twelve line numbers into the engine, and they had drifted.** Eight of those
+citations named unrelated lines before this bump moved anything — `apply.py:254`, `:2462`,
+`:2711` with `:2716`, `:2913`, `:3305`, `:3331` and `:3626` in `wine.yaml`, `notepadpp32.yaml` and
+`slax32-wine-bios.yaml`, and `lib/pack.sh:192-206` in `slax-wine-iso.yaml` — and three were near
+the right place: `lib/build.sh:46` and `:61-78`, and `serial-console.yaml:46`, one line past the flag
+it meant. `658e78b`'s new import then moved every line of `lib/apply.py` once more. Eleven now name
+what they meant — `check_plan_order`, `BUNDLE_EXCLUDE`, `bundle.packages`' `apt:` defaults,
+`_installed()`, `resolve()`, `recipe_search_path()`, `_serial_keys`, `pack.sh`'s `checksums_sign`
+handling and `serial-console`'s `append:` — which do not drift. The twelfth, `kitchen:346` in
+`35-pyflakes.sh`'s comment, is upstream's own text, as stale in their copy, and stays as copied.
+
+**What the tests say.** Upstream changed one test file, `test_apply.py`, and it passes inside the
+pinned submodule, run through `ci/unit-run.py` with a private `TMPDIR`, no bytecode and
+`KITCHEN_BOOT_HOST=local`, leaving nothing behind; the submodule stays pristine.
+
+**Copied files.** Of twenty-one, none changed upstream, so each is re-cited, not re-copied. With only
+the pin staged, gate 96 named all of it: the twenty-one headers (§7), nine permalinks and the two
+statements of the pin in prose (§8, eleven lines), with §9 and §10 silent. The six other pages this
+repository permalinks had no commit in the range.
+
+**Retired:** nothing on the ledger, which held no active row, and no code here worked around #49.
+What said "until #49" was this page: the register, #49's row, and the `4646f15` section. The
+recipe and profile comments above change no image; they change each recipe file's hash in the
+next build's sidecar.
 
 ## Two findings were dropped before filing, in round one
 

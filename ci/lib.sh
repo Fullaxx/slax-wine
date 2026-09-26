@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/lib.sh).
+# Copied verbatim from slax-kitchen @ 0dd1b531624148cf733138a0c0a02f152ab864ff (ci/lib.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # Shared helpers for slax-kitchen checks.
 # Sourced by ci/run-checks.sh and by every ci/checks/*.sh script.

@@ -24,12 +24,13 @@ recipes:
   # FIRST, and this is the one that is easy to get wrong.
   #
   # serial-console adds the only boot entry carrying `console=ttyS0`, and without such an
-  # entry the whole exercise is pointless: lib/build.sh:46 derives its menu keystrokes by
-  # searching for `console=ttyS`, finds nothing, and the harness falls back to SCREENSHOT
-  # ONLY -- it boots, asserts nothing, and says so. Upstream ran four CI passes in that
-  # state believing they were checked.
+  # entry the whole exercise is pointless: _serial_keys in lib/build.sh derives its menu
+  # keystrokes by searching for `console=ttyS`, finds nothing, and the harness falls back
+  # to SCREENSHOT ONLY -- it boots, asserts nothing, and says so. Upstream ran four CI
+  # passes in that state believing they were checked.
   #
-  # But its append line HARDCODES `automount` (recipes/available/serial-console.yaml:46).
+  # But its append line HARDCODES `automount` (the `append:` in the engine's
+  # recipes/available/serial-console.yaml).
   # So it must come BEFORE slax-wine-iso, whose `boot.cmdline remove: [automount]` strips
   # the flag from every APPEND line in both configs. Put serial-console after it and the
   # serial entry -- the only entry any boot test actually selects -- would be the one
@@ -128,12 +129,12 @@ recipes:
   # menu_timeout is left at uefi-bootable's shipped default of 5, NOT raised to the 30
   # that profiles/boot-matrix.yaml uses, so the GRUB configuration we actually SHIP is the
   # one tested. Under KVM the harness's own keystrokes select the serial entry. Under TCG
-  # they miss it: a fixed 2 s lead (lib/build.sh:61-78), and when GRUB's menu appears
-  # depends on the host -- 3.2 s on the build host, 6.9 s with its vCPU starved. So pass
-  # --keys: `home` once a second for 24 presses, which holds the menu whenever it comes,
-  # then down,down,ret. The command is in docs/50-cookbook/slax-wine-iso.md, and the
-  # measurements in docs/UPSTREAM.md. On a KVM host none of this is needed: the menu is
-  # up in about a second and the harness's own keys select the serial entry.
+  # they miss it: a fixed 2 s lead (_serial_keys, lib/build.sh), and when GRUB's menu
+  # appears depends on the host -- 3.2 s on the build host, 6.9 s with its vCPU starved.
+  # So pass --keys: `home` once a second for 24 presses, which holds the menu whenever it
+  # comes, then down,down,ret. The command is in docs/50-cookbook/slax-wine-iso.md, and
+  # the measurements in docs/UPSTREAM.md. On a KVM host none of this is needed: the menu
+  # is up in about a second and the harness's own keys select the serial entry.
   - uefi-bootable
 output:
   name: "slax32-wine-test-{{version}}.iso"

@@ -116,7 +116,7 @@ four full builds; narrow it while iterating: `./build.sh --32 --bios`.
 `build.sh` `cd`s to the repo root before doing anything, so it is safe to invoke by absolute path.
 That is not cosmetic: the profile names its recipes by relative path, and the engine resolves those
 against the **current working directory**, not the repo root — which slax-kitchen's
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/b4eb25b/LAYERING.md) makes the rule for
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md) makes the rule for
 every project: build from its root.
 
 ## Commit gates
@@ -205,5 +205,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`b4eb25b`](https://github.com/Fullaxx/slax-kitchen/tree/b4eb25b). Bumping the
+The engine is pinned at [`0dd1b53`](https://github.com/Fullaxx/slax-kitchen/tree/0dd1b53). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

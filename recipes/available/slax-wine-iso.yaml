@@ -78,8 +78,9 @@ steps:
   # No `sign:` -- a PROJECT CHOICE, not an upstream limitation. It was unusable when
   # this recipe was written (the schema had closed the field to a boolean while it is a
   # GPG key id), we reported that as issue #3, and it was fixed in 7971eb5: at the pinned
-  # commit the schema types it ["string","boolean"] and lib/pack.sh:192-206 quote-strips
-  # the key id and runs `gpg --detach-sign`. docs/UPSTREAM.md records it closed.
+  # commit the schema types it ["string","boolean"], and lib/pack.sh's checksums_sign
+  # handling quote-strips the key id and runs `gpg --detach-sign`. docs/UPSTREAM.md
+  # records it closed.
   #
   # It stays off because this project has no signing key. Turning it on means deciding
   # whose key signs a release and how a downloader gets it -- a post-v1.0.0 want, and a

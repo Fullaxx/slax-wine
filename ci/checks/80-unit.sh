@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/checks/80-unit.sh). ONE difference,
+# Adapted from slax-kitchen @ 0dd1b531624148cf733138a0c0a02f152ab864ff (ci/checks/80-unit.sh). ONE difference,
 # the `# desc:` line; re-adapt on a submodule bump, see docs/UPSTREAM.md.
 #
 #   Upstream's reads "the recipe engine's pure logic", which this repo does not have: it owns

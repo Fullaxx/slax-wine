@@ -15,14 +15,14 @@ compat:
   # The launcher below sources /etc/profile.d/wine.sh, which 21-wine-desktop supplies,
   # and runs the Wine that 20-wine does. Stating that in prose was not enough: `kitchen
   # apply notepadpp`, as this recipe was named before it was tagged 32, once happily built
-  # a bundle whose launcher depended on files that were not in the image. resolve() walks
-  # this list before applying (apply.py:3331), so the dependency is real rather than
+  # a bundle whose launcher depended on files that were not in the image. resolve() in
+  # lib/apply.py walks this list before applying, so the dependency is real rather than
   # documentary.
   #
   # PATHS, not bare names. Bare-name resolution searches the ENGINE's recipes/
-  # directories plus the current working directory (apply.py:3626), and ours live in this
-  # repo -- so a bare "wine-desktop" would not be found. build.sh cd's to the repo root
-  # for exactly this reason.
+  # directories plus the current working directory (recipe_search_path() in lib/apply.py),
+  # and ours live in this repo -- so a bare "wine-desktop" would not be found. build.sh
+  # cd's to the repo root for exactly this reason.
   requires:
     - recipes/available/wine-desktop.yaml
 vars:

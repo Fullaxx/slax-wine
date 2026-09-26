@@ -21,8 +21,8 @@ recipes:
   # remove-bundle in the submodule and would never find ours, which live in this repo.
   # (remove-bundle is written in the {name, vars} form rather than as a plain string so
   # that `drop:` is stated; both forms resolve by name.) A path resolves from the CURRENT
-  # WORKING DIRECTORY (apply.py:3305), which is why build.sh cd's to the repo root before
-  # applying.
+  # WORKING DIRECTORY (resolve() in lib/apply.py), which is why build.sh cd's to the repo
+  # root before applying.
   #
   # Order matters four times over:
   #   remove-bundle  drops 05-chromium BEFORE anything is built, so apt never builds
