@@ -50,8 +50,9 @@ steps:
   #
   # volid is the one people see: it becomes the filesystem label when the image is
   # mounted or written to a stick. It is also what tests/structure/iso_assert.py must be
-  # told with --volid, because assertion #1 otherwise hardcodes 'slax' -- which is
-  # exactly why this project does not use `kitchen build`.
+  # told with --volid, because assertion #1 otherwise expects 'slax'. build.sh tells it,
+  # and `kitchen build` has told it too since slax-kitchen 6419fa4, so this is not why
+  # build.sh exists; docs/DECISIONS.md D-13 says what is.
   #
   # ONE STEP PER BASE, so the label says which one an image is: SLAX32-WINE or
   # SLAX64-WINE, the same tag as the file name. Nothing functional reads it -- GRUB finds

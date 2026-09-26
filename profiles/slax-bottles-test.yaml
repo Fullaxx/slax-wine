@@ -2,7 +2,7 @@ apiVersion: slax-kitchen/v1
 kind: Profile
 metadata:
   name: slax-bottles-test
-  summary: The slax-bottles image plus testkit -- built to be asserted against, never shipped
+  summary: slax-bottles plus serial-console and testkit -- built to be asserted against, never shipped
 base:
   flavour: debian
   arch: 64bit
