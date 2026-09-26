@@ -15,6 +15,7 @@ recipes:
   # FIRST: serial-console adds the only entry carrying console=ttyS0. Without that entry
   # the harness falls back to screenshots and asserts nothing. It also hardcodes
   # `automount`, so it must come before slax-bottles-iso, which strips it from every entry.
+  # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/50
   - serial-console
 
   # Removal before anything that builds. Second rather than first is legal, because

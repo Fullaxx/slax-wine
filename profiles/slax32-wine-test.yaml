@@ -36,6 +36,10 @@ recipes:
   # serial entry -- the only entry any boot test actually selects -- would be the one
   # entry that still had automount, and the probe below would report a failure that is an
   # artefact of recipe order rather than of the image.
+  #
+  # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/50 -- the order is the
+  # workaround. #50 asks for a serial entry that carries the image's own command line in
+  # any order. If upstream does that, the order stops mattering and this note goes.
   - serial-console
 
   # REMOVAL FIRST, AND IT MUST BE A RECIPE OF ITS OWN. lib/validate.py refuses a recipe
