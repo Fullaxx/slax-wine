@@ -210,9 +210,12 @@ this repository has filed is closed** — the last four were
 [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and
 [#30](https://github.com/Fullaxx/slax-kitchen/issues/30), from checks this repo carries because the
 engine did not. Each section below names its closing commit. Only upstream's own
-[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) is open, and it is Slackware's. #42 to #48,
-filed from slax-rpgs's planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them
-as superseded; [their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeringmd) says how.
+[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) and
+[#49](https://github.com/Fullaxx/slax-kitchen/issues/49) are open: #15 is Slackware's, and upstream
+filed #49 itself on 2026-09-26, from the one option of an unfiled draft of ours it had not taken
+([what it means here](#open-upstream-and-what-each-means-here)). #42 to #48, filed from slax-rpgs's
+planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them as superseded;
+[their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeringmd) says how.
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -235,12 +238,14 @@ as superseded; [their section](#filed-from-slax-rpgss-planning--42-to-48-and-lay
 Neither was ours. Both were assessed against this image at the `bcd4f00` bump rather than taken on
 trust, because "open upstream" is not the same as "affects us". **14 has since closed** — by
 `5e7825f` (its own `Closes` trailer; the merge commit `c455733` carries none), taken at the
-`337f7e7` bump. Only 15 is still open.
+`337f7e7` bump. 15 is still open, and 49 joined it on 2026-09-26: filed by upstream, and measured
+against our own images at `7664625`.
 
 | # | Issue | Impact on slax-wine |
 |---|---|---|
 | [14](https://github.com/Fullaxx/slax-kitchen/issues/14) | `bundle.packages` tracks additions and never looks at what left | **Closed by `5e7825f`** — apt now runs with `--no-remove`, so the engine *refuses* the case this row used to measure by hand. Historical measurement, still the evidence we held before the fix: **none on this build.** `20-wine.sb` is a `bundle.packages` bundle, so this is our exposure: a package apt removes to resolve a conflict is recorded as gone while its files stay visible from the lower bundle. Counted `install ok installed` in `04-apps.sb` (567) against `98-dpkg-db.sb` (626) — **nothing present before is missing after**. +59 is the `libgnutls30`-upgrade arithmetic. Re-measure after any recipe change; it is a property of the build, not of the recipe. |
 | [15](https://github.com/Fullaxx/slax-kitchen/issues/15) | persistence boot 2 wedges on both Slackware targets, passes on both Debian | **None — we are Debian.** Worth reading the other way round: it is the bug their new persistence harness found on its first four-target sweep, which is the reason to trust the harness on *our* target. |
+| [49](https://github.com/Fullaxx/slax-kitchen/issues/49) | `uefi-bootable` cannot run on an image that is already UEFI-bootable | **None on our own builds**, which start from stock images with no ESP: #49 says so from reading this repository, and the back-to-back build at the bump that takes its fix will show it by building. **For a project built on our images, it decides which image to use.** Until the fix lands, a `-bios` image with `uefi-bootable` last — [measured on ours](#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them). After it, the `-uefi` images and slax-bottles as well: the `slax64-wine-uefi` ESP, measured, is exactly the one the fix will accept, and slax-bottles' is built by the same recipe. |
 
 | Advisory | Status |
 |---|---|
@@ -551,7 +556,9 @@ machinery for exactly what `docs/DECISIONS.md` D-12 says we discharge by hand in
 one acknowledged legal gap in this project. It is kept out of this bump deliberately: rewriting a
 source-attribution table is a licence-adjacent change and deserves its own pass, not a ride-along in
 a correctness fix. Run it against both shipped ISOs and decide then. Recorded here so the deferral
-reads as a decision rather than an oversight.
+reads as a decision rather than an oversight. **Run at `7664625`, on 2026-09-26**, against the two
+64-bit images: it refuses both, over the Notepad++ installers —
+[the record](#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them).
 
 ## Filed at the `8adfca6` bump — [#22](https://github.com/Fullaxx/slax-kitchen/issues/22), the #19 fix blocks every submodule bump · **closed by `337f7e7`**
 
@@ -1649,7 +1656,10 @@ both files.
 fails partway: it rewrites `boot/grub/grub.cfg` before `mkfs.vfat` refuses, the journal does not
 record that, and the error names no way forward. Measured by the file's timestamp as well as read,
 since a rewrite from the same `isolinux.cfg` leaves the same bytes. LAYERING.md routes every
-consumer around it and `kitchen build` starts from a fresh tree, so it is a follow-up.
+consumer around it and `kitchen build` starts from a fresh tree, so it is a follow-up. Upstream filed
+it as [#49](https://github.com/Fullaxx/slax-kitchen/issues/49) on 2026-09-26. Its planned fix lets
+`uefi-bootable` replace an ESP it built itself, refuses any other, and builds the new one before
+touching `grub.cfg`.
 
 ## Adopted at the `b4eb25b` bump
 
@@ -1742,6 +1752,63 @@ D-13 now says what that is. `build.sh`'s `cd` stays too: LAYERING.md makes build
 project's root the rule, and its comment now cites `resolve()` rather than a line number that had
 drifted. `docs/build.md`'s warning about `kitchen doctor --install-hooks` stays true, since
 `kitchen:450` still requires a `.git` directory.
+
+## Measured at `7664625`: a project built on our images, and `kitchen sources` on them
+
+On 2026-09-26, with the engine at `b4eb25b`, `./build.sh --64 --both` rebuilt the two 64-bit images
+from a clean tree, to answer two questions slax-wine#2 raises. Both matched
+[the `b4eb25b` record](#adopted-at-the-b4eb25b-bump) — 855,177,216 and 861,667,328 bytes, 816
+packages each — and the uefi image's `BOOTX64.EFI` is `384be94fbfe800cb…` again.
+
+**A project built on `slax64-wine-bios`, as LAYERING.md's step 6 says to.** A scratch project outside
+this repository built LAYERING.md's example on it with our vendored engine: `remove-bundle` of
+`^3[01]-notepadpp(32|64)\.sb$`, a bundle of its own at `30`, `iso-identity` with its own volume id,
+and `uefi-bootable` last. `kitchen build` was green, and its structure test passed 16 of 16. The
+image carries exactly `01-core`, `01-firmware`, `02-xorg`, `03-desktop`, `04-apps`, `20-wine`,
+`21-wine-desktop`, the project's `30-demo` and a regenerated `98-dpkg-db`, and both El Torito
+entries. `20-wine.sb`, `21-wine-desktop.sb`, `isolinux.cfg` and `syslinux.cfg` are byte-identical to
+ours, so `/etc/slax-wine-release` came through intact and no boot menu has `automount` — the
+`grub.cfg` that `uefi-bootable` wrote included. The project's sidecar names our image by name,
+sha256 and size, beside the engine commit. It was built and structure-tested on this one base, and
+not booted: short of `matrix-verified`, which asks for all four targets.
+
+**On `slax64-wine-uefi` the same build fails both ways, as LAYERING.md says it will.** With
+`uefi-bootable` listed, `mkfs.vfat` refuses — `boot/efi.img already exists` — after `grub.cfg` has
+been rewritten: the tree left behind has `grub.cfg` stamped at apply time and `efi.img` at the
+image's, and the journal records only the three recipes before it. Without it, `pack` warns that
+the base had a UEFI entry this image will not, and the structure test fails the ESP that nothing
+points at. [#49](https://github.com/Fullaxx/slax-kitchen/issues/49) is upstream's answer to the
+first, and our ESP is exactly what its fix will accept: FAT12, labelled `SLAXEFI`, holding only
+`EFI/BOOT/BOOTX64.EFI`, a PE32+ whose certificate table is empty. Nothing here signs it.
+
+**`kitchen sources` refuses both images.** It was deferred
+[at the `8adfca6` bump](#adopted-at-the-8adfca6-bump) until it could be run against the shipped
+ISOs, and this is that run. Exit 1 on each:
+
+| | `-bios` | `-uefi` |
+|---|---|---|
+| stock Slax | 34 | 34 |
+| Debian: `20-wine.sb` | 1 | 1 |
+| built here | 0 | 1: `boot/efi.img`, the GRUB ESP |
+| ours | 6 | 7: `boot/grub/grub.cfg` as well |
+| **unresolved** | **2** | **2** |
+
+The two unresolved are the Notepad++ installers. `bundle.files` copies each from
+`recipes/available/notepadpp32.files/` or its 64-bit twin, which `build.sh` fills and git ignores,
+so the project commit does not hold it. That stage is
+[D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it)'s route: it is how the installers are
+fetched rather than committed. Both images also carry the warning that `01-firmware.sb` lost its
+licence texts in Slax's own build; only `ipw2x00.LICENSE` remains.
+
+What follows for publishing was read, not run. `ci/release-assets.sh` stops where `kitchen sources`
+does. Past that, `ci/release-verify.py` refuses an attached image whose firmware bundle has no
+licence texts — `firmware-refresh`, or dropping `01-firmware`, are the remedies it names — and it
+takes one image per release directory. slax-bottles was not probed: its 3.3 GB stage is gitignored
+too, and it holds ELF files, which `kitchen sources` refuses as well.
+[D-12](DECISIONS.md#d-12--publish-the-isos-with-the-licence-gap-documented) and
+[NOTICE.md](../NOTICE.md) are this repository's own publishing policy — publish, attach source for
+everything identifiable, state the gap — and which route the first release takes is the owner's
+decision, which D-12 will record.
 
 ## Two findings were dropped before filing, in round one
 
