@@ -49,7 +49,9 @@ pointing at it. `kitchen pack` warns, and `kitchen test --structure` fails it.
 - **Pin the image by file name and sha256.** Each image has `<image>.iso.sha256` beside it, with the
   file name inside written relative, so `sha256sum -c` works wherever the pair lands.
 - **Vendor the engine yourself, at the commit that built the image**: `kitchen.commit` in
-  `<image>.iso.provenance.json`. `CHANGELOG.md` names the same pin for each release.
+  `<image>.iso.provenance.json`. `CHANGELOG.md` names the same pin for each release. If you boot
+  your tests on a boot host, its `boot-host.ini` goes inside that vendored engine, the only place the
+  engine reads it, where the engine's own `.gitignore` already keeps it out of your repository.
 - **Until a release is published, pin a local build.** Only the machine that built it has those
   bytes: images are
   [not byte-reproducible](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/docs/40-workflow/reproducibility.md).
@@ -90,7 +92,10 @@ launcher entry in a bundle numbered above `21`, because the higher bundle wins.
 Remove ours first — `remove-bundle` with `drop: "^3[01]-notepadpp(32|64)\\.sb$"` — and take `30`–`89`
 for your own. An application bundle sources `/etc/profile.d/wine.sh` from `21-wine-desktop.sb`,
 runs `20-wine.sb`'s Wine, and ships its own `.desktop` entry: that is
-[the swap contract](ARCHITECTURE.md#the-swap-contract). slax-bottles divides the same way, with
+[the swap contract](ARCHITECTURE.md#the-swap-contract). Give the entry an absolute `Icon=` path and
+`Terminal=false`. Slax's launcher drops a tile whose icon file does not exist, and wraps a command
+that does not link `libX11` itself in an xterm
+([wine-desktop](50-cookbook/wine-desktop.md) has both). slax-bottles divides the same way, with
 `20-flatpak` its platform and `30-bottles` its application.
 
 The split is a promise to the projects built on these images. Moving a platform bundle out of
