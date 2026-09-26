@@ -1,4 +1,6 @@
 #!/bin/sh
-# slax-kitchen pre-commit hook -- installed by `kitchen doctor --install-hooks`.
+# Adapted from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/hooks/pre-commit): names this repo and how it is installed here.
+# MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
+# slax-wine pre-commit hook -- installed by the two `ln -sf` lines in docs/build.md.
 # Thin wrapper: all logic lives in ci/checks/*.sh so hooks can never drift from CI.
 exec "$(git rev-parse --show-toplevel)/ci/run-checks.sh" pre-commit

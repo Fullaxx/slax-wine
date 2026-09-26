@@ -201,10 +201,11 @@ for t in $TARGETS; do
 done
 
 # ---- 2a. the application payloads: Notepad++, 32- and 64-bit ------------------------
-# Fetched and verified rather than committed. Not because committing is forbidden --
-# .exe is not a forbidden extension and GitHub's limit is 100 MB -- but because
-# slax-arcade needs the same mechanism for software that cannot be published at all, and
-# one contract across both projects is worth more than build-time self-containment.
+# Fetched and verified rather than committed. Committing would be refused anyway --
+# 00-no-binaries.sh has refused *.exe since the 8adfca6 bump, in any capitalisation since
+# b4eb25b -- but that is not the reason: slax-arcade needs the same mechanism for software
+# that cannot be published at all, and one contract across both projects is worth more
+# than build-time self-containment. docs/DECISIONS.md D-7.
 #
 # One installer per recipe, each into its own stage, tagged like everything else of it:
 # notepadpp32.files/opt/notepadpp32/npp32-installer.exe and the 64 equivalent. Staged

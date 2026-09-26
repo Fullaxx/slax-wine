@@ -151,9 +151,10 @@ Run them by hand any time:
 
 Six gates are copied verbatim from slax-kitchen, five are adapted, and
 `96-release-consistency.sh` is ours. Two helpers they call, `ci/md-links.py` and `ci/unit-run.py`,
-are copied verbatim as well. Each copied file's header names the upstream commit it came
-from, and gate 96 fails if that commit is not the current submodule pin — so a pin bump that forgets
-to re-copy (or to re-cite) cannot pass silently.
+are copied verbatim as well, and so is `ci/yamllint.yaml`. The two hooks in `ci/hooks/` are adapted,
+because this repository installs them with the `ln -sf` lines above. Each copied file's header names
+the upstream commit it came from, and gate 96 fails if that commit is not the current submodule
+pin — so a pin bump that forgets to re-copy (or to re-cite) cannot pass silently.
 
 **`TBD-MEASURED`** is this repo's placeholder for a number not yet measured. Write that exact
 string, nothing else: gate 96 refuses a tagged release that still contains it, and it is deliberately

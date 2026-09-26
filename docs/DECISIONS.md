@@ -152,10 +152,18 @@ component Wine lacks.
 
 ## D-7 · Fetch the payload, do not commit it
 
-Nothing forbids committing it — `.exe` is not a forbidden extension and GitHub's limit is 100 MB. It
-is fetched because **slax-arcade needs the same mechanism for software that cannot be published at
-all**, and one contract across both projects is worth more than build-time self-containment. The
-proprietary case becomes "point it at a local path instead of a URL".
+**Committing it would be refused.** `ci/checks/00-no-binaries.sh` has refused `*.exe` since
+slax-kitchen fixed its #19 in `6ecf019`, which reached this repository with the `8adfca6` bump
+(`3f8ad2d`), and in any capitalisation since it fixed its #47 in `030fe3e`, taken at `b4eb25b`. This
+entry said the opposite — *"Nothing forbids committing it — `.exe` is not a forbidden extension"* —
+which was true of our copy of that gate when it was written, on the morning of 2026-09-18, and
+stopped being true the same afternoon. [slax-wine#3](https://github.com/Fullaxx/slax-wine/issues/3)
+found it.
+
+That was never the reason, and the reason stands. The payload is fetched because **slax-arcade needs
+the same mechanism for software that cannot be published at all**, and one contract across both
+projects is worth more than build-time self-containment. The proprietary case becomes "point it at a
+local path instead of a URL".
 
 **What would change this:** needing a build with no network at all.
 

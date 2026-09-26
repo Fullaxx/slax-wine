@@ -1,3 +1,5 @@
+# Copied verbatim from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/yamllint.yaml).
+# MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 extends: default
 rules:
   line-length:
