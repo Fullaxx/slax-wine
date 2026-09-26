@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: yamllint + JSON Schema validation of our recipes and profiles.
 #
-# Adapted from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (ci/checks/40-schema.sh). Two differences: the
+# Adapted from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/checks/40-schema.sh). Two differences: the
 # scope is ours only (this repo has no compat/ or schema/ of its own), and the
 # validator comes from the submodule -- lib/validate.py resolves its schema directory
 # relative to its own location, so it works from here without configuration.

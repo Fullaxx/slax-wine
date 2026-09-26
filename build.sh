@@ -2,12 +2,13 @@
 # Build the slax-wine and slax-bottles ISOs: fetch -> stage apps -> unpack -> apply -> pack
 # -> assert.
 #
-# Deliberately NOT `kitchen build`: it runs tests/structure/iso_assert.py with no
-# --volid, and that argument DEFAULTS to 'slax' (iso_assert.py:49 -- an argparse default,
-# not a hardcoded constant; lib/build.sh is what never passes it). slax-wine-iso.yaml
-# sets SLAX32-WINE or SLAX64-WINE, so every build would fail its own test. The other two
-# historical objections are gone -- `apply --profile` runs no tests, and the output name
-# is chosen at pack.
+# Deliberately NOT `kitchen build` -- but not for the reason this comment gave until the
+# b4eb25b bump. `kitchen build` has passed the recipes' volume id to its structure test
+# since slax-kitchen 6419fa4, which every pin from 8adfca6 carries. What keeps this script
+# is what the engine cannot know about: the payloads fetched and pinned before apply, each
+# image's exact module list, the release file read back out of its bundle, both halves of
+# Wine in the 64-bit package database, a size ceiling per image, and one build.env holding
+# the version, both bases and every payload pin. docs/DECISIONS.md D-13.
 #
 #   ./build.sh [--32|--64] [--bios|--uefi|--both|--test] [--keep-work] [--no-fetch]
 #   ./build.sh --bottles|--bottles-test|--all                [--keep-work] [--no-fetch]
@@ -52,8 +53,9 @@ set -eu
 REPO_ROOT=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 # The cd above is inside a command substitution, so it never moved this shell. Move it
 # now, because the profile names its recipes by RELATIVE path and kitchen resolves those
-# against the CURRENT WORKING DIRECTORY, not the repo root: lib/apply.py:3305 is a bare
-# `if os.path.isfile(n)`, and the search path is recipe_search_path() + [os.getcwd()].
+# against the CURRENT WORKING DIRECTORY, not the repo root: resolve() in lib/apply.py takes
+# a name as a path from here first, then searches recipe_search_path() + [os.getcwd()].
+# slax-kitchen's LAYERING.md makes that the rule: build from the project's root.
 # Without this line `/path/to/slax-wine/build.sh` run from anywhere else died with
 # "recipe not found: recipes/available/wine.yaml" -- but only at step 4, AFTER step 3
 # had already `rm -rf`'d the work tree and step 2 had downloaded the payload.

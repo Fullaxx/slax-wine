@@ -8,7 +8,7 @@ from now. Why it looks like this is [DECISIONS.md](DECISIONS.md); how we raise e
 
 ## The shape of the thing
 
-slax-wine owns no engine code. It is seven recipes, eight profiles, a build script and thirteen gates,
+slax-wine owns no engine code. It is seven recipes, eight profiles, a build script and twelve gates,
 laid over `slax-kitchen` pinned as a submodule at `vendor/slax-kitchen`. The eight images those
 profiles build, what they hold in common and where they part, are in
 [variants.md](variants.md).
@@ -19,7 +19,7 @@ profiles/          eight: slax32-wine-bios, -uefi, slax64-wine-bios, -uefi and s
                    the three -test ones do not
 recipes/available/ seven recipes: five for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
-ci/                thirteen gates; seven copied verbatim, five adapted, one ours
+ci/                twelve gates; six copied verbatim, five adapted, one ours
 tests/unit/        four tests: the .desktop trap that once cost both launchers (adapted), the
                    gate library that let a .exe and then a submodule bump through (verbatim),
                    gate 80 itself, which once let a test write into the commit running it
@@ -237,7 +237,7 @@ A register, because every one of these cost time to find.
 | **`noautomount` is ignored** | `fstab_create` tests `grep -vq automount`, and `noautomount` *contains* `automount`. Remove the flag, do not negate it |
 | **`perch` is a substring match** | `perchsize=` on the `toram` entry would enable persistence on the one entry that unmounts the medium |
 | **FAT32 perch floor is 16 GB and cannot be lowered** | a smaller `perchsize=` is silently raised; the size is fixed at creation |
-| **`kitchen build` fails on a custom volid** | `iso_assert.py`'s `--volid` *defaults* to `slax` (`:49`), and `lib/build.sh` never passes it. Not a hardcode — but the effect is the same, hence `build.sh` |
+| **An engine limit recorded here can outlive the engine** | this row said `kitchen build` fails on a custom volume id, its structure test defaulting `--volid` to `slax`. slax-kitchen `6419fa4` made it pass the recipes' volume id, every pin from `8adfca6` carries that, and the row stood until the `b4eb25b` bump — long enough for slax-kitchen #42 to repeat it. Re-read a limit against the current pin before building on it. `build.sh` stays for the checks the engine cannot know about; [D-13](DECISIONS.md#d-13--buildsh-not-kitchen-build) lists them |
 | **`bundle.fromTarball` is tar-only** | `tarfile.open`, so no `.zip` and no `.7z` |
 | **Recipes are not idempotent** | `apply` consults its journal and refuses a second application. `build.sh` unpacks fresh every run |
 | **A bundle name can be produced once** | two steps that both *run* and target the same bundle are refused — at run time, when the `.sb` already exists. Combine them into one `bundle.files`; or, per base, guard each with `when: arch==…` so exactly one runs, as `wine` and `wine-desktop` do |

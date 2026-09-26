@@ -115,11 +115,13 @@ four full builds; narrow it while iterating: `./build.sh --32 --bios`.
 
 `build.sh` `cd`s to the repo root before doing anything, so it is safe to invoke by absolute path.
 That is not cosmetic: the profile names its recipes by relative path, and the engine resolves those
-against the **current working directory**, not the repo root.
+against the **current working directory**, not the repo root — which slax-kitchen's
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/b4eb25b/LAYERING.md) makes the rule for
+every project: build from its root.
 
 ## Commit gates
 
-Thirteen checks live in `ci/checks/`. They are not installed automatically — `.git/hooks/` is local to
+Twelve checks live in `ci/checks/`. They are not installed automatically — `.git/hooks/` is local to
 each clone and is not tracked — so **after cloning, do this once**:
 
 ```sh
@@ -147,7 +149,7 @@ Run them by hand any time:
 > is a *file*, not a directory. It fails with `error: not a git repo`. The two `ln -sf` lines above
 > are the supported way.
 
-Seven gates are copied verbatim from slax-kitchen, five are adapted, and
+Six gates are copied verbatim from slax-kitchen, five are adapted, and
 `96-release-consistency.sh` is ours. Two helpers they call, `ci/md-links.py` and `ci/unit-run.py`,
 are copied verbatim as well. Each copied file's header names the upstream commit it came
 from, and gate 96 fails if that commit is not the current submodule pin — so a pin bump that forgets
@@ -163,8 +165,10 @@ Failing any of these fails the build:
 
 - the base ISO's size and sha256 match `build.env`, which in turn matches the pinned
   `compat/sources.yaml`
-- the profile's `base:` is the ISO that was unpacked — `kitchen apply --profile` does not check that
-  itself ([slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29))
+- the profile's `base:` is the ISO that was unpacked, all three parts. `kitchen apply --profile`
+  holds the tree to the profile's flavour and arch since
+  [slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29) was fixed, and deliberately
+  not to its version, which here is not free — so `build.sh` still compares all three
 - each Notepad++ installer's sha256 matches `APP32_SHA256` or `APP64_SHA256`, or for slax-bottles,
   every Flatpak ref is deployed at its `BOTTLES_LOCK` commit and nothing unlisted is installed
 - **each** ISO's volume id is what its recipe set (`SLAX32-WINE`, `SLAX64-WINE`, or `SLAX-BOTTLES`),
@@ -200,5 +204,5 @@ matters.
 
 ## Upstream
 
-The engine is pinned at [`b20e07e`](https://github.com/Fullaxx/slax-kitchen/tree/b20e07e). Bumping the
+The engine is pinned at [`b4eb25b`](https://github.com/Fullaxx/slax-kitchen/tree/b4eb25b). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (ci/checks/90-doc-coverage.sh).
+# Adapted from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/checks/90-doc-coverage.sh).
 #
 # NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
 # recipes here that lookup table is more machinery than the drift it prevents -- left
@@ -18,8 +18,8 @@
 # TAKEN: the GATE-count check, because four files here state that number in prose and
 # nothing else checks them. The anchor is WIDER than upstream's, measured against this
 # tree rather than copied: upstream's `ci/checks|commit gates|run-checks` misses
-# docs/ARCHITECTURE.md's "ci/   thirteen gates" (bare `ci/`) and docs/build.md's
-# "Thirteen checks live in" (the noun is `checks`, not `gates`). Both are now covered.
+# docs/ARCHITECTURE.md's "ci/   twelve gates" (bare `ci/`) and docs/build.md's
+# "Twelve checks live in" (the noun is `checks`, not `gates`). Both are now covered.
 # Those two are quoted from the tree, so they move with the count; the SHAPE is the point.
 #
 # 12d0f9c FIXED THE TARGET-COUNT RULE'S EMPTY-LIST CASE, which is one of the three above
@@ -93,7 +93,7 @@ if [ -n "$want" ]; then
     words='one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty'
     # ANCHORED, and the anchor is load-bearing in both directions. "gates" is an ordinary
     # word, and this repo has lines that legitimately count a SUBSET -- docs/build.md's
-    # "Seven gates are copied verbatim from slax-kitchen, five are adapted" is one, and
+    # "Six gates are copied verbatim from slax-kitchen, five are adapted" is one, and
     # must not fail. A line claims the TOTAL only if it also names the thing that runs them.
     #
     # That example is quoted from the tree, and the tree was wrong: it read "Six" from the
@@ -101,7 +101,9 @@ if [ -n "$want" ]; then
     # Nothing checks a subset count -- this rule cannot, since it does not know which
     # subset -- so quoting one here is a comment, not a guarantee. It went stale a second
     # time at the b20e07e bump, when adopting 35-pyflakes took the adapted count from four
-    # to five: THREE quotes in this file track the tree by hand, and this is the third.
+    # to five, and again at the b4eb25b bump, when upstream deleted 50-secrets and seven
+    # verbatim gates became six: THREE quotes in this file track the tree by hand, and this
+    # is the third.
     anchor='commit gates|selftest|ci/checks|ci/|run-checks|doctor --strict|checks live in|build script'
     check_files_nl | grep -E '\.md$' | grep -v '^vendor/' > "$TMPD/md" || true
     # SAY SO WHEN THERE IS NOTHING TO READ. An empty list is ordinary in staged scope --

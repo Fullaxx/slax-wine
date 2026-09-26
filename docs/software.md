@@ -23,7 +23,7 @@ the first time bookworm ships a point release:
 
 Slax 12.2.0, Debian 12 bookworm, **32-bit (i386)**: `slax-32bit-debian-12.2.0.iso`. The stock
 system has 600 packages with every bundle loaded. slax-kitchen's inventory
-([debian-12.2.0](https://github.com/Fullaxx/slax-kitchen/blob/b20e07e/docs/30-inventory/debian-12.2.0.md))
+([debian-12.2.0](https://github.com/Fullaxx/slax-kitchen/blob/b4eb25b/docs/30-inventory/debian-12.2.0.md))
 describes it bundle by bundle.
 
 ### Removed

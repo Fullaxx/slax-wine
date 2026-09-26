@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (ci/checks/35-pyflakes.sh).
+# Adapted from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/checks/35-pyflakes.sh).
 # MIT, same author. The EXECUTABLE HALF is byte-identical, so a future bump can diff it;
 # ONE difference, in the prose: upstream's argument is about the size of its engine
 # ("lib/apply.py alone is 4000 lines -- the half that was unchecked was the larger half"),

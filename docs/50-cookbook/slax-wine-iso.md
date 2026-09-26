@@ -173,10 +173,10 @@ to a stick. It is **per base** — `SLAX32-WINE` or `SLAX64-WINE`, the same tag 
 `iso.metadata` is the one step of this recipe split in two, guarded by `when: arch==32bit` and
 `when: arch==64bit`; the `automount` removal and the checksum are the same step on both. Nothing
 functional reads the label: GRUB finds the medium with `search --file /slax/boot/vmlinuz`, and
-livekit by content. The volid is also why this project does not use `kitchen build` — that runs
-`tests/structure/iso_assert.py` with no `--volid`, and the argument *defaults* to `slax`
-(`iso_assert.py:49`), so every build would fail its own test. The default is an argparse default, not
-a hardcoded constant; what makes it unavoidable is that `lib/build.sh` never passes the flag.
+livekit by content. This page used to add that the volid is why this project does not use
+`kitchen build`. It is not: `kitchen build` has passed the recipes' volume id to its structure test
+since slax-kitchen `6419fa4`, which every pin from `8adfca6` carries.
+[D-13](../DECISIONS.md#d-13--buildsh-not-kitchen-build) says what does keep `build.sh`.
 
 ## No signature, for now
 

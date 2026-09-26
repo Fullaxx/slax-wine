@@ -58,17 +58,19 @@ reordering the steps cannot reintroduce the bug.
 nothing else. Put the removal in its own recipe — `remove-bundle` takes a `drop:` pattern — and list
 that first."* Our recipe did exactly that and stopped validating.
 
-We followed the reasoning rather than working around it. All three profiles now list upstream's
-**`remove-bundle` first**, each spelling out `drop: "^05-chromium\.sb$"`. That restates the recipe's
+We followed the reasoning rather than working around it. Every profile lists upstream's
+**`remove-bundle` before anything that builds**, each spelling out `drop: "^05-chromium\.sb$"` —
+three profiles when this was written, eight today. The five shipped ones list it first; the three
+test profiles put `serial-console`, which builds no bundle, ahead of it. That restates the recipe's
 own default deliberately: the pattern decides which 81.7 MiB leaves the image, and a default that
 decides what ships should not be inherited silently across a pin bump — the same rule this project
 already applies to `wine.yaml`'s apt keys. Upstream spells it out in all four of its own profiles
 for the same reason. The removal is now performed by upstream's recipe rather than by a copy of its
 logic. The cost is that the ordering argument is no longer visible in the file that depends on it,
-so `wine.yaml` carries it as a comment and `ci/checks/96-release-consistency.sh` §5(a3) asserts both
-shipped profiles list `remove-bundle` *before* any building recipe — the core-list comparison in
-§5(b) reads only `recipes/available/` paths, and `remove-bundle` is named rather than pathed because
-it is upstream's.
+so `wine.yaml` carries it as a comment and `ci/checks/96-release-consistency.sh` §5(a3) asserts
+every shipped profile — two then, five today — lists `remove-bundle` *before* any building recipe.
+The core-list comparison in §5(b) reads only `recipes/available/` paths, and `remove-bundle` is
+named rather than pathed because it is upstream's.
 
 **This has already happened.** Upstream added the stack/removal conflict check
 ([UPSTREAM.md](UPSTREAM.md) issue 1, `68879d9`), and the three bypasses we then reported as issue 11
@@ -247,14 +249,32 @@ derivative, not just this one.
 
 ## D-13 · `build.sh`, not `kitchen build`
 
-One reason remains of the original three: `kitchen build` runs `iso_assert.py` with no `--volid`
-while `--volid` defaults to `slax` and `lib/build.sh` never passes it, so a custom volume id plus
-`test:` always fails. (An argparse default, not a hardcoded constant — the effect is the same, but
-the fix upstream is one flag, not a code change.) The other two
-dissolved when profiles became authoritative — `apply --profile` runs no tests, and the output name
-is chosen at `pack`.
+**The reason this entry gave went stale at the `8adfca6` bump, and stayed here until `b4eb25b`.**
+It said `kitchen build` runs `iso_assert.py` with no `--volid`, so a custom volume id plus `test:`
+always fails. That was true when it was written, at the first pin, `9776a90`, and at `bcd4f00`
+after it. slax-kitchen `6419fa4` (2026-09-17) made `kitchen build` pass the recipes' volume id and
+gave `kitchen test` a `--volid` — this entry's own trigger — and every pin since has carried it.
+Found reviewing slax-kitchen #42, which had repeated the claim; LAYERING.md now says the same of
+both.
 
-**What would change this:** `kitchen test` gaining a `--volid` flag.
+What keeps `build.sh` is what the engine cannot know about, and none of it is a workaround:
+
+- the application payloads, fetched and checked before apply — each Notepad++ installer by sha256,
+  and Bottles ref by ref against `BOTTLES_LOCK`;
+- each image's exact module list, which the structure test's `--require` cannot express;
+- the release file read back out of the bundle that shipped it, and both halves of Wine in the
+  64-bit package database;
+- a size ceiling per image, and one `build.env` holding the version, both bases and every
+  payload pin.
+
+It calls `kitchen` commands for what the engine does — `fetch`, `unpack`, `apply`, `pack` — as
+LAYERING.md asks of a project's own driver, except the structure test, which it runs directly:
+`kitchen test --structure` takes `--volid` and `--expect-uefi`, but not `--max-size-mib` or
+`--require`. The module-list check already covers `--require`.
+
+**What would change this:** `kitchen build` running a project's own checks after `pack`, or
+`kitchen test --structure` taking a size ceiling, which would let the structure test go through a
+`kitchen` command as well.
 
 ## D-14 · slax-bottles: a second system on the 64-bit base, with no Debian Wine
 

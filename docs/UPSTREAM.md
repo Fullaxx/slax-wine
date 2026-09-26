@@ -112,9 +112,10 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
 - The target is upstream's `master` tip, unless you are given a commit. List every commit between the
   pin and the target, and read each one's message **and** diff, never a subject line alone (the
   [register](#register)'s own lesson). Note each `Closes #N`, and ours above all.
-- **Upstream CI on the target must be green in every job**: the gates, all four builds and the boot
-  test. A red or still-running target is waited out, not pinned around. `7194e0b` was waited out,
-  and `6bd59f1` was taken only once its run had finished green.
+- **Upstream CI on the target must be green in every job**: the gates, both reference containers,
+  all four builds and the boot test. `tor assets` is skipped on a push, by design, and a skip there
+  is not a red. A red or still-running target is waited out, not pinned around. `7194e0b` was waited
+  out, and `6bd59f1` was taken only once its run had finished green.
 
 **2. Work out what it does to this repo.**
 
@@ -131,7 +132,8 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
   - If none changed, say so, and the previous evidence stands.
 - **Copied files.** Find which of our copies changed upstream, with
   `git rev-list --count <pin>..<target> -- <path>` on each source. Those are re-copied; the rest are
-  only re-cited.
+  only re-cited. A copy whose source upstream deleted goes too, unless it is kept as our own, and
+  [Deliberately not adopted](#deliberately-not-adopted-from-upstream) says which and why.
 - **What upstream added.** A new gate or test is adopted, or it goes under
   [Deliberately not adopted](#deliberately-not-adopted-from-upstream) with the reason.
 - **What the tests say.** Upstream's changed tests run inside the pinned submodule with
@@ -208,7 +210,9 @@ this repository has filed is closed** — the last four were
 [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) and
 [#30](https://github.com/Fullaxx/slax-kitchen/issues/30), from checks this repo carries because the
 engine did not. Each section below names its closing commit. Only upstream's own
-[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) is open, and it is Slackware's.
+[#15](https://github.com/Fullaxx/slax-kitchen/issues/15) is open, and it is Slackware's. #42 to #48,
+filed from slax-rpgs's planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them
+as superseded; [their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeringmd) says how.
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -340,6 +344,23 @@ The bar in this document is only worth having if it is checked, so:
    `gh api repos/OWNER/REPO/issues/N`.
 
 ## Deliberately not adopted from upstream
+
+**`ci/checks/50-secrets.sh` went the other way: upstream removed it, and so did we**, at the
+[`b4eb25b` bump](#adopted-at-the-b4eb25b-bump). It is the first copy whose source upstream
+deleted. #48 found its two PEM patterns had never run — `grep` read `-----BEGIN` as an option, and
+`2>/dev/null` hid the refusal — and `f839598` removed the gate rather than repair it: it had never
+caught anything, and neither repository has ever tracked a key or certificate file. That is true
+here, checked rather than taken on trust: no `.pem`, `.crt`, `.key` or similar path on any branch,
+and the only commit that ever added a `-----BEGIN` line or a token shape is `c034d98`, which copied
+the gate in. The four token shapes it did check are the kind of provider credential GitHub's secret
+scanning looks for, and that runs on this repository with push protection on — though what it
+catches is GitHub's to define, and was not measured here. Keeping the gate would have made it ours
+to repair, so the copy went with the original, and the count of gates here went from thirteen to
+twelve.
+
+**`tests/unit/test_unpack.py`** (added in `2202263`) tests engine code this repo does not copy,
+like `test_apply.py` and `test_provenance.py` before it. It was run inside the pinned submodule
+instead, with the other changed tests, at the same bump.
 
 **`ci/checks/45-doc-yaml.sh`** (added between `06c13bb` and `9776a90`) validates fenced YAML blocks
 in documentation. **Not copied**, and the reason is the same principle this repo keeps running into:
@@ -1575,6 +1596,152 @@ when no markdown was in scope and so blocked every code-only commit there. This 
 that rule. But the **gate**-count rule, which it does carry, said nothing at all on the same empty
 list — correct, and silent. It notes now, and the note was seen to fire in staged scope. The quieter
 half of the same mistake.
+
+## Filed from slax-rpgs's planning — [#42](https://github.com/Fullaxx/slax-kitchen/issues/42) to [#48](https://github.com/Fullaxx/slax-kitchen/issues/48), and LAYERING.md
+
+slax-rpgs, a game library on top of slax-wine, is the first project one layer above this one, and
+planning it filed seven issues on 2026-09-24: #42, the frame — the engine assumed one project above
+it — then #43 to #45 on building a lower project's *source* two submodules down, #46 on a profile's
+`vars:` dropped from an entry named by path, and two gate bugs, #47 and #48, in files this
+repository copies verbatim. slax-wine's own part went in as
+[slax-wine#2](https://github.com/Fullaxx/slax-wine/issues/2) and
+[#3](https://github.com/Fullaxx/slax-wine/issues/3).
+
+Upstream settled the frame with a decision rather than three engine changes: **a project builds on
+another project's released image, not its source**, and every project vendors the engine directly.
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/b4eb25b/LAYERING.md) records it, and
+what it asks of slax-wine as the first *base project* is slax-wine#2's work.
+
+| # | closed | by |
+|---|---|---|
+| 42 | completed | `4646f15`, which adds LAYERING.md |
+| 43, 44, 45 | not planned | superseded by LAYERING.md: no build resolves another project's `requires`, no workspace is three deep, and a build records one project over the engine plus its base image by sha256 |
+| 46 | completed | `f2ea7d2` |
+| 47 | completed | `030fe3e` |
+| 48 | completed | `f839598`, by removing the gate rather than repairing it |
+
+For this repository #44's closure means the arrangement in [`CLAUDE.md`](../CLAUDE.md) stands:
+`boot-host.ini` lives inside the submodule because that is still the only place the engine reads it.
+
+## Found reviewing `4646f15` — three drafts, fixed upstream instead of filed
+
+This repository's review of the LAYERING.md commit, held to
+[the bar above](#our-own-bar-which-is-higher) with every case built and run in a scratch directory,
+found three defects. Each was drafted for filing and none was filed: upstream fixed each directly,
+and the commit that fixed each — `696c8b9`, `2202263`, `f004b6a` — says it was found by slax-wine's
+review and that no issue was filed.
+
+| found | fixed in | what it was |
+|---|---|---|
+| a consumer built on a UEFI image lost UEFI boot, and LAYERING.md's own example was that build | `696c8b9`, `b4eb25b` | `pack` writes the EFI entry only when *this* build's `uefi-bootable` asks, so a consumer of a `-uefi` image lost it with `kitchen build` green, carrying the base's 6.2 MiB ESP with nothing pointing at it — and adding `uefi-bootable` failed on `mkfs.vfat -C`. LAYERING.md now builds on the base's **BIOS** image with `uefi-bootable` last, the structure test fails an ESP no entry points at, and `unpack` records the base's boot entries so `pack` warns about each one a build drops |
+| `kitchen unpack --force` kept the old journal and provenance | `2202263` | `status` described a tree that was gone, the journal's advice to re-unpack could not work, and a sidecar recorded a recipe the image did not contain |
+| two recipe files with one name passed preflight when one came through `requires` | `f004b6a`, `de7b5dd` | refused now over the resolved plan, before anything runs |
+
+Reviewing those fixes, upstream found seven more defects of its own and fixed each in a commit —
+`de7b5dd` in the table, then `0b45eb6`, `492b868`, `cf0e95a`, `4aaf4dd`, `1b80398` and `21f4cbf` —
+and `8388314` took the boot host's name out of upstream's comments and a test. The re-review here
+re-ran all three cases against `b4eb25b`: the UEFI build now fails with exit 1 — a `pack` warning
+and a structure-test failure naming the orphaned ESP — while LAYERING.md's new example builds with
+both entries; `--force` starts over clean; and the duplicate name is refused at preflight, naming
+both files.
+
+**Still open, and not ours to block on.** `uefi-bootable` on an image that already has an ESP still
+fails partway: it rewrites `boot/grub/grub.cfg` before `mkfs.vfat` refuses, the journal does not
+record that, and the error names no way forward. Measured by the file's timestamp as well as read,
+since a rewrite from the same `isolinux.cfg` leaves the same bytes. LAYERING.md routes every
+consumer around it and `kitchen build` starts from a fresh tree, so it is a follow-up.
+
+## Adopted at the `b4eb25b` bump
+
+Eighteen commits, `b20e07e..b4eb25b`, 38 files, +1,523/−152, in two pushes: the six that answered
+#42–#48 (`030fe3e`..`b0ffe51`) and the twelve after them (`8388314`..`b4eb25b`). Upstream CI was
+green on both tips before anything here moved — eight jobs successful, and `tor assets` skipped as it
+is designed to be on a push — and upstream's thirteen gates pass at `b4eb25b` in a scratch clone,
+leaving nothing in their `TMPDIR`. The first tip, `b0ffe51`, was reviewed and held rather than
+taken, because what the review found would move the target; it did.
+
+| what changed upstream | here |
+|---|---|
+| **LAYERING.md**, and the release model it sets (`4646f15`, `696c8b9`, `b4eb25b`) | slax-wine is now a base project; what it owes the projects built on its images is slax-wine#2 |
+| **`00-no-binaries` is case-insensitive** (`030fe3e`, #47) | re-copied |
+| **`50-secrets` is removed** (`f839598`, #48) | removed here too, so twelve gates where there were thirteen — see [Deliberately not adopted](#deliberately-not-adopted-from-upstream) |
+| `ci/lib.sh` comments (`f839598`, `a621e3f`) | re-copied |
+| **`vars:` on an entry named by path reach the recipe** (`f2ea7d2`, #46) | a build input. No profile here gives vars to an entry named by path, and the vars the named entries carry reach their recipes at both pins, as the sidecars record: `remove-bundle`'s `drop` on every image, and `testkit`'s on the test images |
+| **`kitchen version` shows the commit inside a submodule** (`4646f15`) | ours printed `kitchen 0.1.0-dev` with no commit until this bump, and prints `(b4eb25b)` now |
+| a relative `base.iso:`, and `kitchen build`'s checks for a recipe named by path (`4646f15`, `b0ffe51`) | `lib/profile.py`, reached only through `kitchen build`, which this project does not use |
+| **`unpack` and `pack`** (`2202263`, `0b45eb6`, `cf0e95a`, `b4eb25b`): `--force` starts over, a failed extraction is refused, xorriso is judged by one rule, and the base's boot entries are recorded | `build.sh` removes the work tree before `unpack --force`, so it never meets the new refusal, and the stock bases record BIOS alone |
+| **the structure test fails an ESP that no entry points at** (`696c8b9`) | `build.sh` runs `iso_assert.py` directly. The `-bios` images carry no ESP, and every profile listing `uefi-bootable` passes `--expect-uefi` |
+| one name, two files; a recipe file is its realpath (`f004b6a`, `de7b5dd`) | all eight profiles preflight at the tip, at 7/8/10 steps on 32-bit, 8/9/11 on 64-bit and 7/9 on slax-bottles, the same counts both pins' apply logs show |
+| a dry run refuses what the real run would, and the start-over advice (`21f4cbf`, `492b868`, `4aaf4dd`, `1b80398`) | nothing here runs `apply -n` or reads that advice |
+| the boot host's name out of upstream's comments and a test (`8388314`) | nothing; this repository took the same step in `f37e94f` |
+
+**The build, at `b4eb25b`.** All eight images, back to back with a baseline of the same eight at
+`b20e07e` — `out/` held nothing, since this checkout had never built — on one toolchain, with no apt
+operation between them. The baseline ran 09:39–10:05 UTC and the new pin 10:06–10:31 UTC, both on
+2026-09-26, so no date field could move. Every size is unchanged:
+
+| image | size, both pins | what differs |
+|---|---|---|
+| `slax32-wine-bios` | 531,935,232 | four bundles' container bytes, and nothing else in 48 entries |
+| `slax32-wine-uefi` | 538,425,344 | the same four, plus `/boot/efi.img` |
+| `slax32-wine-test` | 538,437,632 | the same five |
+| `slax64-wine-bios` | 855,177,216 | five bundles' container bytes, in 49 entries |
+| `slax64-wine-uefi` | 861,667,328 | the same five, plus `/boot/efi.img` |
+| `slax64-wine-test` | 861,681,664 | the same six |
+| `slax-bottles` | 1,300,676,608 | the container bytes of `20-flatpak`, `30-bottles` and `98-dpkg-db`, plus `/boot/efi.img` |
+| `slax-bottles-test` | 1,300,688,896 | the same four |
+
+`kitchen diff --bundles` answers *identical content* for every bundle of every image, and the
+package lists match: 626, 816 and 597. `/boot/efi.img` differs in 36 bytes on all six images that
+carry one, offsets 40 to 32,856 — the FAT volume serial and directory timestamps — and
+`BOOTX64.EFI` keeps one sha256, `384be94fbfe800cb…`, across all six and both pins. The sidecars
+differ in exactly what a pin move and a rebuild explain: the kitchen commit, the project described
+as `f37e94f-dirty` because the pin is staged, the submodule pin, the ISO's own sha256, and each
+rebuilt container's hash. No field is added or removed, and `remove-bundle`'s `drop` and `testkit`'s
+marker and report are recorded identically. `slax-bottles`' `etc/shadow`, whose date field made the
+last bump's comparison read *changed*, matches this time, because both builds ran on one day.
+
+The new engine behaviour was watched as well as compared. `pack` gave no boot warning on any image —
+both stock bases record BIOS alone — every xorriso run passed the stricter rule, and the structure
+test found an EFI entry on the six UEFI-capable images and none expected on the two `-bios` ones,
+so its new ESP check never had cause to fire. The 64-bit images are 4,096 bytes larger than
+[variants.md](variants.md) records, at both pins alike: the rebuild effect the `7f9c4f8` bump
+measured, not this bump.
+
+**No boot route was re-run**, by the rule: nothing in any image changed, so the twelve routes
+measured at the `7f9c4f8` bump stand for these artifacts.
+
+**Copied files.** Of twenty-two, four changed upstream: `ci/lib.sh` (two commits),
+`ci/checks/00-no-binaries.sh`, `tests/unit/test_ci_lib.py`, and `ci/checks/50-secrets.sh`, which
+upstream deleted. The first three are re-copied, and each is verbatim once its two header lines are
+stripped, which is what gate 96 §9 checks; the fourth is removed. The other fifteen had no upstream
+commit in the range and are re-cited. Neither had the three copies that carry no header, which
+slax-wine#3 gives one. All seven *Adapted from* sources are unchanged in the range, and each stated
+difference stands. The six upstream pages this repository permalinks had no commit in the range
+either, so moving the links cites the same text.
+
+**What the tests say.** Upstream changed five test files in the range and added one — `test_apply`,
+`test_boot_host`, `test_ci_lib`, `test_listing`, `test_provenance`, and the new `test_unpack` — and
+all six pass inside the pinned submodule under `python3 -B`, with a private `TMPDIR` and
+`KITCHEN_BOOT_HOST=local`, leaving nothing behind; the submodule stays pristine. The re-copied gate 00
+was proved by making it fail: a staged `X.EXE` passes the old copy and is refused by the new. With
+only the pin staged, gate 96 named every copy and pin this bump then changed — nineteen headers
+(§7), four verbatim copies including the deleted one (§9) and nine pins (§8), with §10 silent. The
+gate counts and D-13 are outside what it checks; a grep and the step-3 question found those. With
+the bump in place all twelve gates pass in tree scope as root, and as uid 65534 in a copy that user
+owns, where `35-pyflakes` stands down for want of pyflakes, as it did at the last bump.
+
+**Retired:** nothing on the ledger, which held no active row, and gate 96 §10 had nothing to fire
+on. The step-3 question found one claim of ours that had gone stale without any fix to retire it:
+**D-13's reason**. `kitchen build` has passed the recipes' volume id to its structure test since
+slax-kitchen `6419fa4`, and every pin from `8adfca6` on carries it — so for seven bumps `build.sh`,
+D-13, ARCHITECTURE.md and a cookbook page said something that had stopped being true at the third
+pin, having been true when written, at the first. It was found reviewing #42, which had repeated
+it, and LAYERING.md says the same. The script stays, for what the engine cannot know about, and
+D-13 now says what that is. `build.sh`'s `cd` stays too: LAYERING.md makes building from the
+project's root the rule, and its comment now cites `resolve()` rather than a line number that had
+drifted. `docs/build.md`'s warning about `kitchen doctor --install-hooks` stays true, since
+`kitchen:450` still requires a `.git` directory.
 
 ## Two findings were dropped before filing, in round one
 

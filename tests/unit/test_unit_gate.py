@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (tests/unit/test_unit_gate.py).
+# Copied verbatim from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (tests/unit/test_unit_gate.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """ci/checks/80-unit.sh must not hand git's repository variables to the tests it runs.
 

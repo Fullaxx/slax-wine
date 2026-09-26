@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ b20e07e504f174af20ce197948c9621ce2394c3c (ci/lib.sh).
+# Copied verbatim from slax-kitchen @ b4eb25bada4753a014e7e9c75a98a25874a92837 (ci/lib.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # Shared helpers for slax-kitchen checks.
 # Sourced by ci/run-checks.sh and by every ci/checks/*.sh script.
@@ -33,7 +33,7 @@ fi
 # purpose. As the repo's owner, 70-whitespace printed `FAIL trailing whitespace:
 # docs/README.md`. As a uid git would not answer for, the same gate on the same dirty tree
 # printed NOTHING and exited 0. Five gates were in that state simultaneously --
-# 00-no-binaries, 10-no-dnc, 50-secrets, 60-links, 70-whitespace.
+# 00-no-binaries, 10-no-dnc, 50-secrets (since removed, #48), 60-links, 70-whitespace.
 #
 # `.github/workflows/ci.yml`'s container job already had to add `safe.directory` to get
 # past this, and the comment there said the gates "die with git's dubious-ownership
@@ -69,7 +69,10 @@ check_files() {
     fi
 }
 
-# Same, but newline-separated (convenient; paths with newlines are rejected by 70-whitespace).
+# Same, but newline-separated (convenient). A path holding a newline comes out as two here:
+# 00-no-binaries refuses it, because neither half can be measured, and 10-no-dnc and
+# 70-whitespace skip both halves. Measured 2026-09-25 -- this used to credit 70-whitespace
+# with rejecting such a path, and that gate reads contents, never a name.
 check_files_nl() { check_files | tr '\0' '\n' | grep -v '^$' || true; }
 
 # Read a file as it will be committed (staged content), or from disk in tree scope.
