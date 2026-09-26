@@ -130,6 +130,7 @@ reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
 | you want | read |
 |---|---|
 | to build it | [docs/build.md](docs/build.md) |
+| to build your own image on top of one of ours | [docs/building-on-slax-wine.md](docs/building-on-slax-wine.md) |
 | to put it on a stick, with persistence | [INSTALL.md](INSTALL.md) |
 | to use Wine, and what is missing | [docs/using-wine.md](docs/using-wine.md) |
 | to use Bottles on slax-bottles | [docs/using-bottles.md](docs/using-bottles.md) |

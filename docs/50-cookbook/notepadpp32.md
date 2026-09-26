@@ -17,7 +17,8 @@ install landed in RAM. On a persistent USB it should happen once; that is
 ```
 
 One bundle, `30-notepadpp32.sb`, deliberately separable: this is the layer a games variant replaces.
-Its 64-bit twin is [`notepadpp64`](notepadpp64.md), on the 64-bit images only. Everything of each
+A project that builds its own image on ours replaces it the same way, with `remove-bundle`
+([building-on-slax-wine.md](../building-on-slax-wine.md#bundle-numbers)). Its 64-bit twin is [`notepadpp64`](notepadpp64.md), on the 64-bit images only. Everything of each
 says which it is — recipe, bundle, `/opt/notepadpp32`, `npp32-installer.exe`, `notepadpp32`, the
 "Notepad++ (32-bit)" tile — so an image that carries both never leaves you guessing.
 

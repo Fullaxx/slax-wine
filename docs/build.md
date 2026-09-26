@@ -174,6 +174,8 @@ Failing any of these fails the build:
   every Flatpak ref is deployed at its `BOTTLES_LOCK` commit and nothing unlisted is installed
 - **each** ISO's volume id is what its recipe set (`SLAX32-WINE`, `SLAX64-WINE`, or `SLAX-BOTTLES`),
   and each is under its ceiling (`WINE32_MAX_ISO_MIB`, `WINE64_MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
+- each ISO's `.sha256` is there and matches, and `kitchen pack` wrote its `.provenance.json`: the two
+  things a project built on the image pins and reads ([building-on-slax-wine.md](building-on-slax-wine.md))
 - `/slax/modules/` contains **exactly** the expected bundles — on 32-bit, nine: five stock
   survivors, our three, and the generated `98-dpkg-db.sb`; on 64-bit the same plus
   `31-notepadpp64.sb`. A base's bios, uefi and test images share their list, because `uefi-bootable`
@@ -202,6 +204,45 @@ There is **no CI yet** — deliberately deferred until the image has been tested
 gate messages mention CI re-running them; that is aspirational until `.github/workflows/` exists.
 Until then the hooks above are the only thing enforcing any of this, which is why installing them
 matters.
+
+## Cutting a release
+
+A release is what the projects built on slax-wine pin
+([building-on-slax-wine.md](building-on-slax-wine.md)), so it carries each image's checksum and
+provenance sidecar as well as the image.
+
+**Which route it takes is not decided yet.** slax-kitchen's own procedure,
+[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/docs/40-workflow/publishing-images.md),
+runs `kitchen sources`, then `ci/release-assets.sh` and `ci/release-verify.py` from
+`vendor/slax-kitchen/`. It does not accept these images today:
+
+- **Notepad++ (measured).** `kitchen sources` refuses the installers, which `build.sh` stages in a
+  directory git ignores ([D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it)).
+- **Firmware and multi-image releases (read, not run).** Past that, `release-verify.py` would refuse
+  stock Slax's firmware without its licence texts, and it takes one image per release.
+
+[The record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)
+has both. [D-12](DECISIONS.md#d-12--publish-the-isos-with-the-licence-gap-documented) and
+[NOTICE.md](../NOTICE.md) are this project's own policy: publish, attach source for everything
+identifiable, and state the gap.
+
+Whichever route, in this order:
+
+1. **Date `[1.0.0]` in `CHANGELOG.md`, and commit that first,** so every image's sidecar names the
+   commit that gets tagged.
+2. **Run `./ci/run-checks.sh ci`** on that commit: every gate, in tree scope.
+3. **Build `./build.sh --all`, `./build.sh --test` and `./build.sh --bottles-test`** from that clean
+   commit: the five shipped images and the three test images.
+4. **Run the twelve boot routes**, `--kernel`, `--bios`, `--uefi` and `--persistence` on each test
+   image, on the boot host described [above](#commit-gates), with nothing else running.
+5. **Tag it: `git tag v$VERSION`** on that commit. Gate 96 §6 fails a tag that is not the version,
+   and docs that still say `TBD-MEASURED`.
+6. **Assemble the assets for the chosen route.** At the least, each image's `.iso`, `.iso.sha256`,
+   `.iso.provenance.json` and `packages.tsv`, plus slax-bottles' `flatpak.txt`. The sidecar is what
+   tells a project built on the image what it applied.
+7. **Write notes** that name the engine pin, both base ISOs with their sha256, and what ran in place
+   of CI.
+8. **Upload: `gh release create`.** That is a person's step; nothing here uploads.
 
 ## Upstream
 

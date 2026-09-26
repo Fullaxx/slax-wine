@@ -1619,7 +1619,8 @@ repository copies verbatim. slax-wine's own part went in as
 Upstream settled the frame with a decision rather than three engine changes: **a project builds on
 another project's released image, not its source**, and every project vendors the engine directly.
 [LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md) records it, and
-what it asks of slax-wine as the first *base project* is slax-wine#2's work.
+what it asks of slax-wine as the first *base project* is slax-wine#2's work, which
+[building-on-slax-wine.md](building-on-slax-wine.md) answers.
 
 | # | closed | by |
 |---|---|---|

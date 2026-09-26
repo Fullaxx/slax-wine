@@ -111,6 +111,19 @@ esac
 
 say() { printf '\n== %s\n' "$*"; }
 
+# THE CHECKSUM AND THE SIDECAR ARE OWED, not incidental. A project built on this image pins
+# it by sha256 and reads what it applied from <iso>.provenance.json
+# (docs/building-on-slax-wine.md); kitchen pack writes both. Until this check, a missing
+# .sha256 printed an empty value in the summary and the build passed, because a $(...) that
+# fails inside echo's arguments does not trip `set -e`.
+release_files() {
+    for _rf in "$1.sha256" "$1.provenance.json"; do
+        [ -s "$_rf" ] || { echo "build.sh: kitchen pack wrote no ${_rf##*/}" >&2; return 1; }
+    done
+    ( cd "$(dirname "$1")" && sha256sum -c --quiet "${1##*/}.sha256" ) \
+        || { echo "build.sh: ${1##*/} does not match its .sha256" >&2; return 1; }
+}
+
 # Only the apply step is elevated; set this once rather than per variant.
 SUDO=""
 [ "$(id -u)" -eq 0 ] || SUDO="sudo -E"
@@ -509,6 +522,8 @@ print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
     # Read the volid back out of the pack hints rather than hardcoding it; the recipe is
     # the one place that decides it.
     say "[$v] assert"
+    release_files "$out_iso" || exit 1
+    echo "  ok   ${out_iso##*/}.sha256 matches, and the provenance sidecar is there"
     volid=$(sed -n 's/^volid: *//p' "$work/.kitchen/pack.yaml" | head -1 | sed "s/^[\"']//;s/[\"']$//")
     [ -n "$volid" ] || { echo "build.sh: [$v] no volid hint -- did the profile's *-iso.yaml recipe run?" >&2; exit 1; }
 

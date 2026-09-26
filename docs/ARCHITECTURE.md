@@ -115,6 +115,9 @@ applications**, starting at `20` rather than `10`. The bottom of the fork band i
 to slax-kitchen's example recipes, which **grow**: `10`–`12` when this project started,
 `10`–`16` today. Ceding the low end costs nothing and makes a collision impossible.
 
+The split is also what a project built on these images relies on: it keeps `20`–`29` and replaces
+`30`–`89` ([building-on-slax-wine.md](building-on-slax-wine.md#bundle-numbers)).
+
 `98` and `99` are refused by every bundle verb, and the refusal is at apply time rather than in the
 schema so there is one implementation rather than two that can drift.
 
@@ -128,6 +131,8 @@ live with `slax activate`.
 
 The application's `.desktop` entry ships **in the application bundle**, not in the platform bundle,
 so swapping the bundle swaps its launcher. That property is what makes the swap a file operation.
+A project that builds its own image on ours uses the same contract, at build time:
+[building-on-slax-wine.md](building-on-slax-wine.md).
 
 ## The package database
 

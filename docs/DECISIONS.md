@@ -130,7 +130,9 @@ the 64-bit ones (D-16).
 An earlier draft used `07`/`08`, which are slax-kitchen's. Reading the convention back to upstream is
 what prompted them to consolidate four disagreeing statements into one table.
 
-**What would change this:** upstream re-drawing the bands.
+**What would change this:** upstream re-drawing the bands. Since projects now build on these images,
+moving a bundle across the split would break them as well
+([building-on-slax-wine.md](building-on-slax-wine.md#bundle-numbers)).
 
 ## D-6 · The installers, not the portable builds
 
@@ -165,7 +167,15 @@ the same mechanism for software that cannot be published at all**, and one contr
 projects is worth more than build-time self-containment. The proprietary case becomes "point it at a
 local path instead of a URL".
 
-**What would change this:** needing a build with no network at all.
+**What it costs, measured at `7664625`:** the engine's publishing procedure cannot account for the
+installers. `bundle.files` copies each from `notepadpp32.files/` or its 64-bit twin, which
+`build.sh` fills and git ignores. So `kitchen sources` finds a file the project commit does not
+hold, and refuses the image
+([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
+A project that drops `30` and `31` from our image, as slax-rpgs will, drops the problem with them.
+
+**What would change this:** needing a build with no network at all, or publishing through the
+engine's procedure, which needs the installers accounted for.
 
 ## D-8 · No `isohybrid`. `uefi-bootable` — **reversed**, and the original reasoning had a hole
 
@@ -251,6 +261,15 @@ release time from the build host's GRUB rather than redistributed as upstream sh
 records that GRUB's version on a `grub (ESP)` line in each uefi image's build summary
 (`out/build-summary-32-uefi.txt`, `-64-uefi`, `-bottles`) so the corresponding source is
 identifiable — the same standard the rest of this entry holds everything else to.
+
+**The engine's own publishing procedure does not accept these images.** Its first step,
+`kitchen sources`, run at `7664625`, refuses the Notepad++ installers (D-7). Past that, by its code,
+it would refuse stock Slax's firmware without its licence texts, which NOTICE.md does not yet
+mention, and it takes one image per release
+([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
+Whether the first release follows this entry by hand, waits for that procedure, or waits altogether
+is not decided. [Cutting a release](build.md#cutting-a-release) says so, and says what any route
+needs.
 
 **What would change this:** upstream answering that issue — which closes the gap for every Slax
 derivative, not just this one.

@@ -143,6 +143,10 @@ bytes. `ci/checks/96-release-consistency.sh` checks each step's VERSION, BASE_IS
 against `build.env` — the 32-bit step's against `BASE32_*`, the 64-bit one's against `BASE64_*` — and
 `build.sh` reads the built image's copy back and refuses one that names another base.
 
+A project that builds its own image on ours inherits this bundle, and the release file and the mask
+with it. What it does about each is in
+[building-on-slax-wine.md](../building-on-slax-wine.md#the-release-file-and-the-browser-mask).
+
 | you want | use |
 |---|---|
 | the Wine packages themselves | [`wine`](wine.md) |

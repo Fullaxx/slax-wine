@@ -92,12 +92,21 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 - `uefi-bootable` — **upstream's** recipe, applied only by the uefi profiles. Builds no bundle;
   adds one 6.2 MiB `boot/efi.img`.
 - `docs/testing-on-both.md`: running one Windows program on both bases, and what differs underneath.
+- `docs/building-on-slax-wine.md`, for a project that builds its own image on one of ours
+  (slax-wine#2):
+  - which image to build on (any, with `uefi-bootable` last);
+  - pinning by sha256 and the engine commit;
+  - the release file and the browser mask;
+  - the bundle-number split;
+  - what each image applied, and what does not carry over.
 - `build.sh --32`/`--64` with `--bios`/`--uefi`/`--both`/`--test`; a bare `./build.sh` builds all
   four slax-wine images. It now also refuses a profile whose base is not the ISO it unpacked, an
   image whose release file names another base, and a 64-bit image without both halves of Wine. The
   first of those covers an engine gap, filed upstream as
   [slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29); the other two catch what
-  [#27](https://github.com/Fullaxx/slax-kitchen/issues/27) can do to an arch-guarded build.
+  [#27](https://github.com/Fullaxx/slax-kitchen/issues/27) can do to an arch-guarded build. It
+  also refuses an image whose `.sha256` is missing or does not match, or whose provenance sidecar is
+  missing: both are what a project built on the image pins and reads.
 
 ### Fixed
 - **The Notepad++ question is asked only where there is a display to ask on.** `DISPLAY` being set
@@ -155,3 +164,7 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 - Releases are **unsigned by choice** — this project has no signing key. (`iso.checksums: sign`
   was unusable upstream when this was written; that was our issue 3 and it was fixed in `7971eb5`,
   which is in the pinned engine.)
+- **The engine's publishing procedure does not accept these images yet.** `kitchen sources` cannot
+  account for the Notepad++ installers, which are fetched rather than committed (D-7), and stock
+  Slax's firmware bundle has no licence texts.
+  [Cutting a release](docs/build.md#cutting-a-release) says what that leaves.
