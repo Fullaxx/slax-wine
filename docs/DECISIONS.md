@@ -174,7 +174,8 @@ and refused the image
 ([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
 That cost is gone. Since slax-kitchen `18bedc5` (#62), `kitchen sources` is a report that refuses
 nothing, and names each installer as something the recipe copied in; `bd899fd` (#61) removed the
-steps that refused.
+steps that refused. Each installer's recipe entry also names Notepad++'s repository as its
+`upstream_source`, so each image's `SOURCES.md` lists it as a prebuilt part pointing there.
 
 **What would change this:** needing a build with no network at all.
 
@@ -213,7 +214,8 @@ times the error survived review and was caught by measurement. Its original "wha
 predicted a read-only demo stick, which never happened. Treat predictions here as weaker evidence
 than the tables in `docs/50-cookbook/`.
 
-It adds a 6.2 MiB ESP, and the image's only GPLv3 component (see [NOTICE.md](../NOTICE.md)).
+It adds a 6.2 MiB ESP, and the one component this project builds rather than redistributes: a
+GRUB loader, **GPLv3+**, whose source package each sidecar names (see [NOTICE.md](../NOTICE.md)).
 
 **What would change this:** `bootinst` learning to install a GRUB ESP on a stick, or `syslinux.efi`
 gaining ext4 support — either would make UEFI-on-ext4 real, which it currently is not. Upstream
@@ -250,30 +252,39 @@ project has no security claim that depends on it.
 
 **What would change this:** shipping slax-wine somewhere the initramfs is exposed to untrusted input.
 
-## D-12 · Publish the ISOs, with the licence gap documented
+## D-12 · Publish the ISOs, with pointers to their source
 
-slax-kitchen publishes no image, because the GPLv2 source-offer obligation cannot be fully discharged
-for three static binaries with no recorded version or build config. We publish anyway, attach source
-as release assets for everything identifiable, and state the gap plainly in [NOTICE.md](../NOTICE.md)
-with a written offer. An upstream issue asks for the missing provenance.
+**Decided 2026-09-26, replacing "attach source for everything identifiable".** We publish all five
+images, and we attach no source to a release:
 
-The uefi images add an obligation the bios ones do not have: their GRUB ESP is **GPLv3+**, built at
-release time from the build host's GRUB rather than redistributed as upstream shipped it. `build.sh`
-records that GRUB's version on a `grub (ESP)` line in each uefi image's build summary
-(`out/build-summary-32-uefi.txt`, `-64-uefi`, `-bottles`) so the corresponding source is
-identifiable — the same standard the rest of this entry holds everything else to.
+- **What we change is in this repository**, at the commit each image's provenance sidecar records:
+  the recipes, the files beside them, the boot-menu edits, the launchers, `build.sh`. The engine that
+  ran them is slax-kitchen, at the commit the sidecar also records.
+- **What we do not change is pointed to.** No upstream program is modified here, so each part's own
+  upstream is where its source is: each image's `SOURCES.md`, from `kitchen sources`, and the table
+  in [NOTICE.md](../NOTICE.md) say where.
+- **No written offer.** It was there for the three static initramfs binaries whose source nobody
+  could name. slax-kitchen's NOTICE.md now records what Slax's own parts are, the kernel's aufs
+  revision and configuration included, and points at their upstream, and ours points at that.
 
-**The engine's procedure no longer decides.** At `7664625` it refused these images: `kitchen
-sources` on the Notepad++ installers (D-7), and by its code stock Slax's firmware without its
-licence texts, and more than one image per release
-([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
-slax-kitchen `bd899fd` (#61) removed the steps that refused, and `18bedc5` (#62) made `kitchen
-sources` a report that refuses nothing, so since the `4a10303` bump its procedure is a few commands
-per image that our images go through. How the first release is published is not decided. [Cutting a release](build.md#cutting-a-release) says so, and says what any route
-needs.
+This is also slax-kitchen's own policy since `bd899fd` (#61): an image travels with `SHA256SUMS` and
+its provenance sidecar, what the build changed is in the repositories, and whoever publishes decides.
+So a release goes through its procedure, as commands: [Cutting a release](build.md#cutting-a-release).
 
-**What would change this:** upstream answering that issue — which closes the gap for every Slax
-derivative, not just this one.
+**What the old entry said, and why it went.** It attached source as release assets for everything
+identifiable, citing GPLv2 §3's "from the same place", with a written offer for the three static
+binaries and an upstream issue for their provenance. That issue was never filed: the finding was
+dropped because upstream already documented the gap
+([Two findings were dropped](UPSTREAM.md#two-findings-were-dropped-before-filing-in-round-one)).
+Measured on 2026-09-26, attaching would have meant 826 MiB of Debian source for Wine alone, a
+kernel patch revision nobody had then identified, and the Flathub runtimes' source for slax-bottles.
+
+The GRUB EFI loader in the uefi images and slax-bottles is the one thing built here, from the build
+host's unmodified GRUB, and it is **GPLv3+**. Each sidecar names the package and version it came
+from, so its source is identifiable the same way as everything else.
+
+**What would change this:** modifying an upstream program, whose modified source would then live
+here, or an obligation a pointer cannot meet.
 
 ## D-13 · `build.sh`, not `kitchen build`
 

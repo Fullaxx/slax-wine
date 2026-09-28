@@ -67,7 +67,7 @@ suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by
 | | |
 |---|---|
 | `recipes/available/bottles.files/` | **3.2 GB**, plus 79 MB of DXVK/VKD3D. The ostree repo and the deployed files share inodes |
-| the copy `bundle.files` makes under `work/` while it builds `30-bottles.sb` | **7.4 GB**. `copytree` does not preserve hardlinks, so every shared file is written twice. It is removed when the bundle is done |
+| the copy `bundle.files` makes under `work/` while it builds `30-bottles.sb` | **3.3 GiB**, the stage's own size by `du` on 2026-09-28: since slax-kitchen `f5e6673` (#64) the copy keeps the stage's hardlinks. Counted per name (`du --count-links`), which is what the copy cost before, it is 7.3 GiB. It is removed when the bundle is done |
 | `work/bottles/` | 0.4 GB unpacked base, plus the 0.9 GB bundle |
 | `out/slax-bottles-<ver>.iso` | 1.2 GB |
 
@@ -212,18 +212,17 @@ A release is what the projects built on slax-wine pin
 ([building-on-slax-wine.md](building-on-slax-wine.md)), so it carries each image's checksum and
 provenance sidecar as well as the image.
 
-**Which route it takes is not decided yet.** slax-kitchen's own procedure,
+**It goes through slax-kitchen's own procedure,**
 [publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/docs/40-workflow/publishing-images.md),
-is per image `kitchen sources --markdown --json` from `vendor/slax-kitchen/`, and one `SHA256SUMS`
-for all of them, published beside each image's provenance sidecar. Nothing in it refuses an image
-since slax-kitchen `bd899fd` (#61) and `18bedc5` (#62). Until the `4a10303` bump it did refuse
-these, on the Notepad++ installers and by its code on stock Slax's firmware and on more than one
-image per release
-([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)). [D-12](DECISIONS.md#d-12--publish-the-isos-with-the-licence-gap-documented) and
-[NOTICE.md](../NOTICE.md) are this project's own policy: publish, attach source for everything
-identifiable, and state the gap.
+under the pointer policy in [NOTICE.md](../NOTICE.md) and
+[D-12](DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source): no source is attached,
+and each image's `SOURCES.md` says where each part's source is published. Nothing in the procedure
+refuses an image since slax-kitchen `bd899fd` (#61) and `18bedc5` (#62). Until the `4a10303` bump it
+refused these, on the Notepad++ installers and by its code on stock Slax's firmware and on more than
+one image per release
+([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
 
-Whichever route, in this order:
+In this order:
 
 1. **Date `[1.0.0]` in `CHANGELOG.md`, and commit that first,** so every image's sidecar names the
    commit that gets tagged.
@@ -234,12 +233,21 @@ Whichever route, in this order:
    image, on the boot host described [above](#commit-gates), with nothing else running.
 5. **Tag it: `git tag v$VERSION`** on that commit. Gate 96 §6 fails a tag that is not the version,
    and docs that still say `TBD-MEASURED`.
-6. **Assemble the assets for the chosen route.** At the least, each image's `.iso`, `.iso.sha256`,
-   `.iso.provenance.json` and `packages.tsv`, plus slax-bottles' `flatpak.txt`. The sidecar is what
-   tells a project built on the image what it applied.
-7. **Write notes** that name the engine pin, both base ISOs with their sha256, and what ran in place
-   of CI.
-8. **Upload: `gh release create`.** That is a person's step; nothing here uploads.
+6. **Write each shipped image's sources files,** the engine's one command per image:
+
+   ```sh
+   vendor/slax-kitchen/kitchen sources out/<image>-$VERSION.iso \
+       --markdown out/<image>-$VERSION.SOURCES.md --json out/<image>-$VERSION.sources.json
+   ```
+
+7. **Assemble the assets:** for each of the five shipped images its `.iso`, `.iso.sha256`,
+   `.iso.provenance.json`, `packages.tsv`, `SOURCES.md` and `sources.json`, plus slax-bottles'
+   `flatpak.txt`, and one `SHA256SUMS` over all of them. The sidecar is what tells a project built on
+   an image what it applied, and its `SOURCES.md` is what that project's own report points back to.
+   Every asset has to be under GitHub's 2 GiB limit; the largest image is about 1.3 GB.
+8. **Write notes** that name the engine pin, both base ISOs with their sha256, what ran in place of
+   CI, and a redistribution line pointing at NOTICE.md.
+9. **Upload: `gh release create`.** That is a person's step; nothing here uploads.
 
 ## Upstream
 

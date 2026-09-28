@@ -47,76 +47,47 @@ if a file claiming *copied verbatim* differs from the vendored original.
 | Bottles 67.3 (slax-bottles only) | **GPLv3** |
 | the Flathub runtimes in slax-bottles | each component its own licence; the runtimes carry them under `files/share/licenses/` |
 | DXVK 3.1, VKD3D-Proton 3.0.1 (slax-bottles only) | **zlib** / **LGPL-2.1** respectively |
-| every other Debian package in the image | its own licence, per `/usr/share/doc/*/copyright` |
+| every other Debian package in the image | its own licence. Those `20-wine.sb` and `20-flatpak.sb` install carry their `copyright` files under `/usr/share/doc`; Slax's build removed them from its own bundles |
 | the Linux kernel, aufs-patched by upstream Slax | **GPLv2** |
 | non-free firmware in `01-firmware.sb` | per-package redistribution terms |
 | the released `.iso` | an **aggregate**; no single licence covers it |
 
 ## Redistributing the ISOs
 
-slax-kitchen deliberately publishes **no** ISO, and says why: the GPLv2 source-offer obligation falls
-on whoever publishes a customized image. **slax-wine publishes four** — `slax32-wine-bios`,
-`slax32-wine-uefi`, `slax64-wine-bios` and `slax64-wine-uefi` — so that obligation is ours, and this
-section is how it is discharged rather than a disclaimer.
+**slax-wine publishes five images:** `slax32-wine-bios`, `slax32-wine-uefi`, `slax64-wine-bios` and
+`slax64-wine-uefi`, which are one system on two bases, and **slax-bottles**, a second system on the
+64-bit base: flatpak from Debian bookworm, and the Bottles Flatpak with its runtimes, DXVK and
+VKD3D-Proton. Each is an aggregate, and we publish it the way slax-kitchen's
+[NOTICE.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/NOTICE.md#publishing-an-image-built-with-slax-kitchen)
+describes, under the policy set here on 2026-09-26
+([D-12](docs/DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source)):
 
-A base's two images contain the **same** software: identical bundles, identical packages. The 64-bit
-images carry the 32-bit ones' software built for their base — Wine in both halves, amd64 and i386 —
-plus the 64-bit build of Notepad++. The uefi images additionally carry a GRUB EFI binary built by
-`grub-mkstandalone` from the host's GRUB 2, which is **GPLv3+** — a licence the rest of the image
-does not use. It is generated at build time from packages the builder already has, so the
-corresponding source is whatever GRUB the build host installed. `build.sh` records which one that
-was on a `grub (ESP)` line in each uefi image's `out/build-summary-<variant>.txt`, so the claim
-above points at something checkable rather than being a promise nothing keeps. The bios images
-contain no GPLv3 component at all.
+- **What we changed is in this repository.** The recipes, the files beside them, the boot-menu
+  edits, the launchers and the build script are here, and the engine that ran them is slax-kitchen,
+  at the commits each image's `<image>.iso.provenance.json` records.
+- **What we did not change is pointed to, not attached.** No upstream program is modified. What
+  the recipes change is configuration, the boot menus for instance, and each change is a recipe
+  here. So no source is attached to a release. Each image's `<image>.SOURCES.md`,
+  written by `kitchen sources`, lists every file in it and where its upstream publishes the source.
+- **Each release carries** the images, one `SHA256SUMS`, and per image its `.iso.sha256`,
+  provenance sidecar, `packages.tsv` and the two sources files.
 
-**slax-bottles is a third image**, with a different software set: 64-bit Slax, flatpak from
-Debian bookworm, and the Bottles Flatpak with its runtimes, DXVK and VKD3D-Proton. It also carries the
-same kind of GRUB ESP as the uefi image, so the same GPLv3+ note applies, recorded in
-`out/build-summary-bottles.txt`. Everything in its Flatpak installation is pinned by ostree commit in
-`BOTTLES_LOCK` (`build.env`) and listed inside the image at `/opt/bottles/VERSION`. That is what
-identifies the corresponding source: Flathub builds from public manifests, and each commit records the
-manifest revision that produced it.
+Where each part's source is published:
 
-**Nothing here is modified.** Every binary in the image is upstream's, redistributed as built. So
-"complete corresponding source" means each component's own upstream release, and none of it had to be
-written by us.
-
-**Source is attached to the release, not merely linked.** GPLv2 §3's closing paragraph counts
-offering source as distribution only when it is available *"from the same place"* as the binary — and
-unlike GPLv3 §6(d), it does not bless pointing at a third-party server. So each release carries source
-tarballs as assets alongside the ISO, for everything whose version is known:
-
-| shipped binary | source attached |
+| part | source published at |
 |---|---|
-| Wine 8.0~repack-4 and every other Debian package `20-wine.sb` ships: its dependencies — on 64-bit for i386 and amd64 — and the base packages it upgrades to match, each listed with its version in the image's `packages.tsv` | Debian `deb-src`, bookworm — also permanently at `snapshot.debian.org` |
-| Notepad++ 8.9.8, the 32-bit and the 64-bit build | the `v8.9.8` tag, `notepad-plus-plus/notepad-plus-plus` |
-| Linux Live Kit, and the Slax build system | `Tomas-M/linux-live` at the commit pinned by the nested submodule |
-| `busybox` 1.26.2 in the initramfs | busybox.net, that release |
-| `ncurses-menu`, `mount.dynfilefs`, `mount.httpfs2`, `mc` | Tomáš's repositories, at their releases |
-| the kernel | upstream Slax's build, plus the out-of-tree aufs patch set |
-| Bottles and its Flathub runtimes (slax-bottles) | the `flathub/com.usebottles.bottles` manifest and Bottles' `67.3` tag; each runtime's source per its Flathub/freedesktop-sdk/GNOME manifest at the locked commit |
-| DXVK 3.1, VKD3D-Proton 3.0.1 (slax-bottles) | their upstream release tags |
+| Slax 12.2.0 as Tomáš built it: Linux Live Kit, the kernel (Debian's `linux-source-6.1` plus aufs `6.1-20230724`, its configuration embedded in `vmlinuz`), the initramfs userland, and the desktop tools | slax-kitchen's [What a built image contains](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/NOTICE.md#what-a-built-image-contains), which points at `Tomas-M/linux-live` and the repositories it names, and records the initramfs binaries one by one |
+| Wine 8.0~repack-4 and every other Debian package, each named with its version in the image's `packages.tsv` | snapshot.debian.org. For what `20-wine.sb` and `20-flatpak.sb` add, `SOURCES.md` gives each source package's `https://snapshot.debian.org/package/<source>/<version>/`. For stock Slax's, `https://snapshot.debian.org/binary/<package>/` names the source of each version `packages.tsv` lists |
+| Notepad++ 8.9.8, 32- and 64-bit | the `v8.9.8` tag of <https://github.com/notepad-plus-plus/notepad-plus-plus> |
+| Bottles 67.3 and its Flathub runtimes (slax-bottles) | the manifests that built each ref at the commit `BOTTLES_LOCK` in `build.env` pins: <https://github.com/flathub/com.usebottles.bottles>, freedesktop-sdk, GNOME's `gnome-build-meta`, and Flathub's `org.winehq.Wine` for the Gecko and Mono extensions. `/opt/bottles/VERSION` in the image lists every ref and commit |
+| DXVK 3.1 and VKD3D-Proton 3.0.1 (slax-bottles) | their release tags at <https://github.com/doitsujin/dxvk> and <https://github.com/HansKristian-Work/vkd3d-proton> |
+| the GRUB EFI loader in the uefi images and slax-bottles, **GPLv3+** | built by `grub-mkstandalone` from the build host's unmodified GRUB. Each image's sidecar names the package and version it came from, and Launchpad publishes that source package's source: `grub2-unsigned` `2.12-1ubuntu7.3` in the builds of 2026-09-28 |
 
-### What we cannot supply, stated plainly
-
-Three static binaries in the initramfs — **`blkid`, `eject` and `xfs_growfs`** — are prebuilt blobs
-inherited from upstream Slax. Its `initramfs/static/README` says only *"To rebuild these static
-binaries, use buildroot"*, and records neither the upstream release nor the build configuration. We
-therefore cannot identify which source corresponds to them, and no build config exists publicly for
-any of the static set.
-
-We are not able to close that ourselves, and we do not pretend otherwise:
-
-- an issue asking upstream for those versions and configs is open — see
-  [docs/UPSTREAM.md](docs/UPSTREAM.md);
-- **written offer:** for three years from each release, we will pass any request for source for those
-  components to upstream and forward whatever is provided, at no charge beyond the cost of
-  distribution. Open an issue on this repository.
-
-This is a genuine and knowing gap, not an oversight, and it is the reason slax-kitchen chose to
-publish no image at all. We have taken the other choice, with the limit documented. If that is not
-good enough for your use, build the ISO yourself with `./build.sh` — nothing is distributed and the
-question does not arise.
+**Firmware.** Using an image that contains firmware implies acceptance of each firmware's licence
+terms. Stock Slax's `01-firmware.sb` ships as Slax ships it, and Slax's build removed its packages'
+`copyright` files; slax-kitchen's [Firmware](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/NOTICE.md#firmware)
+section records exactly what is in it, the Broadcom b43 files that never had a licence text
+included.
 
 ### If you rebuild and redistribute
 

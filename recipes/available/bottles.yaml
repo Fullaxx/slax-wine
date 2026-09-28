@@ -65,12 +65,12 @@ steps:
   # system-wide install. Slax runs everything as root, so that is the installation
   # `flatpak run` looks in.
   #
-  # Symlinks survive: _place_files copies a directory with copytree(symlinks=True), and
-  # flatpak's deploy tree is held together by `active` and `current` links. HARDLINKS DO
-  # NOT: the ostree repo's objects are hardlinks to the deployed files, so the 3.2 GB
-  # stage becomes a 7.4 GB copy under work/ while the bundle is built. mksquashfs then
-  # finds the identical files by content and stores each once, which is why shipping
-  # both the repo and the deploy costs almost nothing in the .sb. The repo stays because
+  # Symlinks survive, and flatpak's deploy tree is held together by `active` and `current`
+  # links. So do hardlinks, since slax-kitchen f5e6673 (#64): the ostree repo's objects are
+  # hardlinks to the deployed files, and the copy under work/ while the bundle is built is
+  # the stage's own 3.3 GiB, where it was 7.3 GiB before. mksquashfs stores a linked file
+  # once, which is why shipping both the repo and the deploy costs almost nothing in the
+  # .sb. The repo stays because
   # `flatpak info`, `list`, `update` and `uninstall` all read it.
   #
   # The flathub remote stays in repo/config, together with its GPG key. Offline it does
@@ -79,8 +79,18 @@ steps:
   - verb: bundle.files
     bundle: "{{bundle}}"
     files:
+      #
+      # upstream_source: where the manifests that build these refs are published -- Bottles'
+      # own on Flathub, the freedesktop and GNOME runtimes, and the Wine extensions (gecko,
+      # mono) from Flathub's Wine manifest. BOTTLES_LOCK in build.env names each ref and the
+      # commit that shipped, and each commit records its manifest revision.
       - dest: /var/lib/flatpak
         src: ./bottles.files/var/lib/flatpak
+        upstream_source:
+          - https://github.com/flathub/com.usebottles.bottles
+          - https://gitlab.com/freedesktop-sdk/freedesktop-sdk
+          - https://gitlab.gnome.org/GNOME/gnome-build-meta
+          - https://github.com/flathub/org.winehq.Wine
 
       # DXVK and VKD3D, pre-seeded where Bottles looks for them: under the Flatpak's
       # XDG_DATA_HOME, which for root is /root/.var/app/<id>/data. MEASURED: offline,
@@ -88,8 +98,14 @@ steps:
       # times"), even though the Flatpak carries its own runner. They sit in a bundle
       # rather than in rootcopy, so they cost no RAM until something reads them.
       # build.sh fetches, checks and unpacks them (BOTTLES_COMPONENTS in build.env).
-      - dest: /root/.var/app/com.usebottles.bottles/data/bottles
-        src: ./bottles.files/root/.var/app/com.usebottles.bottles/data/bottles
+      # One entry each, so each points at its own project. A category added to
+      # BOTTLES_COMPONENTS in build.env needs an entry here too, or it is not shipped.
+      - dest: /root/.var/app/com.usebottles.bottles/data/bottles/dxvk
+        src: ./bottles.files/root/.var/app/com.usebottles.bottles/data/bottles/dxvk
+        upstream_source: https://github.com/doitsujin/dxvk
+      - dest: /root/.var/app/com.usebottles.bottles/data/bottles/vkd3d
+        src: ./bottles.files/root/.var/app/com.usebottles.bottles/data/bottles/vkd3d
+        upstream_source: https://github.com/HansKristian-Work/vkd3d-proton
 
       # Provenance: every ref and the commit that shipped. Written by build.sh.
       - dest: /opt/bottles

@@ -145,7 +145,9 @@ engine's.
 An image built on one of ours is published like any other, with the engine's commands
 ([LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md#provenance-and-publishing)),
 and nothing in them refuses one since slax-kitchen `bd899fd` (#61). `kitchen sources` lists every
-file your image inherited from ours as `base`, pointing at our image by name and sha256 (#62).
+file your image inherited from ours as `base`, pointing at our image by name and sha256 (#62). Our
+`SOURCES.md` for that image, published with each release, is where those files' own sources are
+listed.
 
 Two facts about what you inherit still carry into your image:
 

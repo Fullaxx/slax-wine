@@ -48,11 +48,11 @@ empty `/proc` and no user namespace. Instead `build.sh`:
    data directory;
 4. writes `/opt/bottles/VERSION`: every ref, commit and component that shipped.
 
-`bundle.files` then copies the tree with `copytree(symlinks=True)`, so flatpak's `active`/`current`
-links survive. Hardlinks do not. The ostree repo's objects are the same inodes as the deployed
-files, so the 3.2 GB stage becomes a 7.4 GB copy while the bundle is built. mksquashfs then stores
-each identical file once, which is why the bundle is 889.5 MiB. [build.md](../build.md) has the disk
-budget.
+`bundle.files` then copies the tree, keeping flatpak's `active`/`current` symlinks and, since
+slax-kitchen `f5e6673` (#64), the hardlinks between the ostree repo's objects and the deployed
+files. So the copy made while the bundle is built is the stage's own 3.3 GiB, where it used to be
+7.3 GiB, and mksquashfs stores each linked file once, which is why the bundle is 889.5 MiB.
+[build.md](../build.md) has the disk budget.
 
 Measured in the guest: `flatpak list` shows all eleven visible refs at their locked commits, and
 `xlunch_genquick 64 --desktop` (the generator behind the launcher) emits

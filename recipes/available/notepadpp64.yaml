@@ -33,8 +33,14 @@ steps:
   - verb: bundle.files
     bundle: "{{bundle}}"
     files:
-      - dest: /opt/notepadpp64
-        src: ./notepadpp64.files/opt/notepadpp64
+      # Two entries, not the directory, so the installer can say where its source is and
+      # VERSION, which build.sh writes, does not: `kitchen sources` lists an entry that names
+      # an upstream_source as a prebuilt part pointing there (slax-kitchen 18bedc5, #60).
+      - dest: /opt/notepadpp64/npp64-installer.exe
+        src: ./notepadpp64.files/opt/notepadpp64/npp64-installer.exe
+        upstream_source: https://github.com/notepad-plus-plus/notepad-plus-plus
+      - dest: /opt/notepadpp64/VERSION
+        src: ./notepadpp64.files/opt/notepadpp64/VERSION
 
       - dest: /usr/local/bin/notepadpp64
         mode: "0755"

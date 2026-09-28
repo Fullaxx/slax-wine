@@ -1836,10 +1836,14 @@ does. Past that, `ci/release-verify.py` refuses an attached image whose firmware
 licence texts — `firmware-refresh`, or dropping `01-firmware`, are the remedies it names — and it
 takes one image per release directory. slax-bottles was not probed: its 3.3 GB stage is gitignored
 too, and it holds ELF files, which `kitchen sources` refuses as well.
-[D-12](DECISIONS.md#d-12--publish-the-isos-with-the-licence-gap-documented) and
+[D-12](DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source) and
 [NOTICE.md](../NOTICE.md) are this repository's own publishing policy — publish, attach source for
 everything identifiable, state the gap — and which route the first release takes is the owner's
 decision, which D-12 will record.
+
+*Superseded on 2026-09-26:* the owner replaced "attach source" with pointers, and D-12 records it.
+The engine's procedure stopped refusing anything at [the `4a10303` bump](#adopted-at-the-4a10303-bump),
+and the first release goes through it.
 
 ## Adopted at the `0dd1b53` bump
 
@@ -2041,6 +2045,11 @@ left in it to refuse them.
   release*, the building-on page's *Publishing your image*, and CHANGELOG's limitation, all of which
   described refusals `bd899fd` and `18bedc5` removed. Our own source policy in NOTICE.md and D-12
   is untouched here; that is the release's change.
+
+Missed at the bump, and corrected in the next change: four places still said the Flatpak stage is
+copied as 7.4 GB because `bundle.files` breaks its hardlinks (`build.md`'s disk budget,
+`sizing.md`, the `bottles` cookbook page and `bottles.yaml`). Since `f5e6673` the copy keeps them,
+3.3 GiB by `du` against 7.3 GiB counted per name.
 
 **Copied files.** Two of the twenty-one changed upstream: `00-no-binaries.sh`, re-copied verbatim, and
 `35-pyflakes.sh`, whose stale `kitchen:346` sentence (#56) takes upstream's wording. The other

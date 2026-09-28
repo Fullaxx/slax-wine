@@ -54,9 +54,9 @@ steps:
   # inside the ISO, so leaving it behind ships an image that misreports its own
   # application version.
   #
-  # ONE bundle, one step. bundle.files takes a directory for `src:` and copies it
-  # recursively, so the payload and the two launcher files go in together -- a bundle
-  # name can only be produced once, and a second step targeting the same name is refused
+  # ONE bundle, one step. The payload, its VERSION and the two launcher files are entries
+  # of one bundle.files step, so they go in together -- a bundle name can only be produced
+  # once, and a second step targeting the same name is refused
   # (correctly: two steps silently overwriting each other is how a bundle ends up with
   # only half of what the recipe says).
   #
@@ -68,8 +68,14 @@ steps:
   - verb: bundle.files
     bundle: "{{bundle}}"
     files:
-      - dest: /opt/notepadpp32
-        src: ./notepadpp32.files/opt/notepadpp32
+      # Two entries, not the directory, so the installer can say where its source is and
+      # VERSION, which build.sh writes, does not: `kitchen sources` lists an entry that names
+      # an upstream_source as a prebuilt part pointing there (slax-kitchen 18bedc5, #60).
+      - dest: /opt/notepadpp32/npp32-installer.exe
+        src: ./notepadpp32.files/opt/notepadpp32/npp32-installer.exe
+        upstream_source: https://github.com/notepad-plus-plus/notepad-plus-plus
+      - dest: /opt/notepadpp32/VERSION
+        src: ./notepadpp32.files/opt/notepadpp32/VERSION
 
       # Installs on first use, launches thereafter. Terminal=false on the .desktop for
       # the same reason as the Wine entry: fbappselect decides whether to wrap a command

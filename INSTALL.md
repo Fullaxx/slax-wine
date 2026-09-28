@@ -39,6 +39,10 @@ Three ways to run it. Only one of them keeps your Wine `C:` drive.
 **Use the first one.** It is upstream Slax's supported route, and the only one that gives you
 persistence — which is what makes a Wine prefix worth creating.
 
+**Check the download first.** A release carries one `SHA256SUMS` for all its images. With it beside
+the image you downloaded, `sha256sum -c --ignore-missing SHA256SUMS` should say `OK`. It proves the
+file is the one published, not that a rebuild would match it: images are not byte-reproducible.
+
 ## One decision, made before you copy anything
 
 The filesystem you put on the stick is the only format choice you make, and it is hard to change

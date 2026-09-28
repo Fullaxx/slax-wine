@@ -629,11 +629,10 @@ print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
         if [ -f "$work/iso/boot/efi.img" ]; then
             printf '%-18s %10s bytes  (GRUB ESP, not a bundle)\n' "boot/efi.img" \
                 "$(stat -c%s "$work/iso/boot/efi.img")"
-            # The ONLY GPLv3+ component in the image, and the only one built here rather
-            # than redistributed as upstream shipped it -- grub-mkstandalone links the
-            # host's GRUB into BOOTX64.EFI. NOTICE.md says the corresponding source is
-            # whichever GRUB the build host had, so record which one that was. Without
-            # this line that sentence would be a promise nothing keeps.
+            # The only component built here rather than redistributed as upstream shipped
+            # it, and GPLv3+ -- grub-mkstandalone links the host's GRUB into BOOTX64.EFI.
+            # The published sidecar names the host's package and version, which is what
+            # NOTICE.md points at; this line puts the same fact in the build summary.
             printf '%-18s %s\n' "grub (ESP)" \
                 "$(grub-mkstandalone --version 2>/dev/null | head -1 || echo unknown)"
         fi

@@ -131,9 +131,9 @@ and 1225.7 MiB.
 
 The Flatpak tree is **3,211 MiB of distinct file data unpacked**, which xz squashes to about 875 MiB of the bundle.
 The ostree repo's objects are the same inodes as the deployed files, so this table counts them once.
-In the bundle they cost nothing extra either, but for a different reason: the copy made while
-building breaks the hardlinks (see [build.md](build.md)), and mksquashfs then stores identical files
-once. Per ref, measured on the staged tree by inode: "own" counts only the bytes no other
+In the bundle they cost nothing extra either: the copy made while building keeps the hardlinks
+since slax-kitchen `f5e6673` (see [build.md](build.md)), and mksquashfs stores a hardlinked file
+once, as it stored identical files once before that. Per ref, measured on the staged tree by inode: "own" counts only the bytes no other
 ref shares.
 
 | ref | unpacked MiB | own MiB |

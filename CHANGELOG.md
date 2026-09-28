@@ -99,6 +99,11 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   - the release file and the browser mask;
   - the bundle-number split;
   - what each image applied, and what does not carry over.
+- Each release carries, per image, the ISO, its `.sha256`, provenance sidecar, `packages.tsv`,
+  `SOURCES.md` and `sources.json`, and one `SHA256SUMS`. No source is attached: what slax-wine
+  changed is this repository, and `SOURCES.md` points at where each upstream publishes the rest
+  (NOTICE.md, D-12). The Notepad++ installers, the Bottles Flatpak and DXVK/VKD3D name their
+  upstreams, so `SOURCES.md` lists each as a prebuilt part.
 - `build.sh --32`/`--64` with `--bios`/`--uefi`/`--both`/`--test`; a bare `./build.sh` builds all
   four slax-wine images. It now also refuses a profile whose base is not the ISO it unpacked, an
   image whose release file names another base, and a 64-bit image without both halves of Wine. The
