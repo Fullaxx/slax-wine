@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 A release is defined by **both** halves — the slax-wine version and the base ISO it was built on.
 See [docs/base-versions.md](docs/base-versions.md).
 
-## [1.0.0] — unreleased
+## [1.0.0] — 2026-09-28
 
 Built on two bases, `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`) and
@@ -140,11 +140,12 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   image does not change it: its GRUB is an El Torito structure that never reaches a stick.
 - **slax64-wine's Linux is newer than stock Slax's.** Installing Wine's i386 half lifted 79 of the
   base's own packages to today's bookworm versions, inside `20-wine.sb` — glibc, systemd and udev,
-  util-linux, e2fsprogs and OpenSSL among them (D-16 lists them). Measured, under TCG: it boots on
-  all three routes and its ext4 persistence holds across two boots. Booted with `noload=20-wine.sb`,
-  its package database claims those versions while the base's older files are the ones loaded.
-  slax32-wine has one such upgrade, `libgnutls30`.
-- **slax64-wine has only been run in QEMU**, under TCG, like slax-bottles. Real hardware is untested.
+  util-linux, e2fsprogs and OpenSSL among them (D-16 lists them). Measured in QEMU, under TCG and
+  since 2026-09-21 under KVM: it boots on all three routes and its ext4 persistence holds across two
+  boots. Booted with `noload=20-wine.sb`, its package database claims those versions while the
+  base's older files are the ones loaded. slax32-wine has one such upgrade, `libgnutls30`.
+- **slax64-wine has only been run in QEMU**, under TCG and since 2026-09-21 under KVM, like
+  slax-bottles. Real hardware is untested.
 - **The two Notepad++ builds do not share a prefix.** On slax64-wine each one's installer removes the
   other build, measured in both orders, so the two tiles reinstall over each other in `/root/.wine`.
   Since D-17 the launcher **asks before letting that happen**, with Cancel as the default, and a
@@ -157,12 +158,12 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 - slax-wine has no Wine Mono or Wine Gecko, so .NET and embedded-HTML applications do not run.
   Debian packages neither; the first-run prompt is suppressed rather than satisfied. (slax-bottles
   ships both, as Flathub runtimes.)
-- **slax-bottles has only been run in QEMU**, under TCG. Real hardware is untested, and with it the
-  whole GPU path: DXVK 3.x needs a Vulkan 1.4 driver, the runtime's Mesa has one, and whether a real
-  GPU initialises under Slax's 6.1 kernel, with the GPU firmware the image now carries, is unknown.
-  A bottle surviving a reboot is not tested either, though the writable layer it lives in is.
-  Offline, its first-run wizard cannot finish and offers "Skip Setup", which is expected. See
-  [docs/using-bottles.md](docs/using-bottles.md).
+- **slax-bottles has only been run in QEMU**, under TCG and since 2026-09-21 under KVM. Real
+  hardware is untested, and with it the whole GPU path: DXVK 3.x needs a Vulkan 1.4 driver, the
+  runtime's Mesa has one, and whether a real GPU initialises under Slax's 6.1 kernel, with the GPU
+  firmware the image now carries, is unknown. A bottle surviving a reboot is not tested either,
+  though the writable layer it lives in is. Offline, its first-run wizard cannot finish and offers
+  "Skip Setup", which is expected. See [docs/using-bottles.md](docs/using-bottles.md).
 - **The firmware is untested on hardware that needs it.** Every image carries upstream's
   `firmware-refresh` (D-18): GPU firmware for AMD, Intel and NVIDIA, Intel SOF audio, and more
   network and Bluetooth, none of which stock Slax has. No real card has been booted with it, so
@@ -173,7 +174,10 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   [wine-desktop](docs/50-cookbook/wine-desktop.md).
 - **No 32-bit UEFI.** Slax ships only `bootx64.efi` and no `bootia32.efi`, so machines with 32-bit
   UEFI firmware and no legacy/CSM cannot boot any of these images at all. 64-bit UEFI from a FAT32
-  stick is expected to work but has **not** been tested here — only a direct-kernel boot was run.
+  stick is expected to work but has **not** been tested here: the UEFI boots above are of the ISO,
+  through its El Torito ESP.
 - Releases are **unsigned by choice** — this project has no signing key. (`iso.checksums: sign`
   was unusable upstream when this was written; that was our issue 3 and it was fixed in `7971eb5`,
   which is in the pinned engine.)
+
+[1.0.0]: https://github.com/Fullaxx/slax-wine/releases/tag/v1.0.0
