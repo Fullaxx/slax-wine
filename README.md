@@ -28,10 +28,10 @@ is not obvious.
 
 | | base | boots on | size | |
 |---|---|---|---|---|
-| `slax32-wine-bios-<ver>.iso` | 32-bit | BIOS | 507.3 MiB | stock Slax bootloader, no GRUB |
-| `slax32-wine-uefi-<ver>.iso` | 32-bit | **BIOS *and* UEFI** | 513.5 MiB | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
-| `slax64-wine-bios-<ver>.iso` | 64-bit | BIOS | 815.6 MiB | stock Slax bootloader, no GRUB |
-| `slax64-wine-uefi-<ver>.iso` | 64-bit | **BIOS *and* UEFI** | 821.7 MiB | adds a GRUB ESP, as above |
+| `slax32-wine-bios-<ver>.iso` | 32-bit | BIOS | 561.5 MiB | stock Slax bootloader, no GRUB |
+| `slax32-wine-uefi-<ver>.iso` | 32-bit | **BIOS *and* UEFI** | 567.7 MiB | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
+| `slax64-wine-bios-<ver>.iso` | 64-bit | BIOS | 869.7 MiB | stock Slax bootloader, no GRUB |
+| `slax64-wine-uefi-<ver>.iso` | 64-bit | **BIOS *and* UEFI** | 875.9 MiB | adds a GRUB ESP, as above |
 
 **A uefi image is a superset, not an alternative** — it keeps the BIOS El Torito entry and adds an EFI
 one, so it boots anywhere its bios twin does. Verified on the artifacts: `xorriso -report_el_torito`
@@ -58,7 +58,7 @@ runs sandboxed with its own Wine, so it cannot use our Debian Wine
 | Bottles | 67.3 from Flathub, with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono; every ref pinned by commit |
 | offline extras | DXVK 3.1 and VKD3D-Proton 3.0.1, without which Bottles will not create a bottle offline (measured) |
 | no browser | `05-chromium.sb` removed, as in slax-wine |
-| size | **1240.4 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
+| size | **1294.5 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
 
 Using it: **[docs/using-bottles.md](docs/using-bottles.md)**.
 
@@ -73,6 +73,7 @@ about Wine; the recipes here say *what* to change, never *how*.
 
 | bundle | recipe |
 |---|---|
+| `09-firmware-debian.sb`, `09-firmware-linux.sb` | `firmware-refresh` — **upstream's**: current firmware from Debian and linux-firmware, with the licence files ([D-18](docs/DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)) |
 | `20-wine.sb` | [`wine`](docs/50-cookbook/wine.md) — install Wine 8.0 from bookworm main, for the base it is built on |
 | `21-wine-desktop.sb` | [`wine-desktop`](docs/50-cookbook/wine-desktop.md) — launcher, environment, menu cleanup |
 | `30-notepadpp32.sb` | [`notepadpp32`](docs/50-cookbook/notepadpp32.md) — the 32-bit Notepad++ installer, a swappable application layer |
@@ -83,21 +84,23 @@ about Wine; the recipes here say *what* to change, never *how*.
 | — | [`slax-bottles-iso`](docs/50-cookbook/slax-bottles-iso.md) — **slax-bottles only**: the same boot default and checksum, its own identity |
 
 All four run upstream's `remove-bundle` first — it drops `05-chromium.sb`, named explicitly rather
-than inherited, and it has to come before anything that builds — then `wine`, `wine-desktop`,
-`notepadpp32` and `slax-wine-iso`. The 64-bit ones add `notepadpp64`, and the uefi ones add
-`uefi-bootable` last, which builds no bundle. `wine`, `wine-desktop` and `slax-wine-iso` carry a step
-per base, guarded by `when: arch==…`, so one recipe list serves both.
+than inherited, and it has to come before anything that builds — then `firmware-refresh`, `wine`,
+`wine-desktop`, `notepadpp32` and `slax-wine-iso`. The 64-bit ones add `notepadpp64`, and the uefi
+ones add `uefi-bootable` last, which builds no bundle. `wine`, `wine-desktop` and `slax-wine-iso`
+carry a step per base, guarded by `when: arch==…`, so one recipe list serves both.
 [`ci/checks/96-release-consistency.sh`](ci/checks/96-release-consistency.sh) fails if the profiles
 of a base disagree, if the 64-bit list is anything but the 32-bit one plus `notepadpp64`, if a
-profile's name does not match its base or firmware, or if any drops the removal or lists it late.
+profile's name does not match its base or boot firmware, or if any drops the removal or lists it
+late.
 
 `30-notepadpp32.sb` and `31-notepadpp64.sb` are meant to be replaced. Delete one from
 `/slax/modules/` on a stick and drop another in — no rebuild, no remaster. That is the whole point of
 the layering.
 
-slax-bottles has a profile of its own: `remove-bundle`, then `bottles`, `slax-bottles-iso` and
-`uefi-bootable`, on the 64-bit base. Gate 96 holds it to removal-first, but not to slax-wine's core
-list, because it is a different system rather than another variant of the same one.
+slax-bottles has a profile of its own: `remove-bundle`, then `firmware-refresh`, `bottles`,
+`slax-bottles-iso` and `uefi-bootable`, on the 64-bit base. Gate 96 holds it to removal-first, but
+not to slax-wine's core list, because it is a different system rather than another variant of the
+same one.
 
 ## Status
 

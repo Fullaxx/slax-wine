@@ -230,7 +230,12 @@ the `toram` entry — which unmounts the medium. It belongs at the boot prompt, 
 
 **What would change this:** nothing. This is a per-medium decision by construction.
 
-## D-10 · No `firmware-refresh`, but say so loudly
+## D-10 · No `firmware-refresh`, but say so loudly — **reversed** by D-18
+
+**Reversed on 2026-09-28:** every image now carries `firmware-refresh`, for its hardware and for
+its licence files ([D-18](#d-18--refresh-the-firmware-and-ship-its-licences)). What follows is the
+original reasoning, kept because its numbers were wrong in an instructive way: the recipe costs
+54.2 MiB, not 90, and it is still not tested on hardware that needs it.
 
 Stock Slax ships **no GPU firmware at all** — no `amdgpu`, `i915`, `radeon` or `nouveau`. A modern
 AMD card does not initialise without `amdgpu`; Intel loses GuC/HuC. Under Wine that means software
@@ -451,7 +456,8 @@ systemd and glibc than stock Slax — its boot tests are what show that still bo
 `noload=20-wine.sb` its package database claims versions whose files are not loaded.
 
 **Measured sizes:** `20-wine.sb` 465.9 MiB, against 166.6 MiB on the 32-bit base; `31-notepadpp64.sb`
-6.5 MiB; slax64-wine-bios 815.6 MiB and slax64-wine-uefi 821.7 MiB. See [sizing.md](sizing.md).
+6.5 MiB; slax64-wine-bios 869.7 MiB and slax64-wine-uefi 875.9 MiB, 54.2 MiB of each the firmware (D-18). See
+[sizing.md](sizing.md).
 
 **What would change this:** Debian shipping a Wine built for the new WoW64, which runs 32-bit Windows
 code inside a 64-bit process — it would need no i386 libraries, and the lockstep would go away. A
@@ -493,3 +499,46 @@ negative is worth more than the positive here, and it is tested as such.
 **What would change this:** Notepad++ installers that coexist, or a prefix cheap enough to give each
 build its own. `WINEPREFIX=$HOME/.wine-npp64 notepadpp64` is that second prefix today, and the dialog
 names it.
+
+## D-18 · Refresh the firmware, and ship its licences
+
+**Decided 2026-09-26, built 2026-09-28.** Every profile lists upstream's `firmware-refresh`
+directly after `remove-bundle`. It builds two bundles:
+
+- **`09-firmware-debian.sb`, 48.8 MiB:** Debian's current firmware packages. That is 16 the stock
+  image lacks — among them `firmware-amd-graphics`, `firmware-misc-nonfree` (Intel `i915`, NVIDIA),
+  `firmware-intel-sound` and `firmware-sof-signed` — and nine of the ten stock ones, reinstalled at
+  the versions Slax already had. Each brings back the `copyright` file Slax's build removed: 26 in
+  all. `firmware-ipw2x00` is left alone, because its licence prompt would stop the install, and
+  its `ipw2x00.LICENSE` is already in the stock image.
+- **`09-firmware-linux.sb`, 5.4 MiB:** 65 files from linux-firmware at a pinned tag, each checked
+  against its sha256, with the licence files linux-firmware's `WHENCE` names for them (eleven,
+  under `usr/lib/firmware/LICENSES/`) and `WHENCE` itself.
+
+**Why.** Two reasons, either enough on its own:
+
+- **Hardware.** Stock Slax has no GPU firmware at all, so a modern AMD card does not initialise,
+  Intel loses GuC/HuC, and 3D falls back to llvmpipe. Laptops that use Sound Open Firmware have no
+  audio. For an image meant to run Windows programs, and one day games, that is the wrong default.
+- **Licences.** Slax's build strips every firmware package's `copyright` file. What the images add
+  now carries its terms, which is what the release policy asks of firmware
+  ([D-12](#d-12--publish-the-isos-with-pointers-to-their-source)). Stock `01-firmware.sb` is shipped
+  as Slax ships it, and its Broadcom b43 files never had a licence text.
+
+**What it costs.**
+- **Size:** +54.2 MiB on every image, measured. The ceilings in `build.env` moved with it:
+  589, 919 and 1359 MiB.
+- **Build:** a chroot step, apt, and 65 downloads from GitLab or git.kernel.org, which fail the
+  build rather than ship a partial set.
+- **Package database:** 16 more packages. `/usr`, `/usr/lib` and `/usr/share` become 0755 in the
+  running system where stock had 0775, because `20-wine.sb` and `20-flatpak.sb` now build on top of
+  the firmware bundles and record those directories as they find them.
+
+**Not tested on hardware that needs it.** slax-kitchen boot-verified the recipe in QEMU, and our
+twelve boot routes run on these images before the release; whether an AMD card initialises or SOF
+audio plays on a real machine is untested here and upstream. A card
+that does initialise may run a real Mesa driver instead of llvmpipe, which no test here has seen.
+
+**What would change this:** an image too large for its medium, or firmware whose terms the
+publisher cannot accept, which `remove-bundle` with `drop: 09-firmware` answers per build.
+

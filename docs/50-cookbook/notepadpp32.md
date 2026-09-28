@@ -102,9 +102,10 @@ which for an old game are precisely the risky parts. A games variant should not 
 from this page.
 
 Note also that stock Slax ships **no GPU firmware at all** — no `amdgpu`, `i915`, `radeon` or
-`nouveau` — so 3D under Wine falls back to software rendering until slax-kitchen's
-`firmware-refresh` recipe is applied. Notepad++ does not care; a game would. See
-[DECISIONS.md](../DECISIONS.md).
+`nouveau`. Every slax-wine image adds it with upstream's `firmware-refresh`
+([DECISIONS.md](../DECISIONS.md) D-18), but no real card has been booted with it, so whether 3D
+under Wine leaves software rendering on a given machine is untested. Notepad++ does not care; a
+game would.
 
 ## Verified
 

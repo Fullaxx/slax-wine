@@ -8,20 +8,20 @@ where the bytes go, and `ci/checks/96-release-consistency.sh` enforces a handful
 in code. What did not exist until this page is the answer to one question asked across all
 eight: **what do they have in common, and where do they deliberately differ.**
 
-Sizes are one build's, 2026-09-21; [sizing.md](sizing.md) says why a rebuild can move them.
+Sizes are one build's, 2026-09-28, the first with the firmware; [sizing.md](sizing.md) says why a rebuild can move them.
 
 ## The matrix
 
 | variant | base | profile | ships | firmware | own bundles | volume id | size |
 |---|---|---|---|---|---|---|---|
-| `slax32-wine-bios` | `slax-32bit-debian-12.2.0.iso` | `slax32-wine-bios.yaml` | **yes** | BIOS | `20-wine`, `21-wine-desktop`, `30-notepadpp32`, `98-dpkg-db` | `SLAX32-WINE` | 531,935,232 |
-| `slax32-wine-uefi` | `slax-32bit-debian-12.2.0.iso` | `slax32-wine-uefi.yaml` | **yes** | BIOS **and** UEFI | the same four, plus `boot/efi.img` | `SLAX32-WINE` | 538,425,344 |
-| `slax32-wine-test` | `slax-32bit-debian-12.2.0.iso` | `slax32-wine-test.yaml` | no | BIOS and UEFI | the same four | `SLAX32-WINE` | 538,437,632 |
-| `slax64-wine-bios` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-bios.yaml` | **yes** | BIOS | the four, plus `31-notepadpp64` | `SLAX64-WINE` | 855,173,120 |
-| `slax64-wine-uefi` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-uefi.yaml` | **yes** | BIOS **and** UEFI | the five, plus `boot/efi.img` | `SLAX64-WINE` | 861,663,232 |
-| `slax64-wine-test` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-test.yaml` | no | BIOS and UEFI | the five | `SLAX64-WINE` | 861,677,568 |
-| `slax-bottles` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles.yaml` | **yes** | BIOS and UEFI | `20-flatpak`, `30-bottles`, `98-dpkg-db` | `SLAX-BOTTLES` | 1,300,676,608 |
-| `slax-bottles-test` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles-test.yaml` | no | BIOS and UEFI | the same three | `SLAX-BOTTLES` | 1,300,688,896 |
+| `slax32-wine-bios` | `slax-32bit-debian-12.2.0.iso` | `slax32-wine-bios.yaml` | **yes** | BIOS | `09-firmware-debian`, `09-firmware-linux`, `20-wine`, `21-wine-desktop`, `30-notepadpp32`, `98-dpkg-db` | `SLAX32-WINE` | 588,742,656 |
+| `slax32-wine-uefi` | `slax-32bit-debian-12.2.0.iso` | `slax32-wine-uefi.yaml` | **yes** | BIOS **and** UEFI | the same six, plus `boot/efi.img` | `SLAX32-WINE` | 595,232,768 |
+| `slax32-wine-test` | `slax-32bit-debian-12.2.0.iso` | `slax32-wine-test.yaml` | no | BIOS and UEFI | the same six | `SLAX32-WINE` | 595,245,056 |
+| `slax64-wine-bios` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-bios.yaml` | **yes** | BIOS | the six, plus `31-notepadpp64` | `SLAX64-WINE` | 911,984,640 |
+| `slax64-wine-uefi` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-uefi.yaml` | **yes** | BIOS **and** UEFI | the seven, plus `boot/efi.img` | `SLAX64-WINE` | 918,474,752 |
+| `slax64-wine-test` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-test.yaml` | no | BIOS and UEFI | the seven | `SLAX64-WINE` | 918,489,088 |
+| `slax-bottles` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles.yaml` | **yes** | BIOS and UEFI | `09-firmware-debian`, `09-firmware-linux`, `20-flatpak`, `30-bottles`, `98-dpkg-db` | `SLAX-BOTTLES` | 1,357,389,824 |
+| `slax-bottles-test` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles-test.yaml` | no | BIOS and UEFI | the same five | `SLAX-BOTTLES` | 1,357,402,112 |
 
 **A uefi image is a superset of its bios twin, not an alternative.** `uefi-bootable` adds an
 EFI El Torito entry and keeps the BIOS one, so a uefi image boots everywhere its bios twin
@@ -84,8 +84,8 @@ no Debian Wine — Bottles brings its own — and exists only on the 64-bit base
 Flathub builds Bottles for x86_64 alone. It shares the bases, the bootloader work and the
 gates, and nothing else.
 
-**Two size ceilings, on different bases.** `WINE32_MAX_ISO_MIB=532` is the *bios* image plus
-5 %, `WINE64_MAX_ISO_MIB=862` the *uefi* one plus 5 %, and `BOTTLES_MAX_ISO_MIB=1304` the
+**Two size ceilings, on different bases.** `WINE32_MAX_ISO_MIB=589` is the *bios* image plus
+5 %, `WINE64_MAX_ISO_MIB=919` the *uefi* one plus 5 %, and `BOTTLES_MAX_ISO_MIB=1359` the
 one image plus 5 %. Each covers both of its architecture's images; the 6.2 MiB an ESP adds
 is well inside the margin either way.
 

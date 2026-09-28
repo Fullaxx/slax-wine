@@ -197,9 +197,9 @@ which is a bigger question than a YAML line. A signed release is a post-v1.0.0 w
   ok   volume id is 'SLAX32-WINE'
   ...
   ok   /slax/modules/98-dpkg-db.sb present
-  ok   size <= 532 MiB
+  ok   size <= 589 MiB
 
-21 passed, 0 failed
+23 passed, 0 failed
 ```
 
 The checksum is written from the output directory, so the filename inside it is **relative** and

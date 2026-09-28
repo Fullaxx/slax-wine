@@ -261,7 +261,7 @@ differs:
 | **machine** | 32-bit x86 with PAE, or any 64-bit x86 | **64-bit x86 only** | **64-bit x86 only** ([software.md](docs/software.md)) |
 | **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | the same | BIOS and UEFI. It is always built the way the slax-wine uefi images are, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
 | **what persistence keeps** | the Wine prefix, `/root/.wine` | the same | every bottle, under `/root/.var/app/com.usebottles.bottles/`. On an ext4 stick that is `slax/changes/1/root/.var/app/com.usebottles.bottles` |
-| **space** | the image's `slax/` is ~510 MiB, and a fresh Wine prefix 589 MiB before anything is installed in it | the image's `slax/` is ~816 MiB, and a fresh Wine prefix 1,265 MiB — it is 64-bit, and carries both halves of Wine's libraries | the image's `slax/` is ~1.2 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
+| **space** | the image's `slax/` is ~561 MiB, and a fresh Wine prefix 589 MiB before anything is installed in it | the image's `slax/` is ~869 MiB, and a fresh Wine prefix 1,265 MiB — it is 64-bit, and carries both halves of Wine's libraries | the image's `slax/` is ~1.3 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
 
 **Persistence, measured on this image:** two boots of `slax-bottles-test` on one ext4 perch disk
 under `kitchen test --persistence`. Boot 1 found no marker and wrote one into the union, and boot 2

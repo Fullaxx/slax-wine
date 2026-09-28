@@ -72,14 +72,16 @@ BSTAGE="$REPO_ROOT/recipes/available/bottles.files"
 # The expected /slax/modules contents. `kitchen test --structure` can require and forbid
 # paths, but not say "these and nothing else", and "chromium is gone" is half the size
 # claim, so assert the list exactly -- that also catches an accidental extra bundle, and
-# it is what proves 31-notepadpp64 is on the 64-bit images and nowhere else. On the 32-bit base, NINE: five stock survivors, our
-# three, and 98-dpkg-db.sb, which lib/pack.sh generates from the status fragments our
-# bundles ship. Forgetting that last one is the easy way to fail the build on its own
-# output. The 64-bit base has the same five stock survivors.
-WANT_MODULES32="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp32.sb 98-dpkg-db.sb"
-WANT_MODULES64="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp32.sb 31-notepadpp64.sb 98-dpkg-db.sb"
-# slax-bottles: the same five stock survivors, flatpak, Bottles, and the generated db.
-BOTTLES_WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 20-flatpak.sb 30-bottles.sb 98-dpkg-db.sb"
+# it is what proves 31-notepadpp64 is on the 64-bit images and nowhere else. On the 32-bit
+# base, ELEVEN: five stock survivors, firmware-refresh's two, our three, and 98-dpkg-db.sb,
+# which lib/pack.sh generates from the status fragments the bundles ship. Forgetting that
+# last one is the easy way to fail the build on its own output. The 64-bit base has the
+# same five stock survivors, and twelve in all.
+WANT_MODULES32="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 09-firmware-debian.sb 09-firmware-linux.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp32.sb 98-dpkg-db.sb"
+WANT_MODULES64="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 09-firmware-debian.sb 09-firmware-linux.sb 20-wine.sb 21-wine-desktop.sb 30-notepadpp32.sb 31-notepadpp64.sb 98-dpkg-db.sb"
+# slax-bottles: the same five stock survivors, the two firmware bundles, flatpak, Bottles,
+# and the generated db.
+BOTTLES_WANT_MODULES="01-core.sb 01-firmware.sb 02-xorg.sb 03-desktop.sb 04-apps.sb 09-firmware-debian.sb 09-firmware-linux.sb 20-flatpak.sb 30-bottles.sb 98-dpkg-db.sb"
 
 KEEP_WORK=0; NO_FETCH=0; ARCHES="32 64"; KINDS="bios uefi"; ONLY=""
 while [ $# -gt 0 ]; do
@@ -154,14 +156,14 @@ variant_config() {
                 V_SIZE=$BASE32_SIZE; V_SHA=$BASE32_SHA256
                 V_WANT=$WANT_MODULES32; V_MAX=$WINE32_MAX_ISO_MIB
                 V_PAYLOAD="notepadpp32"
-                V_OWN="20-wine 21-wine-desktop 30-notepadpp32 98-dpkg-db"
+                V_OWN="09-firmware-debian 09-firmware-linux 20-wine 21-wine-desktop 30-notepadpp32 98-dpkg-db"
                 V_APP="notepadpp32 $APP_VERSION"
             else
                 V_TARGET=$BASE64_TARGET; V_ISO=$BASE64_ISO
                 V_SIZE=$BASE64_SIZE; V_SHA=$BASE64_SHA256
                 V_WANT=$WANT_MODULES64; V_MAX=$WINE64_MAX_ISO_MIB
                 V_PAYLOAD="notepadpp32 notepadpp64"
-                V_OWN="20-wine 21-wine-desktop 30-notepadpp32 31-notepadpp64 98-dpkg-db"
+                V_OWN="09-firmware-debian 09-firmware-linux 20-wine 21-wine-desktop 30-notepadpp32 31-notepadpp64 98-dpkg-db"
                 V_APP="notepadpp32 and notepadpp64 $APP_VERSION"
             fi
             # The summary's first line and the application id in the PVD, both named for
@@ -175,7 +177,7 @@ variant_config() {
             V_TARGET=$BASE64_TARGET; V_ISO=$BASE64_ISO
             V_SIZE=$BASE64_SIZE; V_SHA=$BASE64_SHA256
             V_WANT=$BOTTLES_WANT_MODULES; V_MAX=$BOTTLES_MAX_ISO_MIB; V_PAYLOAD=bottles
-            V_OWN="20-flatpak 30-bottles 98-dpkg-db"
+            V_OWN="09-firmware-debian 09-firmware-linux 20-flatpak 30-bottles 98-dpkg-db"
             V_APP="$BOTTLES_APP $BOTTLES_VERSION (Flathub $BOTTLES_BRANCH)"
             V_TITLE="slax-bottles $VERSION ($1)"
             V_APPID="slax-bottles $VERSION${1#bottles} (base $BASE64_ISO)"

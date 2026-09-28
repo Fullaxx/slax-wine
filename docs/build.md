@@ -61,8 +61,18 @@ inside a 32-bit chroot. On x86-64 that is normally already true; on any other ar
 and no amount of `qemu-user` configuration is tested here. slax-bottles' chroot is x86-64, so an
 x86-64 host covers both.
 
-The Bottles staging step needs **network access to Flathub**, and much more disk than its bundle
-suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by piece:
+### Network
+
+Every build needs the network during **apply**, whatever `--no-fetch` says, which covers only the
+base ISOs:
+
+- `wine` and `bottles` install packages with apt from Debian's archive, inside the chroot;
+- `firmware-refresh` installs Debian's firmware packages the same way, and fetches 65 files from
+  linux-firmware at a pinned tag, each checked against its sha256. It tries GitLab, then
+  git.kernel.org, and a file neither serves fails the build rather than shipping a partial set.
+
+The Bottles staging step also needs **network access to Flathub**, and much more disk than its
+bundle suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by piece:
 
 | | |
 |---|---|
@@ -71,7 +81,7 @@ suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by
 | `work/bottles/` | 0.4 GB unpacked base, plus the 0.9 GB bundle |
 | `out/slax-bottles-<ver>.iso` | 1.2 GB |
 
-The squashed bundle is small again (889.5 MiB) because mksquashfs stores identical files once. Flatpak
+The squashed bundle is small again (889.4 MiB) because mksquashfs stores identical files once. Flatpak
 runs its install triggers through `bwrap`, and on a host without user namespaces (a container, for
 instance) that prints `bwrap: Creating new namespace failed`. That is harmless: the triggers only
 rebuild caches under `exports/` that Slax never reads, and `build.sh` checks what matters, the
@@ -177,10 +187,11 @@ Failing any of these fails the build:
   and each is under its ceiling (`WINE32_MAX_ISO_MIB`, `WINE64_MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
 - each ISO's `.sha256` is there and matches, and `kitchen pack` wrote its `.provenance.json`: the two
   things a project built on the image pins and reads ([building-on-slax-wine.md](building-on-slax-wine.md))
-- `/slax/modules/` contains **exactly** the expected bundles — on 32-bit, nine: five stock
-  survivors, our three, and the generated `98-dpkg-db.sb`; on 64-bit the same plus
-  `31-notepadpp64.sb`. A base's bios, uefi and test images share their list, because `uefi-bootable`
-  builds no bundle. slax-bottles has **eight**: the same five, `20-flatpak`, `30-bottles` and the db
+- `/slax/modules/` contains **exactly** the expected bundles — on 32-bit, eleven: five stock
+  survivors, `firmware-refresh`'s two, our three, and the generated `98-dpkg-db.sb`; on 64-bit the
+  same plus `31-notepadpp64.sb`. A base's bios, uefi and test images share their list, because
+  `uefi-bootable` builds no bundle. slax-bottles has **ten**: the same five, the two firmware
+  bundles, `20-flatpak`, `30-bottles` and the db
 - a uefi ISO has an EFI El Torito entry (`--expect-uefi`) and a bios ISO does not
 - the image's own `/etc/slax-*-release`, read back from its bundle, names the base it was built on
 - on 64-bit, the image's package database lists `wine64:amd64`, `wine32:i386` and `libwine` for both

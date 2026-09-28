@@ -66,9 +66,9 @@ must run after `slax-wine-iso`, which edits that file. Its pack hint (`uefi`) is
 `slax-bottles` is **not** a variant of the four above. Bottles exists only as an x86_64 Flatpak, so
 it is built on `debian-64bit-12.2.0`, and it carries **no Debian Wine**: Bottles runs sandboxed with
 its own runners and could not use ours ([DECISIONS.md](DECISIONS.md) D-14). Its profile is
-`remove-bundle`, [`bottles`](50-cookbook/bottles.md), [`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md),
-`uefi-bootable`, which gives eight bundles: the five stock survivors, `20-flatpak`, `30-bottles` and
-`98-dpkg-db`.
+`remove-bundle`, `firmware-refresh`, [`bottles`](50-cookbook/bottles.md),
+[`slax-bottles-iso`](50-cookbook/slax-bottles-iso.md), `uefi-bootable`, which gives ten bundles: the
+five stock survivors, the two firmware bundles, `20-flatpak`, `30-bottles` and `98-dpkg-db`.
 
 What it shares with slax-wine is the machinery, not the software: the engine pin, `VERSION`,
 `build.sh` (a per-variant `variant_config` picks base, module list, size ceiling and payload), the
@@ -87,6 +87,8 @@ That is the whole mechanism. It is not a naming convention laid over something e
 | bundle | ships | may be switched off with |
 |---|---|---|
 | `01-core` … `04-apps` | upstream Slax, untouched | — |
+| `09-firmware-debian.sb` | upstream's `firmware-refresh`: Debian's current firmware packages, the ten stock ones included, with their `copyright` files ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)) | `noload=09-firmware-debian.sb` |
+| `09-firmware-linux.sb` | the same recipe: firmware from linux-firmware no Debian package ships, with its licence files and `WHENCE` | `noload=09-firmware-linux.sb` |
 | `20-wine.sb` | Wine and its dependency closure — on 64-bit, both halves and the i386 libraries | `noload=20-wine.sb` |
 | `21-wine-desktop.sb` | launcher entry, env defaults, the wrapper | `noload=21-wine-desktop.sb` |
 | `30-notepadpp32.sb` | the application layer: the 32-bit Notepad++ | `noload=30-notepadpp32.sb` |

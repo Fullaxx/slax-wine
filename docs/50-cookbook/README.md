@@ -16,7 +16,7 @@ The first five recipes are slax-wine's, which is four images: bios and uefi on e
 `wine`, `wine-desktop` and `slax-wine-iso` serve both bases: each carries one step per base, guarded
 by `when: arch==32bit` or `arch==64bit`, and only the one matching the base runs.
 
-| profile | base | recipes, after upstream's `remove-bundle` |
+| profile | base | recipes, after upstream's `remove-bundle` and `firmware-refresh` |
 |---|---|---|
 | [`slax32-wine-bios`](../../profiles/slax32-wine-bios.yaml) | 32-bit | `wine`, `wine-desktop`, `notepadpp32`, `slax-wine-iso` |
 | [`slax32-wine-uefi`](../../profiles/slax32-wine-uefi.yaml) | 32-bit | the same, then upstream's `uefi-bootable` |
@@ -25,18 +25,19 @@ by `when: arch==32bit` or `arch==64bit`, and only the one matching the base runs
 
 Every shipped profile lists upstream's `remove-bundle` **first** — it has no page here because it is
 not ours; it drops `05-chromium.sb` with a pattern each profile states rather than inherits, and the
-engine refuses a plan where a removal follows anything that builds. The profiles are authoritative —
-`build.sh` drives them with `kitchen apply --profile`, and a recipe named by no profile is never
-built. `ci/checks/96-release-consistency.sh` fails on an unbuilt recipe; on the profiles of one base
-disagreeing about their recipes; on the 64-bit list being anything but the 32-bit one plus
-`notepadpp64`; on a profile whose name does not match its base or firmware; and on any shipped profile
-dropping the removal or listing it late.
+engine refuses a plan where a removal follows anything that builds. Upstream's `firmware-refresh`
+comes next, in every profile, for the firmware and its licences ([DECISIONS.md](../DECISIONS.md)
+D-18). The profiles are authoritative — `build.sh` drives them with `kitchen apply --profile`, and a
+recipe named by no profile is never built. `ci/checks/96-release-consistency.sh` fails on an unbuilt
+recipe; on the profiles of one base disagreeing about their recipes; on the 64-bit list being
+anything but the 32-bit one plus `notepadpp64`; on a profile whose name does not match its base or
+boot firmware; and on any shipped profile dropping the removal or listing it late.
 
 The last two belong to a different image, [`slax-bottles`](../../profiles/slax-bottles.yaml): 64-bit
-Slax, `remove-bundle`, then `bottles`, `slax-bottles-iso` and `uefi-bootable`. It uses none of the
-Wine recipes. Bottles is sandboxed and brings its own Wine, so it could not use ours
-([DECISIONS.md](../DECISIONS.md) D-14). Gate 96 holds it to removal-first, but not to the slax-wine
-recipe list.
+Slax, `remove-bundle` and `firmware-refresh`, then `bottles`, `slax-bottles-iso` and
+`uefi-bootable`. It uses none of the Wine recipes. Bottles is sandboxed and brings its own Wine, so
+it could not use ours ([DECISIONS.md](../DECISIONS.md) D-14). Gate 96 holds it to removal-first, but
+not to the slax-wine recipe list.
 
 ## The verification ladder
 

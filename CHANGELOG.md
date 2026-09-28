@@ -17,19 +17,19 @@ D-16).
 
 | image | size | |
 |---|---|---|
-| `slax32-wine-bios-1.0.0.iso` | 507.3 MiB | 32-bit base, the stock Slax bootloader |
-| `slax32-wine-uefi-1.0.0.iso` | 513.5 MiB | 32-bit base, plus upstream's `uefi-bootable` |
-| `slax64-wine-bios-1.0.0.iso` | 815.6 MiB | 64-bit base, the stock Slax bootloader |
-| `slax64-wine-uefi-1.0.0.iso` | 821.7 MiB | 64-bit base, plus upstream's `uefi-bootable` |
+| `slax32-wine-bios-1.0.0.iso` | 561.5 MiB | 32-bit base, the stock Slax bootloader |
+| `slax32-wine-uefi-1.0.0.iso` | 567.7 MiB | 32-bit base, plus upstream's `uefi-bootable` |
+| `slax64-wine-bios-1.0.0.iso` | 869.7 MiB | 64-bit base, the stock Slax bootloader |
+| `slax64-wine-uefi-1.0.0.iso` | 875.9 MiB | 64-bit base, plus upstream's `uefi-bootable` |
 
 A uefi image is a **superset** of its bios twin: `uefi-bootable` adds a GRUB EFI loader in an El
 Torito ESP and keeps the BIOS entry, so it boots everywhere the bios image does, and the **ISO**
 additionally boots on UEFI firmware. It changes nothing about USB sticks: its GRUB lives in an El
 Torito ESP, which `bootinst` never copies, so every image falls back to the stock FAT-only
-`syslinux.efi` there. The 32-bit images carry nine bundles; the 64-bit ones the same nine plus the
-64-bit Notepad++. The 64-bit images run 64-bit Windows programs as well as 32-bit ones.
+`syslinux.efi` there. The 32-bit images carry eleven bundles; the 64-bit ones the same eleven plus
+the 64-bit Notepad++. The 64-bit images run 64-bit Windows programs as well as 32-bit ones.
 
-**And a different system: `slax-bottles-1.0.0.iso` (1240.4 MiB)**, on the 64-bit base, because
+**And a different system: `slax-bottles-1.0.0.iso` (1294.5 MiB)**, on the 64-bit base, because
 Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles runs its own. See
 [docs/DECISIONS.md](docs/DECISIONS.md) D-14 and D-15.
 
@@ -43,7 +43,7 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   build owns `Program Files` itself. Verified under KVM in both directions, with the slax32
   negative control.
 - `bottles` (slax-bottles only). `flatpak` from bookworm as `20-flatpak.sb` (8.0 MiB), and as
-  `30-bottles.sb` (889.5 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
+  `30-bottles.sb` (889.4 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
   pinned by ostree commit in `BOTTLES_LOCK`, plus DXVK 3.1 and VKD3D-Proton 3.0.1, a launcher tile and
   `/etc/slax-bottles-release`. **Runtime-verified in QEMU with no network**: a bottle is created with
   the bundled `sys-wine-11.0` runner from only what the image ships, and `cmd /c ver` runs in it
@@ -56,11 +56,16 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 - `profiles/slax-bottles.yaml` and `slax-bottles-test.yaml`; `build.sh --bottles`,
   `--bottles-test`, `--all`, and `BOTTLES_RELOCK=1` for bumping the pin.
 - `docs/using-bottles.md`.
-- `docs/software.md`: what each ISO removes, adds and runs, and what it needs from the machine
-  (CPU, firmware, memory, GPU, storage), each figure marked measured or not. The exact versions
-  are generated rather than kept by hand: every build writes `out/<image>-<ver>.packages.tsv` from
-  the image's own `98-dpkg-db.sb` (626 installed packages on slax-wine, 597 on slax-bottles), and
-  slax-bottles also `out/slax-bottles-<ver>.flatpak.txt`.
+- `docs/software.md`: what each ISO removes, adds and runs, and what it needs from the machine (CPU,
+  firmware, memory, GPU, storage), each figure marked measured or not. The exact versions are
+  generated rather than kept by hand: every build writes `out/<image>-<ver>.packages.tsv` from the
+  image's own `98-dpkg-db.sb` (642 installed packages on slax32-wine, 832 on slax64-wine, 613 on
+  slax-bottles), and slax-bottles also `out/slax-bottles-<ver>.flatpak.txt`.
+- `firmware-refresh` — **upstream's** recipe, listed right after `remove-bundle` by every profile
+  ([docs/DECISIONS.md](docs/DECISIONS.md) D-18). `09-firmware-debian.sb` (48.8 MiB): Debian's
+  current firmware packages with their `copyright` files, 16 more than stock and nine of the stock
+  ten reinstalled. `09-firmware-linux.sb` (5.4 MiB): 65 files from linux-firmware at a pinned tag,
+  each checked by sha256, with their licence files and `WHENCE`. +54.2 MiB on every image.
 - `remove-bundle` — **upstream's** recipe, listed **first** by every profile. Drops
   `05-chromium.sb` (81.7 MiB), which is what pays for Wine. Each profile spells out `drop:
   "^05-chromium\.sb$"` rather than inheriting the recipe's identical default, so a later pin cannot
@@ -154,11 +159,14 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   ships both, as Flathub runtimes.)
 - **slax-bottles has only been run in QEMU**, under TCG. Real hardware is untested, and with it the
   whole GPU path: DXVK 3.x needs a Vulkan 1.4 driver, the runtime's Mesa has one, and whether a real
-  GPU initialises under Slax's 6.1 kernel with no GPU firmware is unknown. A bottle surviving a
-  reboot is not tested either, though the writable layer it lives in is. Offline, its first-run
-  wizard cannot finish and offers "Skip Setup", which is expected. See
+  GPU initialises under Slax's 6.1 kernel, with the GPU firmware the image now carries, is unknown.
+  A bottle surviving a reboot is not tested either, though the writable layer it lives in is.
+  Offline, its first-run wizard cannot finish and offers "Skip Setup", which is expected. See
   [docs/using-bottles.md](docs/using-bottles.md).
-- No GPU firmware, because stock Slax ships none — 3D under Wine falls back to software rendering.
+- **The firmware is untested on hardware that needs it.** Every image carries upstream's
+  `firmware-refresh` (D-18): GPU firmware for AMD, Intel and NVIDIA, Intel SOF audio, and more
+  network and Bluetooth, none of which stock Slax has. No real card has been booted with it, so
+  whether 3D leaves llvmpipe on a given machine is unknown.
 - No browser: `05-chromium.sb` is removed. It is gone from the xlunch launcher; the Fluxbox
   right-click menu still carries a "Web Browser" entry that offers to `apt install` one, because
   that menu is a static file in a stock bundle. See

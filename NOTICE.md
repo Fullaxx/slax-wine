@@ -49,7 +49,7 @@ if a file claiming *copied verbatim* differs from the vendored original.
 | DXVK 3.1, VKD3D-Proton 3.0.1 (slax-bottles only) | **zlib** / **LGPL-2.1** respectively |
 | every other Debian package in the image | its own licence. Those `20-wine.sb` and `20-flatpak.sb` install carry their `copyright` files under `/usr/share/doc`; Slax's build removed them from its own bundles |
 | the Linux kernel, aufs-patched by upstream Slax | **GPLv2** |
-| non-free firmware in `01-firmware.sb` | per-package redistribution terms |
+| non-free firmware: stock `01-firmware.sb`, and `09-firmware-debian.sb` and `09-firmware-linux.sb` from `firmware-refresh` | each firmware's own terms. The two `09-` bundles carry them: Debian's `copyright` files, and linux-firmware's licence files under `usr/lib/firmware/LICENSES/` with `WHENCE` |
 | the released `.iso` | an **aggregate**; no single licence covers it |
 
 ## Redistributing the ISOs
@@ -84,10 +84,19 @@ Where each part's source is published:
 | the GRUB EFI loader in the uefi images and slax-bottles, **GPLv3+** | built by `grub-mkstandalone` from the build host's unmodified GRUB. Each image's sidecar names the package and version it came from, and Launchpad publishes that source package's source: `grub2-unsigned` `2.12-1ubuntu7.3` in the builds of 2026-09-28 |
 
 **Firmware.** Using an image that contains firmware implies acceptance of each firmware's licence
-terms. Stock Slax's `01-firmware.sb` ships as Slax ships it, and Slax's build removed its packages'
-`copyright` files; slax-kitchen's [Firmware](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/NOTICE.md#firmware)
-section records exactly what is in it, the Broadcom b43 files that never had a licence text
-included.
+terms. Every image carries upstream's `firmware-refresh`
+([D-18](docs/DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)), so the terms travel
+with most of it:
+
+- `09-firmware-debian.sb` holds Debian's current firmware packages, with their `copyright` files:
+  16 the stock image lacks, and nine of its ten reinstalled to bring those files back;
+- `09-firmware-linux.sb` holds 65 files from linux-firmware, with the licence files its `WHENCE`
+  names for them, under `usr/lib/firmware/LICENSES/`, and `WHENCE` itself;
+- stock Slax's `01-firmware.sb` ships as Slax ships it. `firmware-ipw2x00` is not reinstalled, and
+  its `ipw2x00.LICENSE` is the one licence file Slax's build left. The Broadcom b43 files Slax's
+  build extracted never had a licence text.
+  slax-kitchen's [Firmware](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/NOTICE.md#firmware)
+  section records exactly what the stock bundle holds.
 
 ### If you rebuild and redistribute
 

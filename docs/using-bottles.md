@@ -93,9 +93,9 @@ gone at shutdown. A permanent update means a rebuild, which bumps the pin in `bu
 
 ## What does not work, or is not known
 
-- **3D acceleration is whatever Mesa manages on your hardware.** Stock Slax ships no GPU firmware
-  (D-10), and that is unchanged here. Without `amdgpu` or `i915` firmware you get llvmpipe:
-  software rendering, fine for applications, poor for games.
+- **3D acceleration is whatever Mesa manages on your hardware.** The image carries AMD, Intel and
+  NVIDIA GPU firmware (D-18), which stock Slax lacks, but no real card has been booted with it.
+  Where no driver loads you get llvmpipe: software rendering, fine for applications, poor for games.
 - **No `xdg-desktop-portal`.** It is not installed, and how Bottles' file choosers behave without
   it has not been tested. `bottles-cli` with a path (above) avoids the question.
 - **Real hardware is untested.** Every observation above is from QEMU. Under QEMU's `-cpu max`,

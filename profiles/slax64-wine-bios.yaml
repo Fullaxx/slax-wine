@@ -16,6 +16,12 @@ recipes:
   - name: remove-bundle
     vars: {drop: "^05-chromium\\.sb$"}
 
+  # Firmware: Debian's current firmware packages with their copyright files, and firmware
+  # from linux-firmware with its licences, as 09-firmware-debian and 09-firmware-linux
+  # (docs/DECISIONS.md D-18). Upstream's recipe, right after the removal, as its cookbook
+  # page asks: it builds bundles, and nothing may be removed after one is built.
+  - firmware-refresh
+
   - recipes/available/wine.yaml
   - recipes/available/wine-desktop.yaml
   - recipes/available/notepadpp32.yaml

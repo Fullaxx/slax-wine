@@ -151,7 +151,6 @@ risks locking out root, which is wildly out of proportion.
 |---|---|
 | a web browser | `05-chromium.sb` is removed to pay for Wine's size |
 | Wine Mono / Wine Gecko | not packaged by Debian; see above |
-| GPU firmware | **stock Slax ships none at all** — no `amdgpu`, `i915`, `radeon` or `nouveau`. 3D under Wine falls back to software rendering. slax-kitchen's `firmware-refresh` recipe fixes it for +90 MiB |
 | `wine64`, on `slax32-wine-*` | the 32-bit base has the 32-bit Wine only; the `slax64-wine-*` images have both |
 
 ## When something does not start
