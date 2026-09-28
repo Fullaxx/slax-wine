@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 0dd1b531624148cf733138a0c0a02f152ab864ff (ci/checks/35-pyflakes.sh).
+# Adapted from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/checks/35-pyflakes.sh).
 # MIT, same author. The EXECUTABLE HALF is byte-identical, so a future bump can diff it;
 # ONE difference, in the prose: upstream's argument is about the size of its engine
 # ("lib/apply.py alone is 4000 lines -- the half that was unchecked was the larger half"),
@@ -50,12 +50,12 @@
 # venv. In the reference container apt installs python3-pyflakes, which on ubuntu:24.04
 # ships the MODULE ONLY -- the binary is a separate package, pyflakes3 -- so doctor
 # reported `MISS pyflakes (apt-get install python3-pyflakes)` about a package that was
-# already installed, and both container jobs failed. kitchen:346 already stated the rule
-# for python3-yaml and python3-jsonschema: "Import them, the same way lib/validate.py
-# does, rather than asking dpkg." `python3 -m pyflakes` is the same answer for the same
-# reason, and it works whether the tool arrived from apt or from a venv -- which on THIS
-# machine it did: /opt/venv, where apt's python3-pyflakes would be invisible. docs/build.md
-# states the requirement as an import for that reason, not as a package name.
+# already installed, and both container jobs failed. doctor_toolchain in kitchen already
+# stated the rule for python3-yaml and python3-jsonschema: "Import them, the same way
+# lib/validate.py does, rather than asking dpkg." `python3 -m pyflakes` is the same answer
+# for the same reason, and it works whether the tool arrived from apt or from a venv -- which
+# on THIS machine it did: /opt/venv, where apt's python3-pyflakes would be invisible.
+# docs/build.md states the requirement as an import for that reason, not as a package name.
 . "$(dirname "$0")/../lib.sh"
 
 python3 -c "import pyflakes" 2>/dev/null \

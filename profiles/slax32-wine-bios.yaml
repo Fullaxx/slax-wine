@@ -16,9 +16,10 @@ recipes:
   #
   # A recipe absent from EVERY profile is never built -- the same gate fails on that too.
   #
-  # Paths for OURS, a NAME for THEIRS, and the distinction is mechanical rather than
-  # stylistic: name resolution searches the ENGINE's recipes/ directories, so it finds
-  # remove-bundle in the submodule and would never find ours, which live in this repo.
+  # Paths for OURS, a NAME for THEIRS. Until slax-kitchen 455a773 (#65) that was
+  # mechanical, because a name reached only the ENGINE's recipes/ directories. Now a name
+  # reaches this repository's recipes/ too, and ours stay paths anyway: a path says which
+  # checkout a recipe comes from, where a name found in both is refused as ambiguous.
   # (remove-bundle is written in the {name, vars} form rather than as a plain string so
   # that `drop:` is stated; both forms resolve by name.) A path resolves from the CURRENT
   # WORKING DIRECTORY (resolve() in lib/apply.py), which is why build.sh cd's to the repo

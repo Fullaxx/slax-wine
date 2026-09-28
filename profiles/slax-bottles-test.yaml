@@ -12,10 +12,10 @@ recipes:
   # `kitchen test` has our image to assert against. The ordering rules are exactly those
   # of profiles/slax32-wine-test.yaml; read its comments before moving anything.
   #
-  # FIRST: serial-console adds the only entry carrying console=ttyS0. Without that entry
-  # the harness falls back to screenshots and asserts nothing. It also hardcodes
-  # `automount`, so it must come before slax-bottles-iso, which strips it from every entry.
-  # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/50
+  # serial-console adds the only entry carrying console=ttyS0. Without that entry the
+  # harness falls back to screenshots and asserts nothing. Its entry copies LABEL default
+  # (slax-kitchen #50), so slax-bottles-iso's automount removal reaches it in either
+  # order.
   - serial-console
 
   # Removal before anything that builds. Second rather than first is legal, because

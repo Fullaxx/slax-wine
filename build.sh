@@ -64,16 +64,15 @@ cd "$REPO_ROOT" || { echo "build.sh: cannot cd to $REPO_ROOT" >&2; exit 2; }
 . "$REPO_ROOT/build.env"
 
 K="$REPO_ROOT/vendor/slax-kitchen/kitchen"
-ASSERT="$REPO_ROOT/vendor/slax-kitchen/tests/structure/iso_assert.py"
 ISO_DIR=${ISO_DIR:-$REPO_ROOT/isos}
 WORK=${WORK:-$REPO_ROOT/work}
 OUT=${OUT:-$REPO_ROOT/out}
 BSTAGE="$REPO_ROOT/recipes/available/bottles.files"
 
-# The expected /slax/modules contents. iso_assert.py has --require but no --forbid, and
-# "chromium is gone" is half the size claim, so assert the list exactly -- that also
-# catches an accidental extra bundle, and it is what proves 31-notepadpp64 is on the
-# 64-bit images and nowhere else. On the 32-bit base, NINE: five stock survivors, our
+# The expected /slax/modules contents. `kitchen test --structure` can require and forbid
+# paths, but not say "these and nothing else", and "chromium is gone" is half the size
+# claim, so assert the list exactly -- that also catches an accidental extra bundle, and
+# it is what proves 31-notepadpp64 is on the 64-bit images and nowhere else. On the 32-bit base, NINE: five stock survivors, our
 # three, and 98-dpkg-db.sb, which lib/pack.sh generates from the status fragments our
 # bundles ship. Forgetting that last one is the easy way to fail the build on its own
 # output. The 64-bit base has the same five stock survivors.
@@ -125,22 +124,14 @@ release_files() {
 }
 
 # Only the apply step is elevated; set this once rather than per variant.
+#
+# What apply writes as root into the work tree goes back to whoever ran sudo as the command
+# ends, however it ends: the engine does that since slax-kitchen 51c5699 (#70). This file
+# used to chown the tree itself after every apply, success or not, because a root-owned tree
+# wedged the next unprivileged run at its first `rm -rf`. docs/UPSTREAM.md records the
+# retirement.
 SUDO=""
 [ "$(id -u)" -eq 0 ] || SUDO="sudo -E"
-
-# Give the tree back whether apply succeeded or not. bundle.packages runs as root and
-# writes INTO <work>/iso/slax/modules/, so a root-owned tree is left behind either way --
-# and `rm -rf` on it is the first thing the NEXT run does, unprivileged. Running this on
-# the success path only meant one failed build wedged every subsequent one, with nothing
-# but a bare "Permission denied" and no documented recovery.
-#
-# (Not the scratch dir: bundle.packages does put kitchen-pkg-* beside the work tree, but
-# removes it in a `finally: shutil.rmtree(...)`, so that is not what this is for.)
-give_back_work() {
-    [ -n "$SUDO" ] || return 0
-    [ -e "$1" ] || return 0
-    $SUDO chown -R "$(id -u):$(id -g)" "$1" 2>/dev/null || true
-}
 
 [ -x "$K" ] || {
     echo "build.sh: vendor/slax-kitchen is empty -- run:" >&2
@@ -503,12 +494,10 @@ print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
     { $SUDO "$K" apply --profile "$profile" -w "$work" \
         && touch "$OUT/.apply-ok"; } 2>&1 | tee "$applog"
     [ -f "$OUT/.apply-ok" ] || {
-        give_back_work "$work"
         echo "build.sh: [$v] apply failed -- see $applog" >&2
         exit 1
     }
     rm -f "$OUT/.apply-ok"
-    give_back_work "$work"
 
     # --appid carries the version, because a CLI flag beats a recipe hint and that keeps
     # every version string out of the YAML where it could drift from the git tag.
@@ -546,10 +535,12 @@ print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
         uefi_flag="--expect-uefi"
     fi
     # --require is derived from V_OWN: the bundles this project builds for the variant.
+    # Through `kitchen test`, which has passed a size ceiling and --require to the structure
+    # test since slax-kitchen ce5d51a (#67); this ran iso_assert.py itself until then (D-13).
     req=""
     for b in $V_OWN; do req="$req --require /slax/modules/$b.sb"; done
     # shellcheck disable=SC2086
-    python3 "$ASSERT" "$out_iso" --volid "$volid" --max-size-mib "$V_MAX" $uefi_flag $req
+    "$K" test "$out_iso" --structure --volid "$volid" --max-size-mib "$V_MAX" $uefi_flag $req
 
     # An architecture's bios, uefi and test images share one list deliberately:
     # uefi-bootable builds NO bundle, it writes one boot/efi.img. If that ever differs

@@ -19,10 +19,10 @@ compat:
   # lib/apply.py walks this list before applying, so the dependency is real rather than
   # documentary.
   #
-  # PATHS, not bare names. Bare-name resolution searches the ENGINE's recipes/
-  # directories plus the current working directory (recipe_search_path() in lib/apply.py),
-  # and ours live in this repo -- so a bare "wine-desktop" would not be found. build.sh
-  # cd's to the repo root for exactly this reason.
+  # PATHS, not bare names, as in the profiles: a path says the recipe is this
+  # repository's. A bare "wine-desktop" would be found too since slax-kitchen 455a773
+  # (#65), which searches the vendoring project's recipes/. A path resolves from the
+  # current working directory, which is why build.sh cd's to the repo root.
   requires:
     - recipes/available/wine-desktop.yaml
 vars:

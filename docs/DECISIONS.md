@@ -167,15 +167,16 @@ the same mechanism for software that cannot be published at all**, and one contr
 projects is worth more than build-time self-containment. The proprietary case becomes "point it at a
 local path instead of a URL".
 
-**What it costs, measured at `7664625`:** the engine's publishing procedure cannot account for the
-installers. `bundle.files` copies each from `notepadpp32.files/` or its 64-bit twin, which
-`build.sh` fills and git ignores. So `kitchen sources` finds a file the project commit does not
-hold, and refuses the image
+**What it cost, until the `4a10303` bump:** the engine's publishing procedure could not account for
+the installers. `bundle.files` copies each from `notepadpp32.files/` or its 64-bit twin, which
+`build.sh` fills and git ignores, so `kitchen sources` found a file the project commit did not hold,
+and refused the image
 ([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
-A project that drops `30` and `31` from our image, as slax-rpgs will, drops the problem with them.
+That cost is gone. Since slax-kitchen `18bedc5` (#62), `kitchen sources` is a report that refuses
+nothing, and names each installer as something the recipe copied in; `bd899fd` (#61) removed the
+steps that refused.
 
-**What would change this:** needing a build with no network at all, or publishing through the
-engine's procedure, which needs the installers accounted for.
+**What would change this:** needing a build with no network at all.
 
 ## D-8 · No `isohybrid`. `uefi-bootable` — **reversed**, and the original reasoning had a hole
 
@@ -262,13 +263,13 @@ records that GRUB's version on a `grub (ESP)` line in each uefi image's build su
 (`out/build-summary-32-uefi.txt`, `-64-uefi`, `-bottles`) so the corresponding source is
 identifiable — the same standard the rest of this entry holds everything else to.
 
-**The engine's own publishing procedure does not accept these images.** Its first step,
-`kitchen sources`, run at `7664625`, refuses the Notepad++ installers (D-7). Past that, by its code,
-it would refuse stock Slax's firmware without its licence texts, which NOTICE.md does not yet
-mention, and it takes one image per release
+**The engine's procedure no longer decides.** At `7664625` it refused these images: `kitchen
+sources` on the Notepad++ installers (D-7), and by its code stock Slax's firmware without its
+licence texts, and more than one image per release
 ([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)).
-Whether the first release follows this entry by hand, waits for that procedure, or waits altogether
-is not decided. [Cutting a release](build.md#cutting-a-release) says so, and says what any route
+slax-kitchen `bd899fd` (#61) removed the steps that refused, and `18bedc5` (#62) made `kitchen
+sources` a report that refuses nothing, so since the `4a10303` bump its procedure is a few commands
+per image that our images go through. How the first release is published is not decided. [Cutting a release](build.md#cutting-a-release) says so, and says what any route
 needs.
 
 **What would change this:** upstream answering that issue — which closes the gap for every Slax
@@ -288,20 +289,22 @@ What keeps `build.sh` is what the engine cannot know about, and none of it is a 
 
 - the application payloads, fetched and checked before apply — each Notepad++ installer by sha256,
   and Bottles ref by ref against `BOTTLES_LOCK`;
-- each image's exact module list, which the structure test's `--require` cannot express;
+- each image's exact module list, which the structure test's `--require` and `--forbid` cannot
+  express together: these bundles, and nothing else;
 - the release file read back out of the bundle that shipped it, and both halves of Wine in the
   64-bit package database;
 - a size ceiling per image, and one `build.env` holding the version, both bases and every
   payload pin.
 
-It calls `kitchen` commands for what the engine does — `fetch`, `unpack`, `apply`, `pack` — as
-LAYERING.md asks of a project's own driver, except the structure test, which it runs directly:
-`kitchen test --structure` takes `--volid` and `--expect-uefi`, but not `--max-size-mib` or
-`--require`. The module-list check already covers `--require`.
+It calls `kitchen` commands for what the engine does — `fetch`, `unpack`, `apply`, `pack`, and
+`test --structure` — as LAYERING.md asks of a project's own driver. The structure test went through
+a `kitchen` command last: until the `4a10303` bump `build.sh` ran `iso_assert.py` itself, because
+`kitchen test --structure` took no size ceiling and no `--require`. slax-kitchen `ce5d51a` (#67)
+added both.
 
-**What would change this:** `kitchen build` running a project's own checks after `pack`, or
-`kitchen test --structure` taking a size ceiling, which would let the structure test go through a
-`kitchen` command as well.
+**What would change this:** `kitchen build` running a project's own checks after `pack` — the exact
+module list, the release file read back, both halves of Wine — which would leave `build.sh` only the
+payloads to fetch.
 
 ## D-14 · slax-bottles: a second system on the 64-bit base, with no Debian Wine
 

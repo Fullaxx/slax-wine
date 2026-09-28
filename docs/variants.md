@@ -52,7 +52,7 @@ breach — and the ones that say *prose only* are the ones to be careful with.
 | the module list is exactly what the variant should carry | `build.sh`, against `WANT_MODULES32/64` and `BOTTLES_WANT_MODULES` |
 | every variant in this table has a profile, and every profile has a row here | gate 96 §11 |
 | the same `.desktop` rules on every image | `tests/unit/test_desktop_entries.py` |
-| the ISO stays under its ceiling | `iso_assert.py --max-size-mib`, per variant |
+| the ISO stays under its ceiling | `kitchen test --structure --max-size-mib`, per variant, from `build.sh` |
 | **the volume id is the same across a base's three variants** | prose only — `slax-wine-iso.yaml` sets it once per base |
 | **the five stock bundles survive everywhere, and chromium never does** | prose only, beyond the per-variant module list above |
 

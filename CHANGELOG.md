@@ -10,7 +10,7 @@ See [docs/base-versions.md](docs/base-versions.md).
 Built on two bases, `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`) and
 `slax-64bit-debian-12.2.0.iso` (`61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70`),
-with slax-kitchen pinned at `0dd1b53`.
+with slax-kitchen pinned at `4a10303`.
 
 **Four slax-wine images, one system: bios and uefi on each base** ([docs/DECISIONS.md](docs/DECISIONS.md)
 D-16).
@@ -164,7 +164,3 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
 - Releases are **unsigned by choice** — this project has no signing key. (`iso.checksums: sign`
   was unusable upstream when this was written; that was our issue 3 and it was fixed in `7971eb5`,
   which is in the pinned engine.)
-- **The engine's publishing procedure does not accept these images yet.** `kitchen sources` cannot
-  account for the Notepad++ installers, which are fetched rather than committed (D-7), and stock
-  Slax's firmware bundle has no licence texts.
-  [Cutting a release](docs/build.md#cutting-a-release) says what that leaves.

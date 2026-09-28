@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 0dd1b531624148cf733138a0c0a02f152ab864ff (ci/checks/00-no-binaries.sh).
+# Copied verbatim from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/checks/00-no-binaries.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Reject ISOs, squashfs bundles, disk images and oversized files.
@@ -34,9 +34,11 @@ is_forbidden_ext() {
         */vmlinuz|vmlinuz|*/mbr.bin|*/isolinux.bin)                                return 0 ;;
         # Windows payloads, which had NO extension rule at all -- so one under 2 MiB walked
         # straight through, and KITCHEN_MAX_FILE_BYTES could raise that bar from outside the
-        # repo. The documented pattern is to FETCH a payload at build time and never commit
-        # it: bundle.fromTarball and bundle.files exist for that, and tor-browser.yaml pulls
-        # 138 MB rather than vendoring a byte. This list is what stops the shortcut. Issue #19.
+        # repo. A payload is fetched at build time or staged beside the recipe, and never
+        # committed: bundle.fromTarball for an archive -- tor-browser.yaml pulls 138 MB rather
+        # than vendoring a byte -- a bundle.files `url:` entry for a single file (verbs.md, "A
+        # file the build downloads"), or a `src:` entry copying what a project's build staged
+        # where git ignores it. This list is what keeps the payload out of history. Issue #19.
         *.exe|*.dll|*.msi|*.sys|*.cab)                                            return 0 ;;
     esac
     return 1

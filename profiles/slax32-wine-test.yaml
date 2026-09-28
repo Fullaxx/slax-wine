@@ -18,10 +18,9 @@ recipes:
   # to the same order by the engine itself, which refuses any plan where a removal
   # follows something that builds.
   #
-  # ORDER IS LOAD-BEARING IN BOTH DIRECTIONS HERE. Read the two notes below before
-  # moving anything; getting either backwards does not fail, it quietly tests nothing.
+  # Read the two notes below before moving anything.
 
-  # FIRST, and this is the one that is easy to get wrong.
+  # SERIAL-CONSOLE, and leaving it out is the mistake that is easy to make.
   #
   # serial-console adds the only boot entry carrying `console=ttyS0`, and without such an
   # entry the whole exercise is pointless: _serial_keys in lib/build.sh derives its menu
@@ -29,17 +28,12 @@ recipes:
   # to SCREENSHOT ONLY -- it boots, asserts nothing, and says so. Upstream ran four CI
   # passes in that state believing they were checked.
   #
-  # But its append line HARDCODES `automount` (the `append:` in the engine's
-  # recipes/available/serial-console.yaml).
-  # So it must come BEFORE slax-wine-iso, whose `boot.cmdline remove: [automount]` strips
-  # the flag from every APPEND line in both configs. Put serial-console after it and the
-  # serial entry -- the only entry any boot test actually selects -- would be the one
-  # entry that still had automount, and the probe below would report a failure that is an
-  # artefact of recipe order rather than of the image.
-  #
-  # WORKAROUND https://github.com/Fullaxx/slax-kitchen/issues/50 -- the order is the
-  # workaround. #50 asks for a serial entry that carries the image's own command line in
-  # any order. If upstream does that, the order stops mattering and this note goes.
+  # It is first by history, not necessity. Its entry used to be stock Slax's command line
+  # written out, `automount` included, so it had to come before slax-wine-iso's removal.
+  # Since slax-kitchen 75c1633 (#50) it copies LABEL default as that entry stands, and
+  # slax-wine-iso's `boot.cmdline` edits every entry there is when it runs, so in either
+  # order the serial entry -- the only one any boot test selects -- carries the shipped
+  # command line.
   - serial-console
 
   # REMOVAL FIRST, AND IT MUST BE A RECIPE OF ITS OWN. lib/validate.py refuses a recipe

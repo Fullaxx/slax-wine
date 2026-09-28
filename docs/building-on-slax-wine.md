@@ -2,16 +2,16 @@
 
 For a project that takes a slax-wine image as its base and builds its own on top —
 [slax-rpgs](https://github.com/Fullaxx/slax-rpgs) is the first. slax-kitchen's
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md) is the model: a
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md) is the model: a
 project builds on another project's released **image**, not its source, and vendors the engine
-itself. This page is slax-wine's side of that:
-[what a base project owes](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md#what-a-base-project-owes-the-projects-built-on-it)
-the projects built on it, answered for these images, with where each answer was measured.
+itself. This page is slax-wine's side of that: LAYERING.md's list of
+[what helps the projects built on it](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md#what-helps-the-projects-built-on-it),
+answered for these images, with where each answer was measured.
 
 ## Which image to build on
 
 **Any of them, with `uefi-bootable` listed last** if your image should boot on UEFI, as
-[LAYERING.md's step 6](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md#what-a-consumer-does)
+[LAYERING.md's step 6](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md#what-a-consumer-does)
 says.
 
 | you build on | `uefi-bootable` |
@@ -50,11 +50,11 @@ pointing at it. `kitchen pack` warns, and `kitchen test --structure` fails it.
   file name inside written relative, so `sha256sum -c` works wherever the pair lands.
 - **Vendor the engine yourself, at the commit that built the image**: `kitchen.commit` in
   `<image>.iso.provenance.json`. `CHANGELOG.md` names the same pin for each release. If you boot
-  your tests on a boot host, its `boot-host.ini` goes inside that vendored engine, the only place the
-  engine reads it, where the engine's own `.gitignore` already keeps it out of your repository.
+  your tests on a boot host, its `boot-host.ini` goes at your repository's root, which the vendored
+  engine reads first. List it in your `.gitignore`; the engine's gate 10 refuses it if staged.
 - **Until a release is published, pin a local build.** Only the machine that built it has those
   bytes: images are
-  [not byte-reproducible](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/docs/40-workflow/reproducibility.md).
+  [not byte-reproducible](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/docs/40-workflow/reproducibility.md).
 
 ## The release file, and the browser mask
 
@@ -113,10 +113,12 @@ work tree, not in the image.
   `wine-desktop`, `notepadpp32`, `notepadpp64`, `slax-wine-iso` and `uefi-bootable`.
 - **`uefi-bootable` is the exception.** List it again, last, as above.
 - **`slax-wine-iso`'s boot-menu edit is the one that bites.** It removed `automount` from every
-  boot entry our image has, and that carries over. An entry *you* add brings its own command line,
-  though, and `serial-console`'s is stock Slax's, with `automount` in it: measured at `0dd1b53`
-  ([the record](UPSTREAM.md#adopted-at-the-0dd1b53-bump)). If you add entries and want our default,
-  remove it again after them. Our own test profiles list `serial-console` first for the same reason.
+  boot entry our image has, and that carries over. `serial-console` copies `LABEL default` since
+  slax-kitchen `75c1633` (#50), so with the engine at `4a10303` or later its entry carries our
+  command line, `automount` removed. At an older pin it wrote stock Slax's line, `automount`
+  included: measured at `0dd1b53` ([the record](UPSTREAM.md#adopted-at-the-0dd1b53-bump)). An entry
+  you write out yourself brings its own command line, so if you want our default, leave `automount`
+  out of it.
 - **What does not carry over** is what gets written when an image is mastered: the volume id and the
   rest of the identity, the UEFI boot entry, and a hybrid MBR, which none of ours has. Write your
   own, as LAYERING.md's steps 5 and 6 say.
@@ -140,15 +142,16 @@ engine's.
 
 ## Publishing your image
 
-The engine's release procedure does not support an image built on another project's image yet
-([LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md#provenance-and-publishing)).
-Our own images do not pass it either, for two reasons that carry into yours
-([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)):
+An image built on one of ours is published like any other, with the engine's commands
+([LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md#provenance-and-publishing)),
+and nothing in them refuses one since slax-kitchen `bd899fd` (#61). `kitchen sources` lists every
+file your image inherited from ours as `base`, pointing at our image by name and sha256 (#62).
 
-- the Notepad++ installers are copied from a staging directory the commit does not hold
-  ([D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it)), which dropping `30` and `31`
-  removes;
+Two facts about what you inherit still carry into your image:
+
+- the Notepad++ installers, if you keep `30` and `31`, are ones our build downloaded and copied in
+  ([D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it));
 - stock Slax's `01-firmware.sb` has no licence texts, which stays unless you add `firmware-refresh`
-  or remove `01-firmware`, the two remedies the engine names.
+  or remove `01-firmware`.
 
 How slax-wine itself publishes is [Cutting a release](build.md#cutting-a-release).

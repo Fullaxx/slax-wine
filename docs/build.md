@@ -116,7 +116,7 @@ four full builds; narrow it while iterating: `./build.sh --32 --bios`.
 `build.sh` `cd`s to the repo root before doing anything, so it is safe to invoke by absolute path.
 That is not cosmetic: the profile names its recipes by relative path, and the engine resolves those
 against the **current working directory**, not the repo root — which slax-kitchen's
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md) makes the rule for
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md) makes the rule for
 every project: build from its root.
 
 ## Commit gates
@@ -129,11 +129,12 @@ ln -sf ../../ci/hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../ci/hooks/pre-push   .git/hooks/pre-push
 ```
 
-Boot tests are separate from both, and they do not have to run on this machine: if
-`vendor/slax-kitchen/boot-host.ini` names one, every `kitchen test` is carried there over ssh and
-booted with KVM, which is how the timings in the cookbook were taken. The file is gitignored and
-refused by `10-no-dnc.sh` if it is ever staged, because it names somebody's machine; the template
-is `vendor/slax-kitchen/boot-host.example.ini`, `kitchen boot-host check` says whether it works, and
+Boot tests are separate from both, and they do not have to run on this machine: if a
+`boot-host.ini` at this repository's root names one, every `kitchen test` is carried there over ssh
+and booted with KVM, which is how the timings in the cookbook were taken. The vendored engine reads
+it there before its own checkout. The file is gitignored and refused by `10-no-dnc.sh` if it is
+ever staged, because it names somebody's machine; the template is
+`vendor/slax-kitchen/boot-host.example.ini`, `kitchen boot-host check` says whether it works, and
 `KITCHEN_BOOT_HOST=local` boots here instead. A configured host that cannot be reached **fails the
 command** rather than quietly falling back.
 
@@ -144,10 +145,10 @@ Run them by hand any time:
 ./ci/run-checks.sh pre-commit
 ```
 
-> **Do not use `kitchen doctor --install-hooks` for this repo.** It derives its repo root from the
-> `kitchen` script's own location, which here is `vendor/slax-kitchen` — a submodule, whose `.git`
-> is a *file*, not a directory. It fails with `error: not a git repo`. The two `ln -sf` lines above
-> are the supported way.
+`vendor/slax-kitchen/kitchen doctor --install-hooks` makes the same two links. It links a
+vendoring project's `ci/hooks/` into that project's repository since slax-kitchen `49a465f` (#66),
+and refuses where `core.hooksPath` is set. Before that it looked only at the submodule, and failed
+with `not a git repo`.
 
 Six gates are copied verbatim from slax-kitchen, five are adapted, and
 `96-release-consistency.sh` is ours. Two helpers they call, `ci/md-links.py` and `ci/unit-run.py`,
@@ -212,17 +213,13 @@ A release is what the projects built on slax-wine pin
 provenance sidecar as well as the image.
 
 **Which route it takes is not decided yet.** slax-kitchen's own procedure,
-[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/docs/40-workflow/publishing-images.md),
-runs `kitchen sources`, then `ci/release-assets.sh` and `ci/release-verify.py` from
-`vendor/slax-kitchen/`. It does not accept these images today:
-
-- **Notepad++ (measured).** `kitchen sources` refuses the installers, which `build.sh` stages in a
-  directory git ignores ([D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it)).
-- **Firmware and multi-image releases (read, not run).** Past that, `release-verify.py` would refuse
-  stock Slax's firmware without its licence texts, and it takes one image per release.
-
-[The record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)
-has both. [D-12](DECISIONS.md#d-12--publish-the-isos-with-the-licence-gap-documented) and
+[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/docs/40-workflow/publishing-images.md),
+is per image `kitchen sources --markdown --json` from `vendor/slax-kitchen/`, and one `SHA256SUMS`
+for all of them, published beside each image's provenance sidecar. Nothing in it refuses an image
+since slax-kitchen `bd899fd` (#61) and `18bedc5` (#62). Until the `4a10303` bump it did refuse
+these, on the Notepad++ installers and by its code on stock Slax's firmware and on more than one
+image per release
+([the record](UPSTREAM.md#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)). [D-12](DECISIONS.md#d-12--publish-the-isos-with-the-licence-gap-documented) and
 [NOTICE.md](../NOTICE.md) are this project's own policy: publish, attach source for everything
 identifiable, and state the gap.
 
@@ -246,5 +243,5 @@ Whichever route, in this order:
 
 ## Upstream
 
-The engine is pinned at [`0dd1b53`](https://github.com/Fullaxx/slax-kitchen/tree/0dd1b53). Bumping the
+The engine is pinned at [`4a10303`](https://github.com/Fullaxx/slax-kitchen/tree/4a10303). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

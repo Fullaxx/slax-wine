@@ -195,9 +195,9 @@ retired row stays, so the next reader can see what we once carried and why it we
 | [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `build.sh` | staged DXVK/VKD3D under `bottles-data/` instead of a `root/.var/…` mirror of where they go | retired at `86d27d5` |
 | [#26](https://github.com/Fullaxx/slax-kitchen/issues/26) | `recipes/available/bottles.yaml` | took that stage from `bottles-data/`, the `src:` half of the same workaround | retired at `86d27d5` |
 | [#29](https://github.com/Fullaxx/slax-kitchen/issues/29) | `build.sh` | refuses a variant whose profile declares another base, and a work tree unpacked from another ISO -- `kitchen apply --profile` checked neither | retired at `7f9c4f8`; `949074b` reads the profile's `base:` and refuses the mismatch itself, and `cc28622` measures the arch, so the recorded-source half went. The three-part comparison stays in `build.sh` **unmarked**: upstream compares flavour and arch and deliberately not version, and here the version is not free |
-| [#50](https://github.com/Fullaxx/slax-kitchen/issues/50) | `profiles/slax32-wine-test.yaml` | lists `serial-console` first, so its entry is on the menu before `slax-wine-iso` removes `automount` from every entry | active since `0dd1b53`; the order is older than the issue, and was marked when it was filed |
-| [#50](https://github.com/Fullaxx/slax-kitchen/issues/50) | `profiles/slax64-wine-test.yaml` | the same, before `slax-wine-iso` | active since `0dd1b53`; marked when filed |
-| [#50](https://github.com/Fullaxx/slax-kitchen/issues/50) | `profiles/slax-bottles-test.yaml` | the same, before `slax-bottles-iso` | active since `0dd1b53`; marked when filed |
+| [#50](https://github.com/Fullaxx/slax-kitchen/issues/50) | `profiles/slax32-wine-test.yaml` | lists `serial-console` first, so its entry is on the menu before `slax-wine-iso` removes `automount` from every entry | retired at `4a10303`: `75c1633` copies the entry from `LABEL default`, so the order no longer decides its command line. The order stays, and its comment now says why it no longer matters. It was active from `0dd1b53`, and the order is older than the issue |
+| [#50](https://github.com/Fullaxx/slax-kitchen/issues/50) | `profiles/slax64-wine-test.yaml` | the same, before `slax-wine-iso` | retired at `4a10303`, as above |
+| [#50](https://github.com/Fullaxx/slax-kitchen/issues/50) | `profiles/slax-bottles-test.yaml` | the same, before `slax-bottles-iso` | retired at `4a10303`, as above |
 
 ---
 
@@ -221,9 +221,10 @@ from the one option of an unfiled draft of ours it had not taken, was closed the
 `658e78b` and taken at [the `0dd1b53` bump](#adopted-at-the-0dd1b53-bump). #42 to #48, filed
 from slax-rpgs's planning on 2026-09-24, were all closed by the `b4eb25b` bump — three of them as
 superseded; [their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeringmd) says how.
-**#50 to #58 are open**, filed at the `0dd1b53` pin on 2026-09-26. [Their
-section](#filed-at-the-0dd1b53-pin--50-to-58) says which need code and which only documentation, and
-what each means here.
+#50 to #58, filed at the `0dd1b53` pin on 2026-09-26, were all closed by 2026-09-27, each by a
+commit of its own ([their section](#filed-at-the-0dd1b53-pin--50-to-58)), and #59 to #70, which
+upstream filed from what slax-wine and slax-rpgs needed, by 2026-09-28. All of them were taken at
+[the `4a10303` bump](#adopted-at-the-4a10303-bump), which says what each did here.
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -458,6 +459,25 @@ a path and derives no root, so borrowing would have worked; it is copied for sym
 What we **did** take from this range is upstream's **gate-count check**, folded into our adapted
 `90-doc-coverage.sh` with a wider anchor. Four files here state that number in prose and nothing else
 checked them; upstream's own anchor missed two of the four (`ci/` alone, and the noun `checks`).
+
+**`iso-identity`'s and `boot-cmdline`'s new vars** (`9f3eb09`, #68), taken at the
+[`4a10303` bump](#adopted-at-the-4a10303-bump), are not used here yet. The issue named slax-wine's
+own identity recipes as the reason: `iso-identity` had no application id and a fixed preparer, and
+`boot-cmdline` always appended `toram`. Both are fixed now, so `slax-wine-iso` and
+`slax-bottles-iso` could hand their identity and their `automount` removal to upstream's two recipes.
+That changes what every image records in its volume descriptor, and a release is not the moment to
+change it. Revisit after 1.0.0, comparing each identity field before and after.
+
+**Bare recipe and profile names from this repository** (`455a773`, #65). A name now reaches our
+`recipes/` and `profiles/` as well as the engine's. Ours stay paths anyway: a path says which
+checkout a recipe comes from, where a name found in both is refused as ambiguous, and `build.sh`
+names its profiles by path. The profile comments that said a name "would never find ours" were
+corrected at the same bump.
+
+**A profile's `test:` map** (`ce5d51a`, #67), which carries a size ceiling and paths to require or
+forbid into `kitchen build`. `build.sh`, not `kitchen build`, runs our images
+([D-13](DECISIONS.md#d-13--buildsh-not-kitchen-build)), so it passes the same checks to
+`kitchen test --structure` directly, which is the half of #67 we use.
 
 ## Filed at the `bcd4f00` bump — round three
 
@@ -1624,7 +1644,7 @@ repository copies verbatim. slax-wine's own part went in as
 
 Upstream settled the frame with a decision rather than three engine changes: **a project builds on
 another project's released image, not its source**, and every project vendors the engine directly.
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0dd1b53/LAYERING.md) records it, and
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md) records it, and
 what it asks of slax-wine as the first *base project* is slax-wine#2's work, which
 [building-on-slax-wine.md](building-on-slax-wine.md) answers.
 
@@ -1921,17 +1941,21 @@ documentation. Each was held to [the bar above](#our-own-bar-which-is-higher):
 
 `ci/run-checks.sh ci` passed at `0dd1b53`, 13 of 13.
 
-| # | kind | what | here |
-|---|---|---|---|
-| [50](https://github.com/Fullaxx/slax-kitchen/issues/50) | code fix | `serial-console`'s entry carries stock Slax's command line, so it misses every cmdline edit made before it, a base image's included | our three test profiles list it first, now marked as the workaround ([Local workarounds](#local-workarounds)). A project built on our images removes `automount` again after it ([building-on-slax-wine.md](building-on-slax-wine.md)) |
-| [51](https://github.com/Fullaxx/slax-kitchen/issues/51) | documentation, plus an optional enhancement | a single pinned download has one honest route, a `bundle.script` that prints `KITCHEN-FETCHED`, and nothing says so | it would account for our Notepad++ installers: measured with the real 32-bit one, `kitchen sources --strict` passes. Taking that route would change [D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it), and nothing here has decided to |
-| [52](https://github.com/Fullaxx/slax-kitchen/issues/52) | code fix | a prebuilt ELF binary is accounted for only inside a tarball | slax-bottles: its Flatpak stage holds 4,473 distinct ELF files and is refused as compiled code, even under `--allow-dirty`. `bundle.script` cannot install a Flatpak |
-| [53](https://github.com/Fullaxx/slax-kitchen/issues/53) | documentation | `kitchen sources --allow-dirty` also accepts copied-in inputs that the commit does not hold, and counts them `ours` | nothing here passes the flag. It would hide the refusal of the staged installers that [the `7664625` record](#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them) measured, so no check of ours should pass it either |
-| [54](https://github.com/Fullaxx/slax-kitchen/issues/54) | code fix, or documentation if one image per release is the design | the publishing procedure holds one image per release | five images from one tag cannot be one verified set today |
-| [55](https://github.com/Fullaxx/slax-kitchen/issues/55) | code fix, a small one | `boot.uefi` renames the new ESP before `grub.cfg` | none for our builds, which start from fresh trees. The bump above noted it, and the issue shows the window by fault injection, with a one-line fix |
-| [56](https://github.com/Fullaxx/slax-kitchen/issues/56) | documentation | `35-pyflakes.sh` cites `kitchen:346` for a rule now at `:374` | our adapted copy of that gate carries the same sentence, and keeps upstream's wording until upstream changes it |
-| [57](https://github.com/Fullaxx/slax-kitchen/issues/57) | documentation, not actionable until this repository is pushed | LAYERING.md can point at [building-on-slax-wine.md](building-on-slax-wine.md) | ready once `master` on GitHub is past `7535d6c` |
-| [58](https://github.com/Fullaxx/slax-kitchen/issues/58) | code fix, one line | `kitchen doctor --report` asks `ssh --version`, which OpenSSH does not take, so the ssh row shows a usage error instead of a version | every doctor report we attach carries that row, those in #50 to #57 included. `ssh -V` is the fix, tried on a copy of the engine |
+**All nine are closed**, each by the commit in the last column, and taken at
+[the `4a10303` bump](#adopted-at-the-4a10303-bump). The *here* column is what each meant when it was
+filed.
+
+| # | kind | what | here, when filed | closed by |
+|---|---|---|---|---|
+| [50](https://github.com/Fullaxx/slax-kitchen/issues/50) | code fix | `serial-console`'s entry carries stock Slax's command line, so it misses every cmdline edit made before it, a base image's included | our three test profiles list it first, now marked as the workaround ([Local workarounds](#local-workarounds)). A project built on our images removes `automount` again after it ([building-on-slax-wine.md](building-on-slax-wine.md)) | `75c1633` |
+| [51](https://github.com/Fullaxx/slax-kitchen/issues/51) | documentation, plus an optional enhancement | a single pinned download has one honest route, a `bundle.script` that prints `KITCHEN-FETCHED`, and nothing says so | it would account for our Notepad++ installers: measured with the real 32-bit one, `kitchen sources --strict` passes. Taking that route would change [D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it), and nothing here has decided to | `dbcec34` |
+| [52](https://github.com/Fullaxx/slax-kitchen/issues/52) | code fix | a prebuilt ELF binary is accounted for only inside a tarball | slax-bottles: its Flatpak stage holds 4,473 distinct ELF files and is refused as compiled code, even under `--allow-dirty`. `bundle.script` cannot install a Flatpak | `7266024`, then superseded by `18bedc5` |
+| [53](https://github.com/Fullaxx/slax-kitchen/issues/53) | documentation | `kitchen sources --allow-dirty` also accepts copied-in inputs that the commit does not hold, and counts them `ours` | nothing here passes the flag. It would hide the refusal of the staged installers that [the `7664625` record](#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them) measured, so no check of ours should pass it either | `dbcec34` |
+| [54](https://github.com/Fullaxx/slax-kitchen/issues/54) | code fix, or documentation if one image per release is the design | the publishing procedure holds one image per release | five images from one tag cannot be one verified set today | `52e7814`, then superseded by `bd899fd` |
+| [55](https://github.com/Fullaxx/slax-kitchen/issues/55) | code fix, a small one | `boot.uefi` renames the new ESP before `grub.cfg` | none for our builds, which start from fresh trees. The bump above noted it, and the issue shows the window by fault injection, with a one-line fix | `794dfd5` |
+| [56](https://github.com/Fullaxx/slax-kitchen/issues/56) | documentation | `35-pyflakes.sh` cites `kitchen:346` for a rule now at `:374` | our adapted copy of that gate carries the same sentence, and keeps upstream's wording until upstream changes it | `dbcec34` |
+| [57](https://github.com/Fullaxx/slax-kitchen/issues/57) | documentation, not actionable until this repository is pushed | LAYERING.md can point at [building-on-slax-wine.md](building-on-slax-wine.md) | ready once `master` on GitHub is past `7535d6c` | `dbcec34` |
+| [58](https://github.com/Fullaxx/slax-kitchen/issues/58) | code fix, one line | `kitchen doctor --report` asks `ssh --version`, which OpenSSH does not take, so the ssh row shows a usage error instead of a version | every doctor report we attach carries that row, those in #50 to #57 included. `ssh -V` is the fix, tried on a copy of the engine | `c6fc8d1` |
 
 **What the attack changed.** #51 began as a request for a way to ship a staged download. The
 engine already has one: a `bundle.script` fetched the real installer and printed its
@@ -1951,6 +1975,109 @@ tree, and `/opt/bottles`. The fourth is the Flatpak's compiled code. `--allow-di
 that fourth. The image was built during the pin bump, from a tree described as `13dc2db-dirty`.
 The refusals do not depend on that: the stage is ignored, and compiled code is refused whether it
 is committed or not.
+
+## Adopted at the `4a10303` bump
+
+Twenty-two commits, `0dd1b53..4a10303`, 75 files, +3,954/−2,831, from 2026-09-26 to 2026-09-28.
+CI on `4a10303` is green in every job (the `ci` push run 36418336723). The range closes every issue
+this repository filed at the `0dd1b53` pin, #50 to #58, and #59 to #70, which upstream filed itself
+from what slax-wine and slax-rpgs needed. Each was read as message and diff, and each `Closes` line
+was taken from the commit itself.
+
+**The headline: the engine no longer decides whether an image may be published.** `bd899fd` (#61)
+removed `release-assets.sh`, `release-verify.py` and `redistribution-claim.py`, and upstream's
+NOTICE.md now says what a published image travels with: `SHA256SUMS`, the provenance sidecar and,
+optionally, `SOURCES.md`, with no source attached for what the build did not change. `18bedc5`
+(#62) made `kitchen sources` a report that refuses nothing, with classes `recipe`, `unrecorded` and
+`base` where `ours` and `unresolved` were, and no `--strict`, `--allow-dirty` or `--fetch`. That is
+the pointer policy this repository chose for its first release on 2026-09-26, so the question
+[the `7664625` record](#measured-at-7664625-a-project-built-on-our-images-and-kitchen-sources-on-them)
+left open, whether our images could go through the engine's procedure, is gone: there is nothing
+left in it to refuse them.
+
+| commit | issue | what changed | here |
+|---|---|---|---|
+| `ec4e532`, `84f32a5`, `7d5f7a0` | — | test docstrings and counts; an undefined `{{name}}` names its step instead of a traceback | nothing |
+| `dbcec34` | #51 #53 #56 #57 | the single-download route documented; `--allow-dirty`'s waivers named; `35-pyflakes.sh`'s citation; LAYERING.md points at [building-on-slax-wine.md](building-on-slax-wine.md) | `00-no-binaries.sh` re-copied, `35-pyflakes.sh` re-adapted |
+| `c6fc8d1` | #58 | doctor's ssh row asks `ssh -V` | nothing |
+| `794dfd5` | #55 | `boot.uefi` renames `grub.cfg` before the ESP | nothing; our builds start from fresh trees |
+| `75c1633` | #50 | `boot.menu add: from:`; `serial-console` copies `LABEL default`; the menu-entry schema closed | the three test profiles' workaround retired ([Local workarounds](#local-workarounds)); their `syslinux.cfg` serial entry now carries `perchdir=resume`, as the default entry does |
+| `877b07c`, `7266024`, `52e7814`, `841b11c` | #59 #52 #54 | `bundle.files` `url:` entries; checked `KITCHEN-FETCHED` lines; multi-image release sets; a review of all six | the last three superseded within the range by `bd899fd` and `18bedc5` |
+| `bd899fd`, `18bedc5` | #61 #60 #62 | the procedure removed; `kitchen sources` a report; a `src:` entry may give `upstream_source` | D-7's cost paragraph, D-12, D-13, `build.md` § *Cutting a release*, the building-on page and CHANGELOG corrected. Our own source policy is the release's to write |
+| `fde3e93` | #63 | a place on the build machine is recorded as `<work>`, `<project>` and so on, and never fails the build | sidecar fields only |
+| `f5e6673` | #64 | `bundle.files` keeps a staged tree's hardlinks | slax-bottles' Flatpak stage is copied once instead of as 7.4 GB |
+| `ca0049a` | #69 | zips in `bundle.fromTarball` | not used here |
+| `455a773` | #65 | a bare name reaches the vendoring project's `recipes/` and `profiles/` | not adopted; comments corrected ([Deliberately not adopted](#deliberately-not-adopted-from-upstream)) |
+| `49a465f`, `4a10303` | #66 | `boot-host.ini` read from the project's root first; `doctor --install-hooks` for a vendored engine | the operator's copy at our root is now the one read. CLAUDE.md, `build.md`, the building-on page and `.gitignore`'s comment say so |
+| `ce5d51a` | #67 | `kitchen test --structure` takes `--max-size-mib`, `--require`, `--forbid`, `--expect-gpt` | `build.sh` runs the structure test through it; [D-13](DECISIONS.md#d-13--buildsh-not-kitchen-build) updated |
+| `9f3eb09` | #68 | `iso-identity` and `boot-cmdline` vars; `kitchen validate` checks a profile's vars | not adopted before the release; gate 40 now runs the stricter validate, and all eight profiles pass it |
+| `51c5699` | #70 | pack records every file as root's; under sudo, what a command writes goes back to the user | `build.sh`'s `give_back_work` retired |
+
+**Retired.**
+- **#50:** the three `WORKAROUND` markers in the test profiles. `serial-console` stays first, and its
+  comments now say the order no longer decides its command line.
+- **#70:** `build.sh`'s `give_back_work`, which chowned the work tree after every apply run through
+  `sudo`. Demonstrated as upstream did, as root with `SUDO_UID=65534` on a tree that uid owns: after
+  `unpack` and `apply`, nothing under it is root-owned. An apply that fails at its second step
+  leaves nothing root-owned either, the bundle its first step built included. The control, the
+  same apply without `SUDO_UID`, leaves two root-owned paths.
+- **#67:** `build.sh`'s direct `iso_assert.py` call, now `kitchen test --structure` with the volume
+  id, the size ceiling, `--expect-uefi` where the profile lists `uefi-bootable`, and a `--require`
+  per bundle of ours. The exact module list stays ours: `--require` and `--forbid` cannot say
+  "these and nothing else".
+- **#66:** the arrangement where `boot-host.ini` had to be copied into the submodule. The engine at
+  `4a10303` reads it from our root, checked with `boot_host.config_root()`, and
+  `doctor --install-hooks` makes the same two links `build.md` gives by hand, checked on this
+  checkout.
+
+**Also corrected, because the new pin made them false:**
+- the building-on page's note that `serial-console`'s entry carries `automount`, which is now true
+  only at an older pin;
+- `docs/variants.md`'s size check, now `kitchen test --structure --max-size-mib`, and the volume-id
+  comment in `slax-bottles-iso.yaml`;
+- the comments in `slax32-wine-bios.yaml`, `slax32-wine-uefi.yaml` and `notepadpp32.yaml` that
+  said a bare name could never reach our recipes (#65);
+- D-7's cost paragraph, D-12's paragraph on the engine's procedure, `build.md` § *Cutting a
+  release*, the building-on page's *Publishing your image*, and CHANGELOG's limitation, all of which
+  described refusals `bd899fd` and `18bedc5` removed. Our own source policy in NOTICE.md and D-12
+  is untouched here; that is the release's change.
+
+**Copied files.** Two of the twenty-one changed upstream: `00-no-binaries.sh`, re-copied verbatim, and
+`35-pyflakes.sh`, whose stale `kitchen:346` sentence (#56) takes upstream's wording. The other
+nineteen are re-cited. With only the pin staged, gate 96 named all of it: twenty-one headers (§7),
+fifteen permalinks and two statements of the pin in prose (§8), the verbatim copy (§9), and the three
+#50 markers (§10(c)). One permalinked anchor had moved: LAYERING.md's *What a base project owes the
+projects built on it* is now *What helps the projects built on it*.
+
+**What the tests say.** The eleven test files upstream changed pass inside the pinned submodule,
+through `ci/unit-run.py` with `python3 -B`, a private `TMPDIR` left empty, and
+`KITCHEN_BOOT_HOST=local`; the submodule stays pristine. Our gates pass as root and as uid 65534.
+
+**The build, at `4a10303`.** All eight images, `./build.sh --all`, `--test` and `--bottles-test`
+on 2026-09-28, compared with the eight built at `0dd1b53` on 2026-09-26 (`out/f-0dd1b53`). slax-wine
+had changed only docs and profile comments in between, so those builds stand as the baseline.
+`kitchen diff --bundles`, the package lists and the boot menus say:
+
+- **the six slax-wine images:** every size unchanged, every bundle *identical content*, the package
+  lists identical (626 and 816), and `isolinux.cfg`, `syslinux.cfg` and `grub.cfg` byte-identical,
+  except the one difference expected:
+- **the three test images' `syslinux.cfg`:** the serial entry gains `perchdir=resume`, 16 bytes,
+  because `75c1633` copies it from `LABEL default`, which carries it. Nothing else in any menu moved.
+- **slax-bottles and its test image:** 90,112 bytes smaller. `30-bottles.sb` has identical content
+  and is smaller because the engine now keeps the Flatpak stage's hardlinks (`f5e6673`, #64). The
+  one content difference is `20-flatpak.sb`'s `/etc/shadow`: the `_flatpak` user's last-changed
+  day, 20722 to 20724, which is 2026-09-26 to 2026-09-28. That is the build date `useradd` stamps,
+  not the engine; the `0dd1b53` bump did not see it because both its builds ran on one day.
+- **`/boot/efi.img`:** 60 bytes differ on every image that carries one, the FAT volume serial and
+  directory times, and `BOOTX64.EFI` keeps its sha256, `384be94fbfe800cb…`.
+- **the sidecars:** differ in what a pin move and a rebuild explain, the commits, the ISO's and
+  each output's sha256, and the per-input `digest` and `elf` fields that `18bedc5` stopped
+  recording.
+
+Every image passed its structure test through `kitchen test --structure`, 20 to 22 checks
+depending on the image, and `build.sh`'s own assertions. **No boot route was re-run.** The only menu change is
+in `syslinux.cfg`, and every route reads another menu, `--bios` `isolinux.cfg` and `--uefi`
+`grub.cfg` (`_serial_keys` in `lib/build.sh`), both unchanged. The release runs all twelve anyway.
 
 ## Two findings were dropped before filing, in round one
 

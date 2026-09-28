@@ -37,12 +37,12 @@ was read.
 
 ## Where boot tests run
 
-On the machine `vendor/slax-kitchen/boot-host.ini` names, since the `7f9c4f8` bump: this container
-has no `/dev/kvm`, that machine does, and the file sends every `kitchen test` there. It is
-gitignored, `chmod 600`, and lives inside the submodule because that is the only place the engine
-reads it from. Which machine that is, the file says and this repository does not. `kitchen
-boot-host check` says whether it is usable, and `KITCHEN_BOOT_HOST=local` boots here instead —
-slowly, under TCG.
+On the machine `boot-host.ini` at this repository's root names: this container has no `/dev/kvm`,
+that machine does, and the file sends every `kitchen test` there. It is gitignored and `chmod 600`.
+The vendored engine reads it there, before its own checkout, since the `4a10303` bump; until then
+it had to be copied into `vendor/slax-kitchen/`. Which machine that is, the file says and this
+repository does not. `kitchen boot-host check` says whether it is usable, and
+`KITCHEN_BOOT_HOST=local` boots here instead — slowly, under TCG.
 
 A boot host that cannot be reached **fails the command**; it never quietly boots here. So when
 `kitchen test` says "boot host unavailable", read that before anything else.

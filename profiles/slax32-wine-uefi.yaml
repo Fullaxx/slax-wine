@@ -52,9 +52,9 @@ recipes:
   # first and the BIOS menu would lose the flag while the GRUB menu kept it, which is
   # the worst kind of difference: invisible until someone boots the other way.
   #
-  # A BARE NAME, not a path. Bare-name resolution searches the ENGINE's recipes/
-  # directories, which is exactly where this one lives -- so there is nothing to vendor,
-  # copy, or re-sync on a pin bump. Our own four are paths because they are not there.
+  # A BARE NAME, not a path. It is the engine's, found in its recipes/ -- so there is
+  # nothing to vendor, copy, or re-sync on a pin bump. Our own four are paths, which say
+  # they are this repository's.
   #
   # What it adds: ONE file, boot/efi.img -- a FAT12 ESP holding GRUB. MEASURED at
   # 6,488,064 bytes (6.2 MiB), which is grub-mkstandalone embedding its modules; an
