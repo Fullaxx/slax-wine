@@ -20,7 +20,7 @@ Sizes are one build's, 2026-09-28, the first with the firmware; [sizing.md](sizi
 | `slax64-wine-bios` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-bios.yaml` | **yes** | BIOS | the six, plus `31-notepadpp64` | `SLAX64-WINE` | 911,984,640 |
 | `slax64-wine-uefi` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-uefi.yaml` | **yes** | BIOS **and** UEFI | the seven, plus `boot/efi.img` | `SLAX64-WINE` | 918,474,752 |
 | `slax64-wine-test` | `slax-64bit-debian-12.2.0.iso` | `slax64-wine-test.yaml` | no | BIOS and UEFI | the seven | `SLAX64-WINE` | 918,489,088 |
-| `slax-bottles` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles.yaml` | **yes** | BIOS and UEFI | `09-firmware-debian`, `09-firmware-linux`, `20-flatpak`, `30-bottles`, `98-dpkg-db` | `SLAX-BOTTLES` | 1,357,389,824 |
+| `slax-bottles` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles.yaml` | **yes** | BIOS and UEFI | `09-firmware-debian`, `09-firmware-linux`, `20-flatpak`, `30-bottles`, `98-dpkg-db` | `SLAX-BOTTLES` | 1,362,513,920 |
 | `slax-bottles-test` | `slax-64bit-debian-12.2.0.iso` | `slax-bottles-test.yaml` | no | BIOS and UEFI | the same five | `SLAX-BOTTLES` | 1,357,402,112 |
 
 **A uefi image is a superset of its bios twin, not an alternative.** `uefi-bootable` adds an
@@ -85,7 +85,7 @@ Flathub builds Bottles for x86_64 alone. It shares the bases, the bootloader wor
 gates, and nothing else.
 
 **Two size ceilings, on different bases.** `WINE32_MAX_ISO_MIB=589` is the *bios* image plus
-5 %, `WINE64_MAX_ISO_MIB=919` the *uefi* one plus 5 %, and `BOTTLES_MAX_ISO_MIB=1359` the
+5 %, `WINE64_MAX_ISO_MIB=919` the *uefi* one plus 5 %, and `BOTTLES_MAX_ISO_MIB=1364` the
 one image plus 5 %. Each covers both of its architecture's images; the 6.2 MiB an ESP adds
 is well inside the margin either way.
 

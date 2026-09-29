@@ -150,17 +150,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # kvm: false for the 32-bit guest. Measured in the first rehearsal (run 36560764961):
+          # under the runner's KVM, all four routes stopped right after "Live Kit init" and ran
+          # out a 600 s ceiling, while the same image boots under KVM on the boot host in 4 s,
+          # and the 64-bit images booted under the runner's KVM. The cause is not established.
+          # This project's 32-bit boots ran under TCG for weeks before a KVM host existed.
           - name: slax32-wine
+            kvm: false
             args: --32 --both
             test_args: --32 --test
             images: slax32-wine-bios slax32-wine-uefi
             test: slax32-wine-test
           - name: slax64-wine
+            kvm: true
             args: --64 --both
             test_args: --64 --test
             images: slax64-wine-bios slax64-wine-uefi
             test: slax64-wine-test
           - name: slax-bottles
+            kvm: true
             args: --bottles
             test_args: --bottles-test
             images: slax-bottles
@@ -197,13 +205,18 @@ jobs:
             | grep -v -e '^#' -e '^$' \
             | xargs sudo apt-get install -y --no-install-recommends flatpak
 
-      # `kitchen test` uses KVM whenever /dev/kvm is writable, and TCG otherwise. Whether a
-      # hosted runner has one has changed over time, so this says which it got.
-      - name: KVM, if the runner has it
+      # `kitchen test` uses KVM whenever /dev/kvm is writable, and TCG otherwise. The runners
+      # have had one (measured 2026-09-29); a job whose matrix entry says kvm: false keeps it
+      # root-only, so its boots run under TCG. Either way, this says which it got.
+      - name: KVM, if the runner has it and the job wants it
         env:
           NAME: ${{ matrix.name }}
+          WANT_KVM: ${{ matrix.kvm }}
         run: |
-          if [ -e /dev/kvm ]; then
+          if [ "$WANT_KVM" != true ]; then
+            [ ! -e /dev/kvm ] || sudo chmod 0600 /dev/kvm
+            echo "::notice::$NAME: boots run under TCG, by choice (kvm: false)"
+          elif [ -e /dev/kvm ]; then
             echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
               | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
             sudo udevadm control --reload-rules

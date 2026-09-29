@@ -5,7 +5,8 @@
 #
 # The image sizes come from the ISOs in <asset-dir>, or, where one is absent, from FILE
 # ("name bytes" per line, as the draft reports it; see ci/release-sums.sh). The bases come
-# from build.env, and the engine pin from this commit's own tree. --run-url names the
+# from build.env, the engine pin from this commit's own tree, and the Bottles version from
+# slax-bottles' .flatpak.txt. --run-url names the
 # workflow run that built the release; without it the notes say the release was built by
 # hand. Everything else links to the tag, so the notes carry no claim the tree does not.
 set -eu
@@ -32,6 +33,12 @@ BLOB="https://github.com/$REPO/blob/$TAG"
 PIN=$(git -C "$REPO_ROOT" ls-tree HEAD vendor/slax-kitchen | awk '{ print substr($3, 1, 7) }')
 [ -n "$PIN" ] || { echo "release-notes: cannot read the slax-kitchen pin from HEAD" >&2; exit 1; }
 
+# The Bottles version is whatever Flathub served (D-20), so it comes from what shipped: the
+# first line of slax-bottles' .flatpak.txt, "com.usebottles.bottles <version>".
+fpk="$dir/slax-bottles-$VERSION.flatpak.txt"
+BOTTLES_GOT=$(awk -v app="$BOTTLES_APP" 'NR == 1 && $1 == app { print $2 }' "$fpk" 2>/dev/null || true)
+[ -n "$BOTTLES_GOT" ] || { echo "release-notes: cannot read the Bottles version from $fpk" >&2; exit 1; }
+
 size_of() {
     if [ -f "$dir/$1" ]; then stat -c %s "$dir/$1"
     elif [ -n "$sizes" ]; then awk -v n="$1" '$1 == n { print $2; exit }' "$sizes"
@@ -43,7 +50,7 @@ what() {
         slax32-wine-uefi) echo "32-bit base; also boots on 64-bit UEFI" ;;
         slax64-wine-bios) echo "64-bit base; runs 64-bit Windows programs too" ;;
         slax64-wine-uefi) echo "64-bit base; also boots on 64-bit UEFI" ;;
-        slax-bottles)     echo "64-bit base, Bottles $BOTTLES_VERSION as a Flatpak, offline" ;;
+        slax-bottles)     echo "64-bit base, Bottles $BOTTLES_GOT as a Flatpak, offline" ;;
     esac
 }
 

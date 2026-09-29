@@ -73,8 +73,9 @@ five stock survivors, the two firmware bundles, `20-flatpak`, `30-bottles` and `
 What it shares with slax-wine is the machinery, not the software: the engine pin, `VERSION`,
 `build.sh` (a per-variant `variant_config` picks base, module list, size ceiling and payload), the
 gates, and upstream's `remove-bundle` and `uefi-bootable`. Its Flatpak payload is staged on the
-**host** by `build.sh`, pinned ref-by-ref (`BOTTLES_LOCK`), and copied in by `bundle.files`. See the
-cookbook page for why it is not installed in the build chroot.
+**host** by `build.sh`, Bottles and its runtimes as Flathub serves them
+([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)), and copied in
+by `bundle.files`. See the cookbook page for why it is not installed in the build chroot.
 
 ## The layer model
 

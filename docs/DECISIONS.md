@@ -304,7 +304,7 @@ both.
 What keeps `build.sh` is what the engine cannot know about, and none of it is a workaround:
 
 - the application payloads, fetched and checked before apply — each Notepad++ installer by sha256,
-  and Bottles ref by ref against `BOTTLES_LOCK`;
+  and Bottles, whose version and refs `build.sh` records rather than checks (D-20);
 - each image's exact module list, which the structure test's `--require` and `--forbid` cannot
   express together: these bundles, and nothing else;
 - the release file read back out of the bundle that shipped it, and both halves of Wine in the
@@ -365,12 +365,13 @@ through `bwrap`, and the chroot has an empty `/proc` and no user namespace. A us
 the system one have the same layout, so the live system (everything runs as root) sees an ordinary
 system-wide install.
 
-**The pin.** A single sha256 cannot describe a Flatpak installation, so the pin is `BOTTLES_LOCK`
-in `build.env`: every ref the install pulls in (13 of them) with its ostree commit. `build.sh`
-deploys each one at its locked commit and checks the result in both directions: every locked ref
-is present at its commit, and nothing is installed that the lock does not name. Flathub does not keep
-old commits forever, so a pin can go stale. When it does, the build fails with a message saying so.
-It never quietly takes whatever is current.
+**The pin — superseded by [D-20](#d-20--let-bottles-and-its-runtimes-float-record-what-shipped),
+which pins nothing.** As first decided: a single sha256 cannot describe a Flatpak installation, so
+the pin is `BOTTLES_LOCK` in `build.env`: every ref the install pulls in (13 of them) with its
+ostree commit. `build.sh` deploys each one at its locked commit and checks the result in both
+directions: every locked ref is present at its commit, and nothing is installed that the lock does
+not name. Flathub does not keep old commits forever, so a pin can go stale. When it does, the build
+fails with a message saying so. It never quietly takes whatever is current.
 
 **What it costs.** The GNOME 50 runtime, 64- and 32-bit Mesa, the i386 compat runtime, codecs, and
 Wine Gecko and Mono take 3.2 GB unpacked. See [sizing.md](sizing.md) for the measured bundle. That
@@ -527,7 +528,7 @@ directly after `remove-bundle`. It builds two bundles:
 
 **What it costs.**
 - **Size:** +54.2 MiB on every image, measured. The ceilings in `build.env` moved with it:
-  589, 919 and 1359 MiB.
+  589, 919 and 1359 MiB (1364 since D-20's rebuild).
 - **Build:** a chroot step, apt, and 65 downloads from GitLab or git.kernel.org, which fail the
   build rather than ship a partial set.
 - **Package database:** 16 more packages. `/usr`, `/usr/lib` and `/usr/share` become 0755 in the
@@ -571,22 +572,103 @@ are tested without Actions (`tests/unit/test_release.py`).
 
 **What it costs.**
 - **KVM is not promised.** Upstream records hosted runners without `/dev/kvm`, and its own CI boots
-  under TCG. The workflow uses KVM when a runner offers it and says which one it got, and otherwise
-  boots under TCG: 21–31 s a boot against 4–6 s, with the UEFI menu keys spelled out
+  under TCG. The runners of the first rehearsal (2026-09-29) had it, and the 64-bit jobs boot under
+  it. The 32-bit job does not: under the runner's KVM its guest stopped after `Live Kit init` on all
+  four routes, while the same image boots under KVM on the boot host, and the cause is not
+  established. So it boots under TCG by choice, as every 32-bit boot here did before the boot host.
+  Under TCG a boot took 21–31 s on this project's own machines, against 4–6 s, with the UEFI menu
+  keys spelled out
   ([UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)).
   Booting under KVM on the boot host before tagging stays in the procedure, as an optional step.
 - **Disk.** A hosted runner promises about 14 GB. slax-bottles stages a 3.2 GiB Flatpak and packs two
-  1.3 GB ISOs, so each build job first removes the runner's preinstalled SDKs.
+  1.3 GB ISOs, so each build job first removes the runner's preinstalled SDKs; the first rehearsal
+  then had 108 GB free.
 - **A runner's build is not a local build's twin.** The PVD timestamps and squashfs mtimes are not
   pinned ([sizing.md](sizing.md)), so every build has its own sha256. What is pinned is the same
-  everywhere: the bases, the engine, the Notepad++ and DXVK/VKD3D payloads by sha256, and Bottles'
-  `BOTTLES_LOCK`. The Debian packages are not: apt installs bookworm as it stands on the day of the
-  build, so a security update between two builds changes a version. Each image's `packages.tsv`
-  records what its build got.
+  everywhere: the bases, the engine, the Notepad++ and DXVK/VKD3D payloads by sha256, and the
+  Bottles version. The Debian packages are not, and nor are the Flatpak runtimes under Bottles
+  (D-20): apt installs bookworm, and Flathub serves its runtimes, as they stand on the day of the
+  build, so an update between two builds changes a version. Each image's `packages.tsv` and
+  slax-bottles' `.flatpak.txt` record what its build got.
 - **Trust.** Three `actions/*` actions, at the Node 24 versions upstream checked, run with write
   access to releases. Nothing from a fork can trigger the workflow, since it has no `pull_request`
   trigger.
 
 **What would change this:** runners that guarantee KVM, which would make the optional KVM step
 redundant; an image over 2 GiB, the asset limit, which `BOTTLES_MAX_ISO_MIB` would hit first; or
-Flathub dropping a locked commit, which fails the build as `build.env` says it must.
+a Bottles update that breaks something only a person running it would notice (D-20).
+
+## D-20 · Let Bottles and its runtimes float, record what shipped
+
+**Decided 2026-09-29.** Nothing of the Flatpak installation is pinned. `build.sh` installs what
+Flathub's stable channel serves on the day of the build: Bottles, and under it the GNOME runtime,
+the Freedesktop GL and codec extensions, and Wine's Mono and Gecko. It records what it got. The
+Bottles version and every ref with its commit go into `/opt/bottles/VERSION` in the image, and into
+the release's `.flatpak.txt`, and the release notes name the Bottles version from there. This
+replaces D-15's pin.
+
+**What happened.** D-15 pinned all 13 refs by ostree commit in `BOTTLES_LOCK`, on 2026-09-18. The
+first rehearsal of the release workflow (D-19), on 2026-09-29, could not build slax-bottles.
+Flathub answered HTTP 404 for `org.gnome.Platform//50` at the locked commit. GNOME had published an
+update of the same runtime, and Flathub had pruned the files of the commit it replaced. The commit's
+log entry was still there, but not its content. The build machine here still built, because its
+stage held the old commit. A runner starts from nothing.
+
+**Why nothing can be pinned here.** A pin is only worth having if it can be honoured later.
+- **No versions.** Flatpak installs a channel (`stable`) or a commit, never a version, so "Bottles
+  67.3" can only be asked for as the commit that happens to be 67.3.
+- **Commits get pruned.** Flathub keeps the current commit of each ref and prunes the old ones'
+  files on its own schedule; the GNOME one lasted at most eleven days.
+- **Every release starts from nothing.** It is built on a fresh runner, so any commit pin, Bottles'
+  included, would break at random between releases. It could never rebuild an old release either,
+  which is what a pin usually buys.
+
+So the published image is the durable record of what shipped, with its `.flatpak.txt`. A version
+check without a pin was tried first, and refused unless Flathub served exactly `BOTTLES_VERSION`.
+It could not ask for that version, only notice its absence, so it was dropped the same day.
+
+**Whose job consistency is.** Flathub's model is that its stable channel is what it ships: an app
+and the runtimes it names are built, tested and published together, and a consumer cannot ask for
+anything else. So keeping Bottles and its runtimes consistent with each other is Flathub's job, and
+upstream's, not ours. We take what the channel serves, record exactly what that was, and deal with
+problems as they come up. When one does, the fix is the optional lock below, and this entry is
+updated with what bit, and why.
+
+**What is still refused.**
+- **The wrong languages.** A locale subset other than `BOTTLES_LANGUAGES` fails the build.
+- **A stale stage.** A stage that Flathub has anything newer for, compared ref by ref, is installed
+  again from nothing, not updated in place. Measured on the same GNOME update: updated in place,
+  `30-bottles.sb` came out at 970,056 KiB and 73,418 files; installed fresh, at 915,792 KiB and
+  60,231 files. `flatpak update` keeps the replaced commit's objects, because the new commit names
+  the old one as its parent, so not even `flatpak repair` prunes them, and they would have shipped.
+  `flatpak remote-ls --updates` did not notice a ref moved back with `update --commit`, so the
+  comparison is `flatpak remote-info` against each deployed commit.
+- **A Flathub that cannot be asked.** The build fails before the stage is touched; `--no-fetch`
+  builds from the stage as it is.
+- **A static version claim.** Gate 96 refuses a `BOTTLES_VERSION=` line in
+  `/etc/slax-bottles-release`, which now points at `/opt/bottles/VERSION` instead.
+
+**What it costs.**
+- **Two builds can ship different Bottles.** Builds a week apart can ship different Bottles
+  versions, not only different runtime builds, as two builds already ship different Debian security
+  updates.
+- **The docs name what was measured.** Where they say Bottles 67.3, that is the version the
+  measurement was taken on. What a release ships is in its notes and its `.flatpak.txt`.
+- **A new Bottles is not re-checked by hand.** The by-hand offline check (a bottle created,
+  `cmd /c ver`) was measured on 67.3 and the 2026-09-18 runtimes, and nothing re-runs it for a new
+  version. The release workflow boots the image that ships, but it never starts Bottles.
+- **DXVK and VKD3D stay pinned.** They are chosen from the components index Bottles 67.3 named, by
+  sha256 in `BOTTLES_COMPONENTS`, so a Bottles that wants others still gets these.
+
+**The lock stays, for when it bites.** `BOTTLES_LOCK` set in `build.env` still forces every ref to
+its commit and refuses a stage that differs in either direction. It is how a known-good set is held
+while a broken Bottles or runtime is sorted out upstream, and how one build is tested against
+another. It only holds while Flathub still serves those commits, so it is a stopgap, not a pin. A
+release leaves it empty unless this entry says why not. `BOTTLES_RELOCK=1` prints Flathub's current
+refs in that form.
+
+**What would change this:** the first time it bites: a Flathub update that breaks Bottles in the
+image. Then the lock holds the last good set, and this entry records it. Beyond that, Flathub
+keeping old commits, or a copy of our own: exporting the installation at each release and building
+from that copy would pin everything and rebuild any release. It was weighed on 2026-09-29, and not
+taken.

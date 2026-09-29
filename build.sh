@@ -39,11 +39,12 @@
 #   --bottles-test  its testkit image, the counterpart of --test.
 #   --all           the four slax-wine images and slax-bottles: every shipped image.
 #
-# --no-fetch skips DOWNLOADING the base ISOs; they are still verified, and it does NOT
-# cover the application payloads, which are fetched whenever one is absent or its hash
-# does not match. Fully offline therefore needs a warm isos/ AND good notepadpp32.files/
-# and notepadpp64.files/ -- and, for the bottles variants, a bottles.files/ that already
-# matches BOTTLES_LOCK.
+# --no-fetch skips DOWNLOADING the base ISOs; they are still verified. The Notepad++
+# payloads are fetched regardless whenever one is absent or its hash does not match. For
+# the bottles variants, --no-fetch also keeps an existing bottles.files/ as it is instead of
+# updating it to what Flathub serves today.
+# Fully offline therefore needs a warm isos/, good notepadpp32.files/ and
+# notepadpp64.files/, and, for the bottles variants, a bottles.files/ already staged.
 #   ISO_DIR=/path/to/isos ./build.sh      # reuse ISOs you already have
 #
 # Only the apply step is elevated. bundle.packages needs a real chroot (CAP_SYS_CHROOT +
@@ -178,7 +179,8 @@ variant_config() {
             V_SIZE=$BASE64_SIZE; V_SHA=$BASE64_SHA256
             V_WANT=$BOTTLES_WANT_MODULES; V_MAX=$BOTTLES_MAX_ISO_MIB; V_PAYLOAD=bottles
             V_OWN="09-firmware-debian 09-firmware-linux 20-flatpak 30-bottles 98-dpkg-db"
-            V_APP="$BOTTLES_APP $BOTTLES_VERSION (Flathub $BOTTLES_BRANCH)"
+            # The version is whatever Flathub served, read from the stage once it is staged.
+            V_APP="$BOTTLES_APP ${BOTTLES_GOT:-(not staged yet)} (Flathub $BOTTLES_BRANCH)"
             V_TITLE="slax-bottles $VERSION ($1)"
             V_APPID="slax-bottles $VERSION${1#bottles} (base $BASE64_ISO)"
             V_RELEASE=etc/slax-bottles-release; V_RELEASE_SB=30-bottles ;;
@@ -261,36 +263,52 @@ stage_notepadpp64() { stage_npp 64; }
 # layout is the same as the system installation at /var/lib/flatpak, which is where
 # the live system (all root) looks.
 #
-# The pin is BOTTLES_LOCK in build.env: every ref, and the commit it has to be. A hash of a
-# single file, as the Notepad++ payloads use, cannot express that, so the check is
-# ref-by-ref against `flatpak info --show-commit`, in both directions: every locked ref is
-# present at its commit, and nothing is present that the lock does not name.
+# Nothing of the Flatpak installation is pinned (docs/DECISIONS.md D-20). Bottles and the
+# runtimes under it -- GNOME, the GL and codec extensions, Wine's Mono and Gecko -- are
+# whatever Flathub's stable channel serves on the day of the build, as Debian's packages
+# are what bookworm serves, and the stage records them: the Bottles version, every ref and
+# its commit go into /opt/bottles/VERSION, which ships in the image and as the release's
+# .flatpak.txt.
+#
+# Flatpak cannot install a version, only a channel or a commit, and a commit cannot outlive
+# Flathub: it prunes a commit's files once a newer one replaces it. The GNOME 50 commit the
+# first lock named was gone within eleven days, and a runner, which starts from nothing,
+# could not build the release. The lock is still here for when a Flathub update breaks
+# something -- BOTTLES_LOCK set in build.env forces every ref to its commit and checks both
+# directions, for as long as Flathub serves them -- but a release leaves it empty.
 FLATHUB_REPO=https://dl.flathub.org/repo/flathub.flatpakrepo
 FPDIR="$BSTAGE/var/lib/flatpak"
 # LC_ALL=C because two of the checks below read flatpak's labels ("Version:",
 # "Subdirectories:"), and flatpak translates them.
 fp() { LC_ALL=C FLATPAK_USER_DIR="$FPDIR" flatpak --user "$@"; }
 
-# The lock as "ref commit" lines, blank lines dropped.
+# The lock as "ref commit" lines, blank lines dropped. Empty unless pinned.
 bottles_lock() { printf '%s\n' "$BOTTLES_LOCK" | sed -e 's/^[[:space:]]*//' -e '/^$/d'; }
+
+# What the stage holds: every deployed ref and its commit, as "ref commit" lines.
+bottles_deployed() {
+    fp list --all --columns=ref 2>/dev/null | while read -r r; do
+        [ -n "$r" ] || continue
+        printf '%s %s\n' "$(fp info -r "$r")" "$(fp info --show-commit "$r")"
+    done | sort
+}
 
 # BOTTLES_LANGUAGES ("de;en") as flatpak prints a .Locale ref's subdirectories ("/de /en").
 want_subdirs() {
     printf '%s\n' "$BOTTLES_LANGUAGES" | tr ';' '\n' | sed -e '/^$/d' -e 's|^|/|' | sort | tr '\n' ' ' | sed 's/ $//'
 }
 
-# Prints one line per disagreement. Silent means the stage matches build.env exactly.
+# Prints one line per disagreement with build.env. Silent means the stage matches it:
+# always the languages, and in pinned mode every ref's commit, in both directions.
 bottles_drift() {
     [ -d "$FPDIR/repo" ] || { echo "no installation at $FPDIR"; return 0; }
     # The locale subset ships too. Left unset, flatpak derives it from the BUILD HOST's
     # locale -- which is how the first stage came out "en" without anyone choosing it, and
-    # how a host with another LANG would have shipped something else under the same lock.
+    # how a host with another LANG would have shipped something else.
     lang=$(fp config --get languages 2>/dev/null || true)
     [ "$lang" = "$BOTTLES_LANGUAGES" ] \
         || echo "languages: have ${lang:-nothing}, build.env says $BOTTLES_LANGUAGES"
-    bottles_lock | while read -r ref commit; do
-        got=$(fp info --show-commit "$ref" 2>/dev/null || true)
-        [ "$got" = "$commit" ] || echo "$ref: have ${got:-nothing}, lock says $commit"
+    bottles_deployed | while read -r ref _; do
         case "$ref" in
             *.Locale/*)
                 sub=$(fp info "$ref" 2>/dev/null | sed -n 's/^ *Subdirectories: *//p' \
@@ -299,100 +317,157 @@ bottles_drift() {
                     || echo "$ref: deploys ${sub:-nothing}, BOTTLES_LANGUAGES wants $(want_subdirs)" ;;
         esac
     done
-    fp list --all --columns=ref 2>/dev/null | while read -r r; do
-        [ -n "$r" ] || continue
-        full=$(fp info -r "$r" 2>/dev/null || echo "$r")
-        bottles_lock | awk -v r="$full" '$1 == r { f = 1 } END { exit !f }' \
-            || echo "$full: installed but not in BOTTLES_LOCK (unpinned)"
+    [ -n "$(bottles_lock)" ] || return 0
+    bottles_lock | while read -r ref commit; do
+        got=$(fp info --show-commit "$ref" 2>/dev/null || true)
+        [ "$got" = "$commit" ] || echo "$ref: have ${got:-nothing}, lock says $commit"
+    done
+    bottles_deployed | while read -r ref _; do
+        bottles_lock | awk -v r="$ref" '$1 == r { f = 1 } END { exit !f }' \
+            || echo "$ref: installed but not in BOTTLES_LOCK (unpinned)"
     done
 }
 
-stage_bottles() {
-    say "application payload: $BOTTLES_APP $BOTTLES_VERSION"
-    # RELOCK only means something on an EMPTY stage. On a warm one, `flatpak install`
-    # keeps what is already there, so the "fresh" lock printed below would be the old one.
-    if [ -n "${BOTTLES_RELOCK:-}" ] && [ -d "$FPDIR/repo" ]; then
-        echo "build.sh: BOTTLES_RELOCK needs an empty stage, or it prints the lock you have." >&2
-        echo "  rm -rf $BSTAGE && BOTTLES_RELOCK=1 ./build.sh --bottles" >&2
+# flatpak on the host, and a user installation pointed at the stage.
+bottles_setup() {
+    command -v flatpak >/dev/null 2>&1 || {
+        echo "build.sh: the bottles variants need flatpak on the build host" >&2
+        echo "  (Debian/Ubuntu: apt install flatpak)" >&2
         exit 2
+    }
+    mkdir -p "$FPDIR"
+    fp remote-add --if-not-exists flathub "$FLATHUB_REPO"
+    fp config --set languages "$BOTTLES_LANGUAGES"
+}
+
+# Triggers run through bwrap and FAIL on a host without user namespaces (a container, say):
+# "bwrap: Creating new namespace failed". They only rebuild desktop-file and icon caches
+# under exports/, which Slax's launcher never reads, and flatpak treats the failure as a
+# warning. The checks after each install are what decide whether the stage is good.
+#
+# Guarded by `info` rather than trusting install's exit status for a ref that is already
+# there: under `set -eu` that status is the whole build.
+bottles_install_app() {
+    fp info "$BOTTLES_APP//$BOTTLES_BRANCH" >/dev/null 2>&1 \
+        || fp install -y --noninteractive flathub "$BOTTLES_APP//$BOTTLES_BRANCH"
+}
+
+# The release path: Flathub's current Bottles and everything it needs, which is what a
+# runner installs from nothing. A warm stage that Flathub has anything newer for is thrown
+# away and installed again, NOT updated in place: `flatpak update` keeps the replaced
+# commit's objects in the repo -- the new commit names the old one as its parent, so not
+# even `flatpak repair` prunes them -- and they would ship. Measured on the GNOME 50
+# update of 2026-09-29: updated in place, 30-bottles.sb came out at 970,056 KiB and 73,418
+# files; installed fresh, 915,792 KiB and 60,231. --no-fetch keeps the stage as it is.
+stage_bottles_floating() {
+    if [ -d "$FPDIR/repo" ] && [ "$NO_FETCH" = 1 ]; then
+        echo "  note --no-fetch: the stage as it is, not what Flathub serves today"
+        mode="as staged, --no-fetch"
+        return 0
     fi
-    if [ -z "${BOTTLES_RELOCK:-}" ] && [ -z "$(bottles_drift)" ]; then
-        echo "  ok   $(bottles_lock | wc -l) refs (already at their locked commits)"
-    else
-        command -v flatpak >/dev/null 2>&1 || {
-            echo "build.sh: the bottles variants need flatpak on the build host" >&2
-            echo "  (Debian/Ubuntu: apt install flatpak)" >&2
-            exit 2
+    bottles_setup
+    if fp info "$BOTTLES_APP//$BOTTLES_BRANCH" >/dev/null 2>&1; then
+        # Asked first, and not silenced: when Flathub cannot be reached, every ref below
+        # would look newer and a good stage would be deleted before the install failed.
+        fp remote-info flathub "$BOTTLES_APP//$BOTTLES_BRANCH" >/dev/null || {
+            echo "build.sh: cannot ask Flathub what it serves; the stage is left as it is." >&2
+            echo "  --no-fetch builds from the stage without asking." >&2
+            exit 1
         }
-        mkdir -p "$FPDIR"
-        fp remote-add --if-not-exists flathub "$FLATHUB_REPO"
-        fp config --set languages "$BOTTLES_LANGUAGES"
-        # Triggers run through bwrap and FAIL on a host without user namespaces (a
-        # container, say): "bwrap: Creating new namespace failed". They only rebuild
-        # desktop-file and icon caches under exports/, which Slax's launcher never reads,
-        # and flatpak treats the failure as a warning. The commit check below is what
-        # decides whether this stage is good.
-        #
-        # Guarded by `info` rather than trusting install's exit status for a ref that is
-        # already there: under `set -eu` that status is the whole build.
-        fp info "$BOTTLES_APP//$BOTTLES_BRANCH" >/dev/null 2>&1 \
-            || fp install -y --noninteractive flathub "$BOTTLES_APP//$BOTTLES_BRANCH"
-        if [ -n "${BOTTLES_RELOCK:-}" ]; then
-            echo; echo "BOTTLES_RELOCK: paste this into build.env as BOTTLES_LOCK, and set"
-            echo "BOTTLES_VERSION=$(fp info "$BOTTLES_APP" | sed -n 's/^ *Version: *//p')"
-            echo 'BOTTLES_LOCK="'
-            for r in $(fp list --all --columns=ref); do
-                printf '  %s %s\n' "$(fp info -r "$r")" "$(fp info --show-commit "$r")"
-            done | sort
-            echo '"'
-            exit 0
-        fi
-        # Walk every ref to its locked commit. A no-op for a ref that is already there;
-        # the install above takes Flathub's CURRENT commit, which is exactly what the lock
-        # exists to refuse. --no-related --no-deps because the lock names every ref itself:
-        # left to its defaults, re-pinning one ref may also move its related refs (the
-        # .Locale, the GL extensions) to whatever Flathub has now.
-        bottles_lock | while read -r ref commit; do
-            have=$(fp info --show-commit "$ref" 2>/dev/null || true)
-            [ "$have" = "$commit" ] && continue
-            if { [ -n "$have" ] || fp install -y --noninteractive --no-related --no-deps flathub "$ref"; } \
-                && fp update -y --noninteractive --no-related --no-deps --commit="$commit" "$ref"; then
-                continue
-            fi
-            echo "build.sh: cannot deploy $ref at $commit." >&2
-            echo "  Flathub may no longer carry that commit. Bump the pin:" >&2
-            echo "  rm -rf $BSTAGE && BOTTLES_RELOCK=1 ./build.sh --bottles" >&2
-            exit 1
-        done || exit 1
-        drift=$(bottles_drift)
-        if [ -n "$drift" ]; then
-            echo "build.sh: the Bottles stage does not match build.env:" >&2
-            printf '%s\n' "$drift" | sed 's/^/  /' >&2
-            echo "  A changed BOTTLES_LANGUAGES needs a fresh stage: rm -rf $BSTAGE" >&2
-            exit 1
-        fi
-        # A cache of remote summaries. Not content, and it would make two builds of the
-        # same lock differ.
-        rm -rf "$FPDIR/repo/tmp/cache"
-        echo "  ok   $(bottles_lock | wc -l) refs deployed at their locked commits"
+        # Ref by ref against Flathub's current commit. `flatpak remote-ls --updates` is not
+        # enough: it did not list a ref moved back with `update --commit`, measured
+        # 2026-09-29. A ref Flathub cannot describe counts as newer, so the stage is
+        # installed again, and a remote that cannot be reached fails that install.
+        newer=$(bottles_deployed | while read -r ref commit; do
+            cur=$(fp remote-info flathub "$ref" 2>/dev/null | sed -n 's/^ *Commit: *//p')
+            [ "$cur" = "$commit" ] || echo "$ref"
+        done)
+        [ -n "$newer" ] || { echo "  ok   the stage is what Flathub serves today"; return 0; }
+        echo "  note Flathub has newer refs; staging again from nothing:"
+        printf '%s\n' "$newer" | sed 's/^/         /'
+        rm -rf "$FPDIR"
+        bottles_setup
     fi
-    # BOTTLES_VERSION is written into the image (/etc/slax-bottles-release, via gate 96's
-    # check of bottles.yaml) and into /opt/bottles/VERSION, so it has to be the version
-    # the locked commit actually is -- which only the stage can say. The same rule as
-    # gate 96 section 2b for Notepad++: a version nothing checks is a suggestion.
-    ver=$(fp info "$BOTTLES_APP//$BOTTLES_BRANCH" 2>/dev/null | sed -n 's/^ *Version: *//p')
-    if [ "$ver" != "$BOTTLES_VERSION" ]; then
-        echo "build.sh: build.env says BOTTLES_VERSION=$BOTTLES_VERSION, but the locked" >&2
-        echo "  $BOTTLES_APP commit is version ${ver:-unknown}" >&2
+    bottles_install_app
+}
+
+# Pinned mode, BOTTLES_LOCK set: every ref walked to its locked commit. --no-related
+# --no-deps because the lock names every ref itself: left to its defaults, re-pinning one
+# ref may also move its related refs (the .Locale, the GL extensions) to whatever Flathub
+# has now. `update --commit` keeps the commit it moved away from in the repo, and that
+# ships too -- acceptable for a stopgap, one more reason a release does not pin; a fresh
+# stage (rm -rf the stage first) avoids it.
+stage_bottles_pinned() {
+    [ -n "$(bottles_drift)" ] || return 0
+    bottles_setup
+    bottles_install_app
+    bottles_lock | while read -r ref commit; do
+        have=$(fp info --show-commit "$ref" 2>/dev/null || true)
+        [ "$have" = "$commit" ] && continue
+        if { [ -n "$have" ] || fp install -y --noninteractive --no-related --no-deps flathub "$ref"; } \
+            && fp update -y --noninteractive --no-related --no-deps --commit="$commit" "$ref"; then
+            continue
+        fi
+        echo "build.sh: cannot deploy $ref at $commit." >&2
+        echo "  Flathub prunes a commit's files once a newer one replaces it, so this pin may be" >&2
+        echo "  gone for good. Empty BOTTLES_LOCK in build.env to take what Flathub serves, as a" >&2
+        echo "  release does, or re-pin: rm -rf $BSTAGE && BOTTLES_RELOCK=1 ./build.sh --bottles" >&2
+        exit 1
+    done || exit 1
+}
+
+stage_bottles() {
+    say "application payload: $BOTTLES_APP//$BOTTLES_BRANCH"
+    # RELOCK prints the stage's refs as a lock, for pinned mode. It only means something on
+    # an EMPTY stage: on a warm one it would print what is already there.
+    if [ -n "${BOTTLES_RELOCK:-}" ]; then
+        if [ -d "$FPDIR/repo" ]; then
+            echo "build.sh: BOTTLES_RELOCK needs an empty stage, or it prints the lock you have." >&2
+            echo "  rm -rf $BSTAGE && BOTTLES_RELOCK=1 ./build.sh --bottles" >&2
+            exit 2
+        fi
+        bottles_setup
+        bottles_install_app
+        echo; echo "BOTTLES_RELOCK: Flathub's current refs, for BOTTLES_LOCK in build.env"
+        echo "(Bottles $(fp info "$BOTTLES_APP" | sed -n 's/^ *Version: *//p')):"
+        echo 'BOTTLES_LOCK="'
+        bottles_deployed | sed 's/^/  /'
+        echo '"'
+        exit 0
+    fi
+    if [ -n "$(bottles_lock)" ]; then
+        mode="pinned by BOTTLES_LOCK"
+        stage_bottles_pinned
+    else
+        mode="as Flathub serves them"
+        stage_bottles_floating
+    fi
+    drift=$(bottles_drift)
+    if [ -n "$drift" ]; then
+        echo "build.sh: the Bottles stage does not match build.env:" >&2
+        printf '%s\n' "$drift" | sed 's/^/  /' >&2
+        echo "  A changed BOTTLES_LANGUAGES needs a fresh stage: rm -rf $BSTAGE" >&2
         exit 1
     fi
+    # A cache of remote summaries. Not content, and it would make two builds differ.
+    rm -rf "$FPDIR/repo/tmp/cache"
+    echo "  ok   $(bottles_deployed | wc -l) refs, $mode"
+    # The version is a fact about what Flathub served, recorded rather than required: it
+    # goes into /opt/bottles/VERSION, the build summary and the release notes. Empty would
+    # mean the stage holds no Bottles at all, which is a broken stage, not a new version.
+    BOTTLES_GOT=$(fp info "$BOTTLES_APP//$BOTTLES_BRANCH" 2>/dev/null | sed -n 's/^ *Version: *//p')
+    if [ -z "$BOTTLES_GOT" ]; then
+        echo "build.sh: the stage has no $BOTTLES_APP//$BOTTLES_BRANCH to read a version from" >&2
+        exit 1
+    fi
+    echo "  ok   Bottles $BOTTLES_GOT"
     stage_bottles_components
     mkdir -p "$BSTAGE/opt/bottles"
     {
-        echo "$BOTTLES_APP $BOTTLES_VERSION"
+        echo "$BOTTLES_APP $BOTTLES_GOT"
         echo "upstream: Flathub ($FLATHUB_REPO), branch $BOTTLES_BRANCH"
         echo "refs, each at the commit that shipped:"
-        bottles_lock | sed 's/^/  /'
+        bottles_deployed | sed 's/^/  /'
         echo "components, unpacked into Bottles' data directory (category name url sha256):"
         printf '%s\n' "$BOTTLES_COMPONENTS" | sed -e 's/^[[:space:]]*//' -e '/^$/d' -e 's/^/  /'
     } > "$BSTAGE/opt/bottles/VERSION"

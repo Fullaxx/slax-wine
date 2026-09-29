@@ -26,7 +26,7 @@ an x86_64 Flatpak, so it cannot go on slax-wine's 32-bit base
 | bundle | verb | what | size |
 |---|---|---|---|
 | `20-flatpak.sb` | `bundle.packages` | `flatpak` from bookworm main, and its closure (36 packages, bubblewrap among them) | 8.0 MiB |
-| `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles plus 12 runtime refs), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | 889.4 MiB |
+| `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles plus 12 runtime refs), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | 894.3 MiB |
 
 `20-` is this image's platform and `30-` its application: the same split as slax-wine's
 `20-wine`/`30-notepadpp32` (D-5). `noload=30-bottles.sb` gives a Slax with flatpak and nothing in it,
@@ -42,8 +42,11 @@ empty `/proc` and no user namespace. Instead `build.sh`:
 1. installs `com.usebottles.bottles//stable` from Flathub into a **user** installation pointed at
    `recipes/available/bottles.files/var/lib/flatpak`. The layout is the same as the system
    installation, which is where the live system (all root) looks;
-2. moves each of the 13 refs to the commit locked in `BOTTLES_LOCK`, and fails unless every locked
-   ref is at its commit **and** nothing unlisted is installed;
+2. takes the Bottles and runtimes Flathub serves that day; nothing is pinned
+   ([D-20](../DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)). A stage
+   Flathub has anything newer for is installed again from nothing, not updated in place, because an
+   update keeps the replaced commit's objects. `BOTTLES_LOCK`, a stopgap for when an update breaks
+   something, instead forces every ref to a named commit;
 3. fetches DXVK and VKD3D, checks them against `BOTTLES_COMPONENTS`, and unpacks them into Bottles'
    data directory;
 4. writes `/opt/bottles/VERSION`: every ref, commit and component that shipped.
@@ -51,10 +54,11 @@ empty `/proc` and no user namespace. Instead `build.sh`:
 `bundle.files` then copies the tree, keeping flatpak's `active`/`current` symlinks and, since
 slax-kitchen `f5e6673` (#64), the hardlinks between the ostree repo's objects and the deployed
 files. So the copy made while the bundle is built is the stage's own 3.3 GiB, where it used to be
-7.3 GiB, and mksquashfs stores each linked file once, which is why the bundle is 889.4 MiB.
+7.3 GiB, and mksquashfs stores each linked file once, which is why the bundle is 894.3 MiB.
 [build.md](../build.md) has the disk budget.
 
-Measured in the guest: `flatpak list` shows all eleven visible refs at their locked commits, and
+Measured in the guest, on the 2026-09-18 runtimes: `flatpak list` shows all eleven visible refs at
+the commits the stage recorded, and
 `xlunch_genquick 64 --desktop` (the generator behind the launcher) emits
 `Bottles;/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps/com.usebottles.bottles.svg;…`,
 so the icon path resolves through flatpak's symlinks, and nothing for the masked browser. The boot
@@ -86,9 +90,10 @@ self-review fixes) was checked the same way: the tile is generated, Bottles open
 `slax-bottles` wrapper, `flatpak remotes` lists flathub, and a new bottle runs `cmd /c ver`. That
 bottle came to **491 MiB**; the two figures are recorded as measured, not reconciled.
 
-Both come from the URLs Bottles' own components index names, at the index commit Bottles 67.3 pins
-(`bottlesdevs/components` `f63f670`): the newest *stable* entry of each. That index publishes md5
-only. The sha256 values in `build.env` were taken from files whose md5 matched it.
+Both come from the URLs Bottles' own components index names, at the index commit Bottles 67.3 pinned
+when they were chosen (`bottlesdevs/components` `f63f670`): the newest *stable* entry of each. That
+index publishes md5 only. The sha256 values in `build.env` were taken from files whose md5 matched
+it.
 
 ## The launcher
 

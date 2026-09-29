@@ -44,7 +44,7 @@ if a file claiming *copied verbatim* differs from the vendored original.
 | `vendor/slax-kitchen/vendor/linux-live/` — nested submodule | **GPLv2**, © Tomáš Matějíček |
 | Wine 8.0 (`wine`, `wine32`, `libwine`, `wine32-preloader`, `fonts-wine`) | **LGPL-2.1-or-later** |
 | Notepad++ 8.9.8 | **GPLv3** |
-| Bottles 67.3 (slax-bottles only) | **GPLv3** |
+| Bottles (slax-bottles only) | **GPLv3** |
 | the Flathub runtimes in slax-bottles | each component its own licence; the runtimes carry them under `files/share/licenses/` |
 | DXVK 3.1, VKD3D-Proton 3.0.1 (slax-bottles only) | **zlib** / **LGPL-2.1** respectively |
 | every other Debian package in the image | its own licence. Those `20-wine.sb` and `20-flatpak.sb` install carry their `copyright` files under `/usr/share/doc`; Slax's build removed them from its own bundles |
@@ -79,7 +79,7 @@ Where each part's source is published:
 | Slax 12.2.0 as Tomáš built it: Linux Live Kit, the kernel (Debian's `linux-source-6.1` plus aufs `6.1-20230724`, its configuration embedded in `vmlinuz`), the initramfs userland, and the desktop tools | slax-kitchen's [What a built image contains](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/NOTICE.md#what-a-built-image-contains), which points at `Tomas-M/linux-live` and the repositories it names, and records the initramfs binaries one by one |
 | Wine 8.0~repack-4 and every other Debian package, each named with its version in the image's `packages.tsv` | snapshot.debian.org. For what `20-wine.sb` and `20-flatpak.sb` add, `SOURCES.md` gives each source package's `https://snapshot.debian.org/package/<source>/<version>/`. For stock Slax's, `https://snapshot.debian.org/binary/<package>/` names the source of each version `packages.tsv` lists |
 | Notepad++ 8.9.8, 32- and 64-bit | the `v8.9.8` tag of <https://github.com/notepad-plus-plus/notepad-plus-plus> |
-| Bottles 67.3 and its Flathub runtimes (slax-bottles) | the manifests that built each ref at the commit `BOTTLES_LOCK` in `build.env` pins: <https://github.com/flathub/com.usebottles.bottles>, freedesktop-sdk, GNOME's `gnome-build-meta`, and Flathub's `org.winehq.Wine` for the Gecko and Mono extensions. `/opt/bottles/VERSION` in the image lists every ref and commit |
+| Bottles and its Flathub runtimes (slax-bottles) | the manifests that built each ref at the commit that shipped, which the image's `/opt/bottles/VERSION` and the release's `.flatpak.txt` record: <https://github.com/flathub/com.usebottles.bottles>, freedesktop-sdk, GNOME's `gnome-build-meta`, and Flathub's `org.winehq.Wine` for the Gecko and Mono extensions. Bottles and its runtimes are what Flathub served on the day of the build ([D-20](docs/DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)) |
 | DXVK 3.1 and VKD3D-Proton 3.0.1 (slax-bottles) | their release tags at <https://github.com/doitsujin/dxvk> and <https://github.com/HansKristian-Work/vkd3d-proton> |
 | the GRUB EFI loader in the uefi images and slax-bottles, **GPLv3+** | built by `grub-mkstandalone` from the build host's unmodified GRUB. Each image's sidecar names the package and version it came from, and Launchpad publishes that source package's source: `grub2-unsigned` `2.12-1ubuntu7.3` in the builds of 2026-09-28 |
 

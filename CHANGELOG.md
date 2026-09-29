@@ -29,7 +29,7 @@ Torito ESP, which `bootinst` never copies, so every image falls back to the stoc
 `syslinux.efi` there. The 32-bit images carry eleven bundles; the 64-bit ones the same eleven plus
 the 64-bit Notepad++. The 64-bit images run 64-bit Windows programs as well as 32-bit ones.
 
-**And a different system: `slax-bottles-1.0.0.iso` (1294.5 MiB)**, on the 64-bit base, because
+**And a different system: `slax-bottles-1.0.0.iso` (1299.4 MiB)**, on the 64-bit base, because
 Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles runs its own. See
 [docs/DECISIONS.md](docs/DECISIONS.md) D-14 and D-15.
 
@@ -43,18 +43,20 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   build owns `Program Files` itself. Verified under KVM in both directions, with the slax32
   negative control.
 - `bottles` (slax-bottles only). `flatpak` from bookworm as `20-flatpak.sb` (8.0 MiB), and as
-  `30-bottles.sb` (889.4 MiB): the Bottles 67.3 Flatpak installation with its 12 runtime refs, each
-  pinned by ostree commit in `BOTTLES_LOCK`, plus DXVK 3.1 and VKD3D-Proton 3.0.1, a launcher tile and
-  `/etc/slax-bottles-release`. **Runtime-verified in QEMU with no network**: a bottle is created with
-  the bundled `sys-wine-11.0` runner from only what the image ships, and `cmd /c ver` runs in it
-  (`notepad.exe` too, on the first run, when DXVK/VKD3D were unpacked by hand). DXVK/VKD3D ship
-  because, measured, Bottles refuses to create a bottle offline without them. Persistence observed
-  on ext4 perch: two boots of `slax-bottles-test` on one disk, the marker written on the first and
-  found on the second.
+  `30-bottles.sb` (894.3 MiB): the Bottles Flatpak installation with its 12 runtime refs: Flathub's
+  stable Bottles and runtimes as served on the day of the build, 67.3 when this was measured. The
+  release notes name the version, and its `.flatpak.txt` every ref and commit (D-20). Plus DXVK 3.1
+  and VKD3D-Proton 3.0.1, a launcher tile and `/etc/slax-bottles-release`. **Runtime-verified in
+  QEMU with no network**, on the 2026-09-18 runtimes: a bottle is created with the bundled
+  `sys-wine-11.0` runner from only what the image ships, and `cmd /c ver` runs in it (`notepad.exe`
+  too, on the first run, when DXVK/VKD3D were unpacked by hand). DXVK/VKD3D ship because, measured,
+  Bottles refuses to create a bottle offline without them. Persistence observed on ext4 perch: two
+  boots of `slax-bottles-test` on one disk, the marker written on the first and found on the second.
 - `slax-bottles-iso` (slax-bottles only): `automount` removed, volume id `SLAX-BOTTLES`, sha256
   beside the image. Two steps copied from `slax-wine-iso`, which is itself unchanged.
 - `profiles/slax-bottles.yaml` and `slax-bottles-test.yaml`; `build.sh --bottles`,
-  `--bottles-test`, `--all`, and `BOTTLES_RELOCK=1` for bumping the pin.
+  `--bottles-test`, `--all`, and `BOTTLES_RELOCK=1`, which prints Flathub's current refs for the
+  optional `BOTTLES_LOCK`.
 - `docs/using-bottles.md`.
 - `docs/software.md`: what each ISO removes, adds and runs, and what it needs from the machine (CPU,
   firmware, memory, GPU, storage), each figure marked measured or not. The exact versions are

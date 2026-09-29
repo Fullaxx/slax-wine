@@ -50,18 +50,18 @@ None boots on **32-bit UEFI firmware** — no `bootia32.efi` exists anywhere ups
 ## And slax-bottles
 
 `./build.sh --bottles` builds **`slax-bottles-<ver>.iso`**, a separate image: **64-bit** Slax with
-[Bottles](https://usebottles.com) 67.3 baked in, so it creates bottles and runs Windows programs
-**with no network**. It is not slax-wine plus Bottles. Bottles ships only as an x86_64 Flatpak, and it
-runs sandboxed with its own Wine, so it cannot use our Debian Wine
+[Bottles](https://usebottles.com), from Flathub, baked in, so it creates bottles and runs Windows
+programs **with no network**. It is not slax-wine plus Bottles. Bottles ships only as an x86_64
+Flatpak, and it runs sandboxed with its own Wine, so it cannot use our Debian Wine
 ([DECISIONS.md](docs/DECISIONS.md) D-14).
 
 | | |
 |---|---|
 | base | `slax-64bit-debian-12.2.0.iso` |
-| Bottles | 67.3 from Flathub, with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono; every ref pinned by commit |
+| Bottles | Flathub's stable Bottles as served on the day of the build (67.3 when this was written), with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono. The release's `.flatpak.txt` names every ref and commit |
 | offline extras | DXVK 3.1 and VKD3D-Proton 3.0.1, without which Bottles will not create a bottle offline (measured) |
 | no browser | `05-chromium.sb` removed, as in slax-wine |
-| size | **1294.5 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
+| size | **1299.4 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
 
 Using it: **[docs/using-bottles.md](docs/using-bottles.md)**.
 

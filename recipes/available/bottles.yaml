@@ -82,8 +82,9 @@ steps:
       #
       # upstream_source: where the manifests that build these refs are published -- Bottles'
       # own on Flathub, the freedesktop and GNOME runtimes, and the Wine extensions (gecko,
-      # mono) from Flathub's Wine manifest. BOTTLES_LOCK in build.env names each ref and the
-      # commit that shipped, and each commit records its manifest revision.
+      # mono) from Flathub's Wine manifest. /opt/bottles/VERSION, which build.sh writes from
+      # the stage, names each ref and the commit that shipped, and each commit records its
+      # manifest revision.
       - dest: /var/lib/flatpak
         src: ./bottles.files/var/lib/flatpak
         upstream_source:
@@ -189,7 +190,9 @@ steps:
       # -- provenance ------------------------------------------------------------------
       # os-release-shaped, static facts only, the same rule as /etc/slax-wine-release.
       # ci/checks/96-release-consistency.sh section 4 checks these literals against
-      # build.env, so the image cannot claim a version it was not built as.
+      # build.env, so the image cannot claim a version it was not built as. The Bottles
+      # version is not a static fact -- it is whatever Flathub served (D-20) -- so it is
+      # not here: /opt/bottles/VERSION, which build.sh writes from the stage, names it.
       - dest: /etc/slax-bottles-release
         mode: "0644"
         content: |
@@ -197,6 +200,6 @@ steps:
           VERSION="1.0.0"
           BASE_ISO="slax-64bit-debian-12.2.0.iso"
           BASE_SHA256="61d9fdcc006938d6fd6f231e22d8af926ae8f48fdf0487b8010e69f3bd17cf70"
-          BOTTLES_VERSION="67.3"
+          BOTTLES_VERSION_FILE="/opt/bottles/VERSION"
           BOTTLES_SOURCE="Flathub com.usebottles.bottles//stable"
           HOME_URL="https://github.com/Fullaxx/slax-wine"

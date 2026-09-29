@@ -149,7 +149,8 @@ def fake_assets(d, names, with_isos=True):
     for n in names:
         if not n.endswith(".iso") and not n.endswith(".iso.sha256"):
             with open(os.path.join(d, n), "w") as fh:
-                fh.write(f"{n}\n")
+                # .flatpak.txt as build.sh writes it: the app and the version Flathub served.
+                fh.write("com.usebottles.bottles 99.1\n" if n.endswith(".flatpak.txt") else f"{n}\n")
 
 
 def sums_lines(d):
@@ -309,6 +310,7 @@ def test_notes():
                             "## How it was verified"):
                 check_in("section", section, out)
             check_in("the size, from the draft", "| 1000.0 MiB |", out)
+            check_in("the Bottles version, from what shipped", "Bottles 99.1 as a Flatpak", out)
             check_in("the run", "https://example.invalid/run/1", out)
             m = re.search(r"slax-kitchen\*\* pinned at \[`([0-9a-f]{7})`\]", out)
             check("the pin is a commit", bool(m), True)
@@ -318,6 +320,11 @@ def test_notes():
             check_in("without a run, the notes say it was by hand", "by hand", out)
             rc, out = run([NOTES, f"v{ver}", d])
             check("an image with no size fails", rc, 1)
+            with open(os.path.join(d, f"slax-bottles-{ver}.flatpak.txt"), "w") as fh:
+                fh.write("refs:\n")
+            rc, out = run([NOTES, f"v{ver}", d, "--sizes", sizes])
+            check("no Bottles version to read fails", rc, 1)
+            check_in("and says so", "cannot read the Bottles version", out)
         finally:
             os.remove(sizes)
 

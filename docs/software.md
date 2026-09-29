@@ -126,11 +126,14 @@ installed packages**, in 575 entries, one fewer of each than on 32-bit.
 
 **Installed packages: 613** (566 + 16 + 31), in 622 database entries.
 
-Inside the Flatpak installation, every ref pinned by commit in `build.env`'s `BOTTLES_LOCK`:
+Inside the Flatpak installation: Bottles and the runtimes Flathub served on the day of the build.
+The image's `/opt/bottles/VERSION` and the release's `.flatpak.txt` name the Bottles version and
+each ref's commit
+([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)):
 
 | ref | what it is |
 |---|---|
-| `com.usebottles.bottles//stable` | **Bottles 67.3**. It carries its own Wine, which Bottles lists as the runner `sys-wine-11.0` |
+| `com.usebottles.bottles//stable` | **Bottles**, 67.3 when this was measured. It carries its own Wine, which Bottles lists as the runner `sys-wine-11.0` |
 | `org.gnome.Platform//50` (+ `.Locale`) | GNOME 50, the runtime Bottles is built against: GTK 4, libadwaita |
 | `org.freedesktop.Platform.GL.default//25.08` and `//25.08-extra` | Mesa for 64-bit programs: OpenGL and **Vulkan 1.4** drivers (Mesa 26.2.2, RADV, ANV, NVK) |
 | `org.freedesktop.Platform.GL32.default//25.08` and `//25.08-extra` | the same for 32-bit programs |
@@ -144,7 +147,7 @@ And from Bottles' own components index, because it will not create a bottle offl
 (measured, [bottles](50-cookbook/bottles.md)): **DXVK 3.1** (Direct3D 8/9/10/11 on Vulkan) and
 **VKD3D-Proton 3.0.1** (Direct3D 12 on Vulkan).
 
-[sizing.md](sizing.md) breaks the 889.4 MiB bundle down by ref.
+[sizing.md](sizing.md) breaks the 894.3 MiB bundle down by ref.
 
 ### What it runs
 
@@ -167,7 +170,7 @@ everything else is stated as what it is.
 | **Firmware** | BIOS: both images. UEFI: `slax32-wine-uefi` only, and only **64-bit** UEFI firmware, because no `bootia32.efi` exists upstream ([INSTALL.md](../INSTALL.md)) | BIOS: both images. UEFI: `slax64-wine-uefi` only | BIOS or 64-bit UEFI. It is always built UEFI-bootable |
 | **Memory** | Measured booting in 2 GiB (the boot harness's default). In 3 GiB, after the first prefix and Notepad++: 1,273 MiB used, 645 MiB of it the RAM layer. No minimum established | Measured in 3 GiB: 452 MiB used at the idle desktop, 1.8 GiB after the Wine tile's first run. **Without persistence every Wine prefix lives in RAM**, and Wine copies its Windows-side libraries into each: a fresh 64-bit prefix is 1,265 MiB, a 32-bit one 589 MiB. A test that kept two prefixes and was making a third ran the 3 GiB machine out of memory; the kernel never invoked its OOM killer, and the desktop stayed unresponsive until the VM was reset. No minimum established | Measured booting in 3 GiB. In a 6 GiB VM: 550 MiB used at the idle desktop, 738 MiB with Bottles open, 1.75 GiB after creating a bottle. No minimum established. Without persistence everything written, bottles included, also lives in RAM |
 | **GPU** | None required. Wine draws through Mesa's OpenGL: software-rendered in every test here, and whether a real card initialises with the GPU firmware the image now carries (D-18) is untested | The same; 32-bit programs use the i386 Mesa in `20-wine.sb` | None required to *run* Bottles: it ran with software rendering. **DXVK 3.x needs a Vulkan 1.4 driver** (per DXVK: RADV 25.0+, ANV 25.1+, NVIDIA 575.51.02+). The runtime's Mesa 26.2.2 meets that; whether a real GPU initialises under Slax's 6.1 kernel with the firmware the image now carries (D-18) is **untested**. Without Vulkan, Direct3D goes through Wine's OpenGL path, or fails |
-| **Storage** | The ISO: 561.5 or 567.7 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 869.7 or 875.9 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 1294.5 MiB. A fresh bottle measured **386 and 491 MiB** on two runs, before anything is installed into it |
+| **Storage** | The ISO: 561.5 or 567.7 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 869.7 or 875.9 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 1299.4 MiB. A fresh bottle measured **386 and 491 MiB** on two runs, before anything is installed into it |
 | **Network at runtime** | None | None | None. Bottles says "offline" and offers to retry; everything a bottle needs ships (measured) |
 | **Kernel features** | — | 32-bit program support (`IA32_EMULATION`), which the stock kernel has | Namespaces for `bubblewrap`, and a D-Bus session: the stock Slax kernel and session provide both (measured) |
 

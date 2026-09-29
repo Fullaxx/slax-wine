@@ -195,10 +195,9 @@ else
     done
 fi
 
-# The same for slax-bottles, whose release file is written by bottles.yaml. The Bottles
-# version has a line of its own (BOTTLES_SOURCE carries the prose), so it is checked the
-# way every other line here is -- whole-line, fixed-string. An earlier draft grepped for a
-# prefix of one combined line, which is exactly the loosening this file's header forbids.
+# The same for slax-bottles, whose release file is written by bottles.yaml. It carries no
+# Bottles version since D-20: that is whatever Flathub served, recorded by build.sh in
+# /opt/bottles/VERSION, and a literal here would be a claim nothing can keep true.
 BY="$REPO_ROOT/recipes/available/bottles.yaml"
 if [ ! -f "$BY" ]; then
     fail "recipes/available/bottles.yaml is missing, so /etc/slax-bottles-release is unchecked"
@@ -209,8 +208,8 @@ else
         || fail "bottles.yaml: /etc/slax-bottles-release BASE_ISO does not match BASE64_ISO"
     line_present "$BY" "BASE_SHA256=\"$BASE64_SHA256\"" \
         || fail "bottles.yaml: /etc/slax-bottles-release BASE_SHA256 does not match BASE64_SHA256"
-    line_present "$BY" "BOTTLES_VERSION=\"$BOTTLES_VERSION\"" \
-        || fail "bottles.yaml: /etc/slax-bottles-release BOTTLES_VERSION does not match build.env ($BOTTLES_VERSION)"
+    ! grep -q '^ *BOTTLES_VERSION=' "$BY" \
+        || fail "bottles.yaml: /etc/slax-bottles-release claims a BOTTLES_VERSION; since D-20 it floats, and /opt/bottles/VERSION records it"
 fi
 
 # ---- 5. no orphan recipes, and the slax-wine profiles must not drift ---------------

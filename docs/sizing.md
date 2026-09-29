@@ -29,8 +29,11 @@ stores an mtime per file and a creation time of its own, so two runs of one tree
 sometimes in size, by a 4 KiB padding block. Measured 2026-09-21 while bumping the engine to
 `7f9c4f8`: rebuilding the 2026-09-20 tree gave a 64-bit `20-wine.sb` 4,096 bytes larger and a
 `30-bottles.sb` 1,372,160 bytes smaller, with the same 816 and 597 packages at the same versions and
-all 13 Flatpak refs at their locked commits — `BOTTLES_LOCK` pins *what* is installed, not the bytes
-that result. Every ISO and bundle total here is from the 2026-09-28 build, the first with the firmware.
+all 13 Flatpak refs at the same commits: the same refs do not mean the same bytes. Since D-20 the
+refs under Bottles are not pinned either, so a Flathub update between two builds moves the bundle
+too. The slax-wine totals here are from the 2026-09-28 build, the first with the firmware, and the
+2026-09-29 rebuild matched them to the byte; slax-bottles' are from 2026-09-29, the first build to
+take Flathub's runtimes as served.
 `mksquashfs -mkfs-time 0 -all-time 0` would make the squashfs half reproducible, and is not used.
 
 (Every ledger here adds up to the byte. An earlier version put the ESP at +6,488,064 and did not: the
@@ -112,10 +115,12 @@ which copies the compressed bundles into RAM rather than an installed tree.
 The firmware is already in: `firmware-refresh` costs **54.2 MiB** on every image, where D-10 had
 estimated 90 ([DECISIONS.md](DECISIONS.md) D-18).
 
-## slax-bottles: where the 1294.5 MiB goes
+## slax-bottles: where the 1299.4 MiB goes
 
-A different image on a different base ([DECISIONS.md](DECISIONS.md) D-14). Measured on the build
-that ships DXVK and VKD3D:
+A different image on a different base ([DECISIONS.md](DECISIONS.md) D-14). Measured on the build of
+2026-09-29, with the GNOME 50 runtime Flathub served that day. The 2026-09-18 one, pinned until
+[D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped), gave 5,124,096
+bytes less, all of it in `30-bottles.sb` (889.4 MiB, 1294.5 in all):
 
 | | bytes | MiB |
 |---|---|---|
@@ -124,27 +129,27 @@ that ships DXVK and VKD3D:
 | + `09-firmware-debian.sb` (`firmware-refresh`: Debian's current firmware packages, 26 `copyright` files) | +51,118,080 | +48.8 |
 | + `09-firmware-linux.sb` (`firmware-refresh`: 65 files from linux-firmware, with their licences and `WHENCE`) | +5,677,056 | +5.4 |
 | + `20-flatpak.sb` (flatpak and its dependency closure: 36 packages in its dpkg fragment) | +8,372,224 | +8.0 |
-| + `30-bottles.sb` (the Flatpak installation, DXVK, VKD3D, launcher) | +932,646,912 | +889.4 |
+| + `30-bottles.sb` (the Flatpak installation, DXVK, VKD3D, launcher) | +937,771,008 | +894.3 |
 | + `98-dpkg-db.sb` (generated at pack time) | +135,168 | +0.1 |
 | + `boot/efi.img` (the GRUB ESP, not a bundle) and its `/boot` directory | +6,488,064 + 2,048 | +6.2 |
-| **slax-bottles 1.0.0** | **1,357,389,824** | **1294.5** |
+| **slax-bottles 1.0.0** | **1,362,513,920** | **1299.4** |
 
-`BOTTLES_MAX_ISO_MIB=1359` is that plus 5%, the same margin slax-wine uses. DXVK 3.1 and
+`BOTTLES_MAX_ISO_MIB=1364` is that plus 5%, the same margin slax-wine uses. DXVK 3.1 and
 VKD3D-Proton 3.0.1 account for **16.0 MiB** of the bundle: the build without them came to 874.8 MiB
 and 1225.7 MiB.
 
 ### Inside `30-bottles.sb`
 
-The Flatpak tree is **3,211 MiB of distinct file data unpacked**, which xz squashes to about 875 MiB of the bundle.
-The ostree repo's objects are the same inodes as the deployed files, so this table counts them once.
-In the bundle they cost nothing extra either: the copy made while building keeps the hardlinks since
-slax-kitchen `f5e6673` (see [build.md](build.md)), and mksquashfs stores a hardlinked file once, as
-it stored identical files once before that. Per ref, measured on the staged tree by inode: "own"
-counts only the bytes no other ref shares.
+The Flatpak tree is **3,231 MiB of distinct file data unpacked**, which xz squashes to about 878 MiB
+of the bundle. The ostree repo's objects are the same inodes as the deployed files, so this table
+counts them once. In the bundle they cost nothing extra either: the copy made while building keeps
+the hardlinks since slax-kitchen `f5e6673` (see [build.md](build.md)), and mksquashfs stores a
+hardlinked file once, as it stored identical files once before that. Per ref, measured on the staged
+tree by inode: "own" counts only the bytes no other ref shares.
 
 | ref | unpacked MiB | own MiB |
 |---|---|---|
-| `org.gnome.Platform//50` | 956.9 | 955.2 |
+| `org.gnome.Platform//50` | 976.6 | 974.9 |
 | `com.usebottles.bottles//stable` (includes its own Wine 11.0) | 503.5 | 503.3 |
 | `org.freedesktop.Platform.Compat.i386//25.08` | 290.6 | 289.2 |
 | `org.winehq.Wine.gecko//stable-25.08` | 204.2 | 204.2 |

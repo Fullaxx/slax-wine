@@ -81,11 +81,15 @@ bundle suggests. **Budget about 14 GB free** for a `--bottles` build, measured p
 | `work/bottles/` | 0.4 GB unpacked base, plus the 0.9 GB bundle |
 | `out/slax-bottles-<ver>.iso` | 1.2 GB |
 
-The squashed bundle is small again (889.4 MiB) because mksquashfs stores identical files once. Flatpak
-runs its install triggers through `bwrap`, and on a host without user namespaces (a container, for
-instance) that prints `bwrap: Creating new namespace failed`. That is harmless: the triggers only
-rebuild caches under `exports/` that Slax never reads, and `build.sh` checks what matters, the
-deployed commits.
+The squashed bundle is small again (894.3 MiB) because mksquashfs stores identical files once.
+Flatpak runs its install triggers through `bwrap`, and on a host without user namespaces (a
+container, for instance) that prints `bwrap: Creating new namespace failed`. That is harmless: the
+triggers only rebuild caches under `exports/` that Slax never reads, and `build.sh` checks what
+matters: the languages deployed, and the version and commits it records. Each `./build.sh --bottles`
+asks Flathub whether anything in the stage has a newer commit, and if so installs the stage again
+from nothing, about 1 GB of download, because updating in place would keep the old commit's objects
+and ship them ([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)).
+`--no-fetch` keeps the stage as it is.
 
 ## Running it
 
@@ -118,7 +122,8 @@ four full builds; narrow it while iterating: `./build.sh --32 --bios`.
 | `--bottles` | build `slax-bottles-<ver>.iso`: 64-bit Slax with Bottles baked in, and no Debian Wine. Uses the 64-bit base and its own module list and size ceiling (`BOTTLES_*` in `build.env`) |
 | `--bottles-test` | its testkit image, `slax-bottles-test-<ver>.iso`: the counterpart of `--test` |
 | `--all` | the four slax-wine images and slax-bottles: every shipped image |
-| `BOTTLES_RELOCK=1` | with an empty `recipes/available/bottles.files/`: install Flathub's **current** Bottles and print a fresh `BOTTLES_LOCK` to paste into `build.env`. How the pin is bumped |
+| `BOTTLES_RELOCK=1` | with an empty `recipes/available/bottles.files/`: install Flathub's **current** Bottles and print its refs as a `BOTTLES_LOCK`, for pinned mode |
+| `BOTTLES_LOCK` in `build.env` | **empty for a release.** Set, it forces every Flatpak ref to a named commit and refuses a stage that differs either way, a stopgap for when a Flathub update breaks something, as long as Flathub still serves those commits; a commit it has pruned fails the build ([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)) |
 | `--keep-work` | leave `work/<variant>/` in place for inspection |
 | `--no-fetch` | skip *downloading* the base ISOs (they are still verified). The application payloads are fetched regardless if one is missing or its hash does not match; a `--32` build never fetches the 64-bit Notepad++ |
 | `ISO_DIR=…` | reuse base ISOs you already have |
@@ -182,7 +187,9 @@ Failing any of these fails the build:
   [slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29) was fixed, and deliberately
   not to its version, which here is not free — so `build.sh` still compares all three
 - each Notepad++ installer's sha256 matches `APP32_SHA256` or `APP64_SHA256`, or for slax-bottles,
-  every Flatpak ref is deployed at its `BOTTLES_LOCK` commit and nothing unlisted is installed
+  the Flatpak stage holds Bottles, with the languages `BOTTLES_LANGUAGES` names, and nothing older
+  than Flathub serves (and, with `BOTTLES_LOCK` set, every ref at its commit and nothing unlisted);
+  its version is recorded, not required
 - **each** ISO's volume id is what its recipe set (`SLAX32-WINE`, `SLAX64-WINE`, or `SLAX-BOTTLES`),
   and each is under its ceiling (`WINE32_MAX_ISO_MIB`, `WINE64_MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
 - each ISO's `.sha256` is there and matches, and `kitchen pack` wrote its `.provenance.json`: the two
@@ -295,8 +302,8 @@ that project's own report points back to. The test images are never published.
 |---|---|
 | **each asset under 2 GiB** | The largest image is about 1.3 GiB, and `BOTTLES_MAX_ISO_MIB` stops it long before. `ci/release-stage.sh` and `ci/release-sums.sh` refuse anything larger anyway. |
 | total release size, download bandwidth | no limit |
-| runner disk, about 14 GB | The build jobs remove the runner's preinstalled SDKs first, and build on whichever filesystem has more room. |
-| no KVM promised | Boots fall back to TCG, 21–31 s each against 4–6 s, with the UEFI keys spelled out (`--tcg-keys`; [UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)). |
+| runner disk | GitHub promises about 14 GB. Measured in the first rehearsal: 108 GB free on `/` once the build job had removed the runner's preinstalled SDKs, which it still does first. |
+| KVM | Not promised, but the runners had it in the first rehearsal, and the 64-bit jobs boot under it. The 32-bit job boots under TCG by choice: under the runner's KVM its guest stopped after `Live Kit init` on all four routes, cause not established, while it boots under KVM on the boot host. Under TCG a boot took 21–31 s on this project's own machines, against 4–6 s under KVM; the rehearsal measures a runner's, with the UEFI keys spelled out (`--tcg-keys`; [UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)). |
 
 **If a run fails,** the draft stays incomplete: it has no `SHA256SUMS`, and its notes say it is
 being built. Fix the cause, and use **Re-run failed jobs**: every upload replaces the asset of the

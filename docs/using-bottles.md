@@ -88,8 +88,8 @@ flatpak update com.usebottles.bottles
 ```
 
 The Flathub remote is already configured. On a non-persistent boot an update lands in RAM and is
-gone at shutdown. A permanent update means a rebuild, which bumps the pin in `build.env`
-(see [build.md](build.md), `BOTTLES_RELOCK`).
+gone at shutdown. A permanent update means a rebuild, which takes whatever Flathub serves that day
+([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)).
 
 ## What does not work, or is not known
 

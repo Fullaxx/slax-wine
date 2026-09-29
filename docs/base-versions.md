@@ -24,8 +24,10 @@ and `kitchen fetch --verify-only` re-checks the bytes on every build, so a base 
 fails before anything is unpacked.
 
 slax-bottles has a third half as well: its Flatpak installation, which comes from Flathub, not
-Debian. That is pinned ref-by-ref in `BOTTLES_LOCK` and checked by `build.sh` against the deployed
-commits, and DXVK/VKD3D by sha256 in `BOTTLES_COMPONENTS`. Changing either is also a version bump.
+Debian. Nothing of it is pinned: Bottles and its runtimes are what Flathub serves on the day of the
+build, like bookworm's packages, and the release's `.flatpak.txt` records the Bottles version and
+each ref's commit. DXVK/VKD3D are pinned by sha256 in `BOTTLES_COMPONENTS`, and changing them is a
+version bump ([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)).
 
 ## Upstream has not moved since 2023
 
