@@ -28,6 +28,12 @@ Each is spelled out in [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *Moving the pin
 starting, every time, including when the request is worded differently ("bump", "move the pin", "take
 upstream").
 
+## Before cutting a release
+
+Read [`docs/build.md`](docs/build.md) § *Cutting a release*. A tag push starts
+`.github/workflows/release.yml`, which builds into a draft release. Pushing a tag, dispatching a
+rehearsal and publishing a draft are each the user's, and each is its own request, like a commit.
+
 ## Before working around an upstream bug
 
 Read [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *The lifecycle*: file the issue, mark the code

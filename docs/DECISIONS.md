@@ -542,3 +542,51 @@ that does initialise may run a real Mesa driver instead of llvmpipe, which no te
 **What would change this:** an image too large for its medium, or firmware whose terms the
 publisher cannot accept, which `remove-bundle` with `drop: 09-firmware` answers per build.
 
+
+## D-19 · Release from a tag, by Actions, into a draft
+
+**Decided 2026-09-28.** Pushing `v$VERSION` runs `.github/workflows/release.yml` on GitHub's hosted
+runners:
+- it runs every gate;
+- it builds the five shipped images and the three test images from the tagged commit;
+- it boots each test image through the four routes;
+- it uploads the 32 assets to a **draft** release, with `SHA256SUMS` and generated notes.
+
+A person reads the draft and publishes it. The procedure is [Cutting a release](build.md#cutting-a-release).
+
+**Why.** A release by hand was a checklist of nine steps, any of which could be skipped without
+anything failing, and the images went up through one person's connection, about 3.4 GB. The
+workflow does the same steps in the same order every time, from a fresh checkout of the tag, and a
+runner uploads the images. Every step is a script in `ci/`, so a release can still be staged by hand, and the scripts
+are tested without Actions (`tests/unit/test_release.py`).
+
+**Alternatives weighed:**
+- **Publishing at once, with no draft.** The most hands-off, but a bad build would be public until
+  somebody deleted it. With a draft, a person reading the notes and the assets costs a minute.
+- **A self-hosted runner** on the build machine, or on the boot host for KVM. The repository is
+  public, and a self-hosted runner there runs code from whoever can trigger it, as root, since the
+  build needs a chroot. Hosted runners are thrown away after each job.
+- **A local command.** It could boot under KVM on the boot host, but it runs only where that host
+  is reachable, and uploads from there. It survives as *By hand*, in build.md.
+
+**What it costs.**
+- **KVM is not promised.** Upstream records hosted runners without `/dev/kvm`, and its own CI boots
+  under TCG. The workflow uses KVM when a runner offers it and says which one it got, and otherwise
+  boots under TCG: 21–31 s a boot against 4–6 s, with the UEFI menu keys spelled out
+  ([UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)).
+  Booting under KVM on the boot host before tagging stays in the procedure, as an optional step.
+- **Disk.** A hosted runner promises about 14 GB. slax-bottles stages a 3.2 GiB Flatpak and packs two
+  1.3 GB ISOs, so each build job first removes the runner's preinstalled SDKs.
+- **A runner's build is not a local build's twin.** The PVD timestamps and squashfs mtimes are not
+  pinned ([sizing.md](sizing.md)), so every build has its own sha256. What is pinned is the same
+  everywhere: the bases, the engine, the Notepad++ and DXVK/VKD3D payloads by sha256, and Bottles'
+  `BOTTLES_LOCK`. The Debian packages are not: apt installs bookworm as it stands on the day of the
+  build, so a security update between two builds changes a version. Each image's `packages.tsv`
+  records what its build got.
+- **Trust.** Three `actions/*` actions, at the Node 24 versions upstream checked, run with write
+  access to releases. Nothing from a fork can trigger the workflow, since it has no `pull_request`
+  trigger.
+
+**What would change this:** runners that guarantee KVM, which would make the optional KVM step
+redundant; an image over 2 GiB, the asset limit, which `BOTTLES_MAX_ISO_MIB` would hit first; or
+Flathub dropping a locked commit, which fails the build as `build.env` says it must.

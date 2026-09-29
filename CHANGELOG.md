@@ -104,6 +104,11 @@ Bottles exists only as an x86_64 Flatpak. It carries no Debian Wine: Bottles run
   - the release file and the browser mask;
   - the bundle-number split;
   - what each image applied, and what does not carry over.
+- **A pushed tag builds the release.** `.github/workflows/release.yml` runs every gate, builds all
+  eight images from the tag, and boots the three test images through their four routes. It uploads
+  the assets to a draft release, which a person reads and publishes
+  ([docs/DECISIONS.md](docs/DECISIONS.md) D-19). The steps are scripts in `ci/`, `release-guard`,
+  `-boot`, `-stage`, `-sums` and `-notes`, so a release can also be staged by hand.
 - Each release carries, per image, the ISO, its `.sha256`, provenance sidecar, `packages.tsv`,
   `SOURCES.md` and `sources.json`, and one `SHA256SUMS`. No source is attached: what slax-wine
   changed is this repository, and `SOURCES.md` points at where each upstream publishes the rest

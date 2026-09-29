@@ -87,7 +87,7 @@ That is the whole mechanism. It is not a naming convention laid over something e
 | bundle | ships | may be switched off with |
 |---|---|---|
 | `01-core` … `04-apps` | upstream Slax, untouched | — |
-| `09-firmware-debian.sb` | upstream's `firmware-refresh`: Debian's current firmware packages, the ten stock ones included, with their `copyright` files ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)) | `noload=09-firmware-debian.sb` |
+| `09-firmware-debian.sb` | upstream's `firmware-refresh`: Debian's current firmware packages, nine of the ten stock ones reinstalled, with their `copyright` files ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)) | `noload=09-firmware-debian.sb` |
 | `09-firmware-linux.sb` | the same recipe: firmware from linux-firmware no Debian package ships, with its licence files and `WHENCE` | `noload=09-firmware-linux.sb` |
 | `20-wine.sb` | Wine and its dependency closure — on 64-bit, both halves and the i386 libraries | `noload=20-wine.sb` |
 | `21-wine-desktop.sb` | launcher entry, env defaults, the wrapper | `noload=21-wine-desktop.sb` |

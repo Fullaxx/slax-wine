@@ -82,7 +82,7 @@ launcher entry in a bundle numbered above `21`, because the higher bundle wins.
 
 | range | whose | on our images |
 |---|---|---|
-| `00`–`09` | upstream Slax and slax-kitchen | `01-core`, `01-firmware`, `02-xorg`, `03-desktop`, `04-apps`; `05-chromium` removed |
+| `00`–`09` | upstream Slax and slax-kitchen | `01-core`, `01-firmware`, `02-xorg`, `03-desktop`, `04-apps`; `05-chromium` removed; `09-firmware-debian` and `09-firmware-linux`, from slax-kitchen's `firmware-refresh` |
 | `10`–`19` | the bottom of the band slax-kitchen gives projects, left to its example recipes (`10`–`16` today) | none |
 | `20`–`29` | **slax-wine's platform**: keep these | `20-wine`, `21-wine-desktop` |
 | `30`–`89` | **applications**: yours to replace | `30-notepadpp32`, and `31-notepadpp64` on 64-bit |
@@ -130,8 +130,9 @@ work tree, not in the image.
 3. Move your engine to the new sidecar's `kitchen.commit`, unless you have a reason not to.
 
 [UPSTREAM.md](UPSTREAM.md) records our review of every engine commit a bump took, in its *Adopted
-at* sections. Read them, but your own bar still applies. There is no CI here, so each release's
-notes say what ran in its place: the gates, every image's build assertions, and the boot routes.
+at* sections. Read them, but your own bar still applies. Each release's notes say what ran before
+it was published: the gates, every image's build assertions, and the boot routes, run by the release
+workflow from the tag ([D-19](DECISIONS.md#d-19--release-from-a-tag-by-actions-into-a-draft)).
 
 ## Working around a slax-wine bug
 
@@ -153,7 +154,10 @@ Two facts about what you inherit still carry into your image:
 
 - the Notepad++ installers, if you keep `30` and `31`, are ones our build downloaded and copied in
   ([D-7](DECISIONS.md#d-7--fetch-the-payload-do-not-commit-it));
-- stock Slax's `01-firmware.sb` has no licence texts, which stays unless you add `firmware-refresh`
-  or remove `01-firmware`.
+- stock Slax's `01-firmware.sb` has no licence texts, and its Broadcom b43 files never had one.
+  Our `09-firmware-debian` and `09-firmware-linux` carry theirs
+  ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)); do not apply
+  `firmware-refresh` again, since its bundle names are taken. `remove-bundle` can drop
+  `01-firmware` if its terms matter to you.
 
 How slax-wine itself publishes is [Cutting a release](build.md#cutting-a-release).

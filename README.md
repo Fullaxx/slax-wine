@@ -11,9 +11,12 @@ cd slax-wine && ./build.sh          # -> out/slax32-wine-bios-1.0.0.iso
                                     #    out/slax64-wine-uefi-1.0.0.iso
 ```
 
-Needs `squashfs-tools`, `xorriso`, `curl` and a `python3` with `yaml` — and root (or `sudo`) for one
-step. [docs/build.md](docs/build.md) has the full list, the hook setup, and the one `sudo` trap that
-is not obvious.
+Or download a built image from [Releases](https://github.com/Fullaxx/slax-wine/releases), with its
+checksum, provenance and sources report; [INSTALL.md](INSTALL.md) says which one to take.
+
+Building needs `squashfs-tools`, `xorriso`, `curl` and a `python3` with `yaml` — and root (or `sudo`)
+for one step. [docs/build.md](docs/build.md) has the full list, the hook setup, and the one `sudo`
+trap that is not obvious.
 
 ## What you get
 

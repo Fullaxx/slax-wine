@@ -212,10 +212,11 @@ Building is not testing. The build reaches `boot-verified`; `runtime-verified` n
 screen. See the [cookbook index](50-cookbook/README.md) for the ladder, and
 [INSTALL.md](../INSTALL.md) for getting the image onto hardware.
 
-There is **no CI yet** — deliberately deferred until the image has been tested on real hardware. Some
-gate messages mention CI re-running them; that is aspirational until `.github/workflows/` exists.
-Until then the hooks above are the only thing enforcing any of this, which is why installing them
-matters.
+There is **no CI on pushes or pull requests.** The one workflow, `.github/workflows/release.yml`,
+runs when a version tag is pushed ([Cutting a release](#cutting-a-release)). It runs every gate
+again, but only at release time, and some gate messages speak of CI re-running them as if every push
+went through it. Between releases the hooks above are the only thing enforcing any of this, which is
+why installing them matters.
 
 ## Cutting a release
 
@@ -223,7 +224,12 @@ A release is what the projects built on slax-wine pin
 ([building-on-slax-wine.md](building-on-slax-wine.md)), so it carries each image's checksum and
 provenance sidecar as well as the image.
 
-**It goes through slax-kitchen's own procedure,**
+**A pushed tag builds it, into a draft a person publishes.** `.github/workflows/release.yml` builds
+every image from the tagged commit on GitHub's hosted runners, boots the test images, and uploads
+the assets to a **draft** release. Nothing publishes it but a person
+([D-19](DECISIONS.md#d-19--release-from-a-tag-by-actions-into-a-draft)).
+
+**It follows slax-kitchen's own procedure,**
 [publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/docs/40-workflow/publishing-images.md),
 under the pointer policy in [NOTICE.md](../NOTICE.md) and
 [D-12](DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source): no source is attached,
@@ -235,30 +241,97 @@ one image per release
 
 In this order:
 
-1. **Date `[1.0.0]` in `CHANGELOG.md`, and commit that first,** so every image's sidecar names the
-   commit that gets tagged.
+1. **Date `[VERSION]` in `CHANGELOG.md`, and commit that first,** so every image's sidecar names the
+   commit that gets tagged. The workflow refuses a tag whose entry is undated.
 2. **Run `./ci/run-checks.sh ci`** on that commit: every gate, in tree scope.
-3. **Build `./build.sh --all`, `./build.sh --test` and `./build.sh --bottles-test`** from that clean
-   commit: the five shipped images and the three test images.
-4. **Run the twelve boot routes**, `--kernel`, `--bios`, `--uefi` and `--persistence` on each test
-   image, on the boot host described [above](#commit-gates), with nothing else running.
-5. **Tag it: `git tag v$VERSION`** on that commit. Gate 96 §6 fails a tag that is not the version,
-   and docs that still say `TBD-MEASURED`.
-6. **Write each shipped image's sources files,** the engine's one command per image:
+3. **Optionally, boot the test images under KVM on the boot host**
+   ([above](#commit-gates)). The workflow boots them too, but only under KVM if its runner happens
+   to offer it, and otherwise under TCG:
 
    ```sh
-   vendor/slax-kitchen/kitchen sources out/<image>-$VERSION.iso \
-       --markdown out/<image>-$VERSION.SOURCES.md --json out/<image>-$VERSION.sources.json
+   . ./build.env
+   ./build.sh --test && ./build.sh --bottles-test
+   for t in slax32-wine-test slax64-wine-test slax-bottles-test; do
+       ./ci/release-boot.sh out/$t-$VERSION.iso || break
+   done
    ```
 
-7. **Assemble the assets:** for each of the five shipped images its `.iso`, `.iso.sha256`,
-   `.iso.provenance.json`, `packages.tsv`, `SOURCES.md` and `sources.json`, plus slax-bottles'
-   `flatpak.txt`, and one `SHA256SUMS` over all of them. The sidecar is what tells a project built on
-   an image what it applied, and its `SOURCES.md` is what that project's own report points back to.
-   Every asset has to be under GitHub's 2 GiB limit; the largest image is about 1.3 GB.
-8. **Write notes** that name the engine pin, both base ISOs with their sha256, what ran in place of
-   CI, and a redistribution line pointing at NOTICE.md.
-9. **Upload: `gh release create`.** That is a person's step; nothing here uploads.
+4. **Tag it and push both:** `git tag v$VERSION`, then `git push origin master v$VERSION`. Gate 96
+   §6 fails a tag that is not the version, and docs that still say `TBD-MEASURED`. The tag push
+   starts the workflow.
+5. **The workflow.** Its first rehearsal measures how long it takes.
+   - `guard` runs `ci/release-guard.sh`: the tag is `v$VERSION`, the entry is dated, and the commit
+     is on `origin/master`. It then creates the draft.
+   - `gates` runs every gate.
+   - Three `build` jobs, one per base, build that base's shipped images and its test image. Each
+     boots the test image through `ci/release-boot.sh`: `--kernel`, `--bios`, `--uefi` and
+     `--persistence`, each to `Live Kit done`, with `automount` absent on the two bootloader routes.
+     `ci/release-stage.sh` then writes each shipped image's sources files, with the engine's one
+     command per image (`kitchen sources <iso> --markdown … --json …`), and the job uploads them to
+     the draft. The serial logs are kept as the run's `boot-evidence-*` artifacts.
+   - `finish` writes `SHA256SUMS` with `ci/release-sums.sh`, and the notes with
+     `ci/release-notes.sh`. It fails unless the draft holds exactly the assets below.
+6. **Read the draft:** the notes, the assets, and the run's boot evidence. `gh release download
+   v$VERSION -D <dir>`, then `sha256sum -c SHA256SUMS` in `<dir>`, checks what was uploaded.
+7. **Publish it:** its **Publish** button, or `gh release edit v$VERSION --draft=false`. That is a
+   person's step; nothing here publishes.
+
+**The assets.** For each shipped image, `slax32-wine-bios`, `slax32-wine-uefi`, `slax64-wine-bios`,
+`slax64-wine-uefi` and `slax-bottles`, a release carries six files:
+- its `.iso`, `.iso.sha256` and `.iso.provenance.json`;
+- its `.packages.tsv`;
+- its `.SOURCES.md` and `.sources.json`.
+
+It also carries slax-bottles' `.flatpak.txt`, and one `SHA256SUMS` over the other 31, so 32 files
+in all. `ci/release-lib.sh` holds the list, and `tests/unit/test_release.py` holds this paragraph
+to it.
+
+The sidecar is what tells a project built on an image what it applied, and its `SOURCES.md` is what
+that project's own report points back to. The test images are never published.
+
+**GitHub's limits,** and where the release stands against them:
+
+| limit | where it stands |
+|---|---|
+| **each asset under 2 GiB** | The largest image is about 1.3 GiB, and `BOTTLES_MAX_ISO_MIB` stops it long before. `ci/release-stage.sh` and `ci/release-sums.sh` refuse anything larger anyway. |
+| total release size, download bandwidth | no limit |
+| runner disk, about 14 GB | The build jobs remove the runner's preinstalled SDKs first, and build on whichever filesystem has more room. |
+| no KVM promised | Boots fall back to TCG, 21–31 s each against 4–6 s, with the UEFI keys spelled out (`--tcg-keys`; [UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)). |
+
+**If a run fails,** the draft stays incomplete: it has no `SHA256SUMS`, and its notes say it is
+being built. Fix the cause, and use **Re-run failed jobs**: every upload replaces the asset of the
+same name. Alternatively, delete the draft and the tag and push the tag again. A published release
+is never touched: `guard` refuses one.
+
+### Rehearsing
+
+A tag push happens once, so the path is exercised first with a dispatch:
+
+```sh
+gh workflow run release.yml --ref <branch> -f tag=v$VERSION
+```
+
+GitHub dispatches only a workflow whose file is already on the default branch. After that,
+`--ref` runs the branch's copy of it, so a change to the workflow can be rehearsed before it is
+merged. The file's first arrival has to be merged first. That is harmless: nothing but a tag or a
+dispatch starts it.
+
+This runs every job for real, into a draft named `v$VERSION-rehearsal.<run>`. The draft creates no
+tag, because a draft's tag only exists once it is published, and a rehearsal is never published.
+The guard allows an undated entry and a commit not yet on `master`, and says so. Delete the draft
+afterwards with `gh release delete v$VERSION-rehearsal.<run> --yes`.
+
+### By hand
+
+Every step is a script, so a release can be staged without Actions:
+- `./build.sh --all`;
+- `ci/release-boot.sh` on each test image;
+- `ci/release-stage.sh out out/release/$VERSION <image>...`;
+- `ci/release-sums.sh out/release/$VERSION`;
+- `ci/release-notes.sh v$VERSION out/release/$VERSION`.
+
+Then `gh release create v$VERSION --draft --notes-file …` and upload, which puts about 3.4 GB
+through your own connection.
 
 ## Upstream
 
