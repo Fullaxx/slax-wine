@@ -173,8 +173,9 @@ the upstream commit it came from, and gate 96 fails if that commit is not the cu
 pin — so a pin bump that forgets to re-copy (or to re-cite) cannot pass silently.
 
 **`TBD-MEASURED`** is this repo's placeholder for a number not yet measured. Write that exact
-string, nothing else: gate 96 refuses a tagged release that still contains it, and it is deliberately
-ugly so it cannot be mistaken for a value.
+string, bare, nothing else: gate 96 refuses a tagged release that still contains it, and it is
+deliberately ugly so it cannot be mistaken for a value. Quoted in backticks, as it is here, it is a
+mention of the marker rather than a placeholder, and the gate skips it.
 
 ## What the build asserts
 

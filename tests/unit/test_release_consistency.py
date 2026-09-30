@@ -149,11 +149,12 @@ def test_it_refuses_rather_than_guess_when_git_will_not_name_the_variables():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def fixture(tmp, edit=None):
+def fixture(tmp, edit=None, tag=None):
     """This repository's own files as a fresh git repository, vendor/slax-kitchen left empty.
 
     Tracked files AND untracked ones git would track, so an uncommitted recipe or profile
-    is in the copy the gate reads. `edit(fx)` runs before the commit.
+    is in the copy the gate reads. `edit(fx)` runs before the commit, and `tag` names a tag
+    put on it, which is what turns on section 6.
     """
     fx = os.path.join(tmp, "repo")
     listing = git(ROOT, "ls-files", "-z", "--cached", "--others", "--exclude-standard").stdout
@@ -171,6 +172,8 @@ def fixture(tmp, edit=None):
               ["-c", "user.email=t@example.invalid", "-c", "user.name=t",
                "commit", "-qm", "fixture"]):
         git(fx, *a)
+    if tag:
+        git(fx, "tag", tag)
     return fx
 
 
@@ -185,17 +188,17 @@ def replace_once(fx, rel, old, new):
         fh.write(text.replace(old, new))
 
 
-def gate_in_fixture(edit=None):
+def gate_in_fixture(edit=None, tag=None):
     tmp = tempfile.mkdtemp(prefix="gate96-fx-")
     try:
-        fx = fixture(tmp, edit)
+        fx = fixture(tmp, edit, tag)
         return run_gate(fx, clean_env(REPO_ROOT=fx))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def refuses(name, edit, needle):
-    rc, out = gate_in_fixture(edit)
+def refuses(name, edit, needle, tag=None):
+    rc, out = gate_in_fixture(edit, tag)
     check(f"{name}: the gate refuses", rc != 0, True)
     check(f"{name}: ...naming what was broken ({needle!r})", needle in out, True)
 
@@ -302,6 +305,38 @@ def test_a_backticked_name_outside_the_matrix_is_not_a_variant():
             l.strip() for l in out.splitlines() if "FAIL" in l)[:300])
 
 
+def version():
+    with open(os.path.join(ROOT, "build.env")) as fh:
+        for ln in fh:
+            if ln.startswith("VERSION="):
+                return ln.strip().split("=", 1)[1]
+    raise AssertionError("no VERSION= in build.env")
+
+
+def test_a_tagged_copy_passes():
+    """Section 6 runs only on a tagged HEAD, so nothing ran it until the first tag, v1.0.0,
+    and it refused that: it matched docs/build.md's own definition of the marker and its
+    account of this section. An unedited copy, tagged as the version, must pass."""
+    rc, out = gate_in_fixture(tag="v" + version())
+    check("an unedited copy tagged v$VERSION passes gate 96", rc, 0)
+    if rc != 0:
+        FAILURES.append("  the gate said: " + " | ".join(
+            l.strip() for l in out.splitlines() if "FAIL" in l)[:600])
+
+
+def test_a_tag_refuses_a_bare_placeholder_but_not_a_mention():
+    tag = "v" + version()
+    refuses("a bare TBD-MEASURED in a tagged tree",
+            lambda fx: replace_once(fx, "docs/sizing.md", "# Where the size goes\n",
+                                    "# Where the size goes\n\nsize: TBD-MEASURED\n"),
+            "tagged release still carries TBD-MEASURED: docs/sizing.md", tag=tag)
+    refuses("a bare one on a line that also quotes the marker",
+            lambda fx: replace_once(fx, "docs/sizing.md", "# Where the size goes\n",
+                                    "# Where the size goes\n\n`TBD-MEASURED` TBD-MEASURED\n"),
+            "tagged release still carries TBD-MEASURED: docs/sizing.md", tag=tag)
+    refuses("a tag that is not the version", None, "tagged HEAD is 'v0.0.1'", tag="v0.0.1")
+
+
 TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_an_uninitialised_submodule_is_not_mistaken_for_this_repo,
          test_it_refuses_rather_than_guess_when_git_will_not_name_the_variables,
@@ -312,6 +347,8 @@ TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_a_variant_missing_from_the_register_is_refused,
          test_a_register_row_for_no_profile_is_refused,
          test_a_backticked_name_outside_the_matrix_is_not_a_variant,
+         test_a_tagged_copy_passes,
+         test_a_tag_refuses_a_bare_placeholder_but_not_a_mention,
          test_every_test_here_is_registered]
 
 

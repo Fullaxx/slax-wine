@@ -389,10 +389,18 @@ else
         # yet". It is deliberately ugly so it cannot be mistaken for a value, and this is
         # the only thing that enforces it -- so if you write a placeholder, write THIS
         # one. docs/build.md says so too.
+        #
+        # A placeholder is written bare. Quoted in backticks it is a MENTION of the marker,
+        # and those are stripped before looking: docs/build.md defines the marker and
+        # explains this section, and until 2026-09-30 this check matched both, so it could
+        # never pass on a tagged tree -- found by the first tag, v1.0.0, which it refused.
         grep -rl 'TBD-MEASURED' "$REPO_ROOT/docs" "$REPO_ROOT/README.md" 2>/dev/null \
             > "$TMP/tbd" || true
         while IFS= read -r f; do
-            [ -n "$f" ] && fail "tagged release still carries TBD-MEASURED: ${f#"$REPO_ROOT"/}"
+            [ -n "$f" ] || continue
+            if sed 's/`TBD-MEASURED`//g' "$f" | grep -q 'TBD-MEASURED'; then
+                fail "tagged release still carries TBD-MEASURED: ${f#"$REPO_ROOT"/}"
+            fi
         done < "$TMP/tbd"
     fi
 fi
