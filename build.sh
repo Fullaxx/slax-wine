@@ -285,17 +285,20 @@ fp() { LC_ALL=C FLATPAK_USER_DIR="$FPDIR" flatpak --user "$@"; }
 # The lock as "ref commit" lines, blank lines dropped. Empty unless pinned.
 bottles_lock() { printf '%s\n' "$BOTTLES_LOCK" | sed -e 's/^[[:space:]]*//' -e '/^$/d'; }
 
-# What the stage holds: every deployed ref and its commit, as "ref commit" lines.
+# What the stage holds: every deployed ref and its commit, as "ref commit" lines. Sorted
+# with LC_ALL=C, because this is the record that ships: the first rehearsal's runner and
+# this machine listed the same 13 refs in different orders, "codecs-extra" against
+# "codecs_extra" and "GL32" against "GL", under their different locales.
 bottles_deployed() {
     fp list --all --columns=ref 2>/dev/null | while read -r r; do
         [ -n "$r" ] || continue
         printf '%s %s\n' "$(fp info -r "$r")" "$(fp info --show-commit "$r")"
-    done | sort
+    done | LC_ALL=C sort
 }
 
 # BOTTLES_LANGUAGES ("de;en") as flatpak prints a .Locale ref's subdirectories ("/de /en").
 want_subdirs() {
-    printf '%s\n' "$BOTTLES_LANGUAGES" | tr ';' '\n' | sed -e '/^$/d' -e 's|^|/|' | sort | tr '\n' ' ' | sed 's/ $//'
+    printf '%s\n' "$BOTTLES_LANGUAGES" | tr ';' '\n' | sed -e '/^$/d' -e 's|^|/|' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//'
 }
 
 # Prints one line per disagreement with build.env. Silent means the stage matches it:
@@ -312,7 +315,7 @@ bottles_drift() {
         case "$ref" in
             *.Locale/*)
                 sub=$(fp info "$ref" 2>/dev/null | sed -n 's/^ *Subdirectories: *//p' \
-                      | tr ' ' '\n' | sed '/^$/d' | sort | tr '\n' ' ' | sed 's/ $//')
+                      | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
                 [ "$sub" = "$(want_subdirs)" ] \
                     || echo "$ref: deploys ${sub:-nothing}, BOTTLES_LANGUAGES wants $(want_subdirs)" ;;
         esac
