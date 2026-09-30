@@ -72,22 +72,24 @@ base ISOs:
   git.kernel.org, and a file neither serves fails the build rather than shipping a partial set.
 
 The Bottles staging step also needs **network access to Flathub**, and much more disk than its
-bundle suggests. **Budget about 14 GB free** for a `--bottles` build, measured piece by piece:
+bundle suggests. **Budget [this much free](measurements.md#disk-bottles-build)** for a `--bottles` build,
+measured piece by piece:
 
 | | |
 |---|---|
-| `recipes/available/bottles.files/` | **3.2 GB**, plus 79 MB of DXVK/VKD3D. The ostree repo and the deployed files share inodes |
-| the copy `bundle.files` makes under `work/` while it builds `30-bottles.sb` | **3.3 GiB**, the stage's own size by `du` on 2026-09-28: since slax-kitchen `f5e6673` (#64) the copy keeps the stage's hardlinks. Counted per name (`du --count-links`), which is what the copy cost before, it is 7.3 GiB. It is removed when the bundle is done |
-| `work/bottles/` | 0.4 GB unpacked base, plus the 0.9 GB bundle |
-| `out/slax-bottles-<ver>.iso` | 1.2 GB |
+| `recipes/available/bottles.files/` | [`disk-stage`](measurements.md#disk-stage), DXVK/VKD3D included. The ostree repo and the deployed files share inodes |
+| the copy `bundle.files` makes under `work/` while it builds `30-bottles.sb` | [`disk-work-copy`](measurements.md#disk-work-copy): about the stage's own size, since slax-kitchen `f5e6673` (#64) keeps the stage's hardlinks in the copy; counted per name, which is what the copy cost before, more than twice that. It is removed when the bundle is done |
+| `work/bottles/` | [`disk-work-bottles`](measurements.md#disk-work-bottles): the unpacked base, plus the bundle |
+| `out/slax-bottles-<ver>.iso` | [`iso-slax-bottles`](measurements.md#iso-slax-bottles) |
 
-The squashed bundle is small again (894.3 MiB) because mksquashfs stores identical files once.
+The squashed bundle is small again ([`lbt-bottles`](measurements.md#lbt-bottles)) because mksquashfs stores
+identical files once.
 Flatpak runs its install triggers through `bwrap`, and on a host without user namespaces (a
 container, for instance) that prints `bwrap: Creating new namespace failed`. That is harmless: the
 triggers only rebuild caches under `exports/` that Slax never reads, and `build.sh` checks what
 matters: the languages deployed, and the version and commits it records. Each `./build.sh --bottles`
 asks Flathub whether anything in the stage has a newer commit, and if so installs the stage again
-from nothing, about 1 GB of download, because updating in place would keep the old commit's objects
+from nothing ([the download](measurements.md#restage-download)), because updating in place would keep the old commit's objects
 and ship them ([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)).
 `--no-fetch` keeps the stage as it is.
 
@@ -172,10 +174,12 @@ because this repository installs them with the `ln -sf` lines above. Each copied
 the upstream commit it came from, and gate 96 fails if that commit is not the current submodule
 pin — so a pin bump that forgets to re-copy (or to re-cite) cannot pass silently.
 
-**`TBD-MEASURED`** is this repo's placeholder for a number not yet measured. Write that exact
-string, bare, nothing else: gate 96 refuses a tagged release that still contains it, and it is
-deliberately ugly so it cannot be mistaken for a value. Quoted in backticks, as it is here, it is a
-mention of the marker rather than a placeholder, and the gate skips it.
+**Measured numbers live in [measurements.md](measurements.md)** and nowhere else; other pages link
+to its rows. `TBD-MEASURED` is the placeholder for a number not yet measured, and it is written only
+there, bare, in a row's value column. On a tagged commit gate 96 §6 scans that page, and only that
+page, and refuses the tag while a bare one remains. It is deliberately ugly so it cannot be mistaken
+for a value. Quoted in backticks, as it is here, it is a mention of the marker rather than a
+placeholder, and the gate skips it.
 
 ## What the build asserts
 
@@ -211,8 +215,9 @@ with its version, read from the image's own `98-dpkg-db.sb`; for slax-bottles al
 `out/slax-bottles-<ver>.flatpak.txt`, the Flatpak refs and components that shipped.
 [software.md](software.md) points at them instead of carrying the lists.
 
-`out/build-summary-<variant>.txt` records every number the docs quote, one file per variant. If one
-moves, something changed.
+`out/build-summary-<variant>.txt` records each image's sizes and package count, one file per
+variant: the numbers the `summary` rows of [measurements.md](measurements.md) name.
+`./ci/measure-check.sh out/` compares those rows with the summaries and reports what moved.
 
 ## What it does not do
 
@@ -262,12 +267,21 @@ In this order:
    for t in slax32-wine-test slax64-wine-test slax-bottles-test; do
        ./ci/release-boot.sh out/$t-$VERSION.iso || break
    done
+   ./ci/measure-check.sh out/
    ```
 
+   `measure-check` is a report, not a gate: it compares the `summary` rows of
+   [measurements.md](measurements.md) with the build summaries in `out/`, which hold whatever was
+   built, so run it after `./build.sh --all` as well to cover the shipped images. A rebuild moves a
+   bundle by a 4 KiB squashfs block now and then, and slax-bottles follows Flathub
+   ([why](measurements.md#why-a-rebuild-moves-bytes)), so read the differences and update a row
+   only where it really moved.
+
 4. **Tag it and push both:** `git tag v$VERSION`, then `git push origin master v$VERSION`. Gate 96
-   §6 fails a tag that is not the version, and docs that still say `TBD-MEASURED`. The tag push
+   §6 fails a tag that is not the version, and a [measurements.md](measurements.md) that still has a
+   bare `TBD-MEASURED`. The tag push
    starts the workflow.
-5. **The workflow.** Its first rehearsal measures how long it takes.
+5. **The workflow.** How long it takes is [`release-run`](measurements.md#release-run).
    - `guard` runs `ci/release-guard.sh`: the tag is `v$VERSION`, the entry is dated, and the commit
      is on `origin/master`. It then creates the draft.
    - `gates` runs every gate.
@@ -301,10 +315,10 @@ that project's own report points back to. The test images are never published.
 
 | limit | where it stands |
 |---|---|
-| **each asset under 2 GiB** | The largest image is about 1.3 GiB, and `BOTTLES_MAX_ISO_MIB` stops it long before. `ci/release-stage.sh` and `ci/release-sums.sh` refuse anything larger anyway. |
+| **each asset under 2 GiB** ([`cap-github`](measurements.md#cap-github)) | The largest image is [slax-bottles](measurements.md#iso-slax-bottles), and `BOTTLES_MAX_ISO_MIB` stops it long before. `ci/release-stage.sh` and `ci/release-sums.sh` refuse anything larger anyway. |
 | total release size, download bandwidth | no limit |
-| runner disk | GitHub promises about 14 GB. Measured in the first rehearsal: 108 GB free on `/` once the build job had removed the runner's preinstalled SDKs, which it still does first. |
-| KVM | Not promised, but the runners had it in the first rehearsal, and the 64-bit jobs boot under it. The 32-bit job boots under TCG by choice: under the runner's KVM its guest stopped after `Live Kit init` on all four routes, cause not established, while it boots under KVM on the boot host. Under TCG a boot took 21–31 s on this project's own machines, against 4–6 s under KVM; the rehearsal measures a runner's, with the UEFI keys spelled out (`--tcg-keys`; [UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)). |
+| runner disk | GitHub promises less than a slax-bottles build needs ([`disk-bottles-build`](measurements.md#disk-bottles-build)). Measured in the first rehearsal: [`runner-disk`](measurements.md#runner-disk), once the build job had removed the runner's preinstalled SDKs, which it still does first. |
+| KVM | Not promised, but the runners had it in the first rehearsal, and the 64-bit jobs boot under it. The 32-bit job boots under TCG by choice: under the runner's KVM its guest stopped after `Live Kit init` on all four routes, cause not established, while it boots under KVM on the boot host. Under TCG a runner's boot is [several times slower](measurements.md#boot-runner-tcg) than [under its KVM](measurements.md#boot-runner-kvm), with the UEFI keys spelled out (`--tcg-keys`; [UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)). |
 
 **If a run fails,** the draft stays incomplete: it has no `SHA256SUMS`, and its notes say it is
 being built. Fix the cause, and use **Re-run failed jobs**: every upload replaces the asset of the
@@ -338,8 +352,8 @@ Every step is a script, so a release can be staged without Actions:
 - `ci/release-sums.sh out/release/$VERSION`;
 - `ci/release-notes.sh v$VERSION out/release/$VERSION`.
 
-Then `gh release create v$VERSION --draft --notes-file …` and upload, which puts about 3.4 GB
-through your own connection.
+Then `gh release create v$VERSION --draft --notes-file …` and upload, which puts
+[the whole release](measurements.md#release-assets) through your own connection.
 
 ## Upstream
 

@@ -56,10 +56,11 @@ recipes:
   #
   # `drop:` IS SPELLED OUT even though it restates the recipe's own default, and that is
   # this repo's standing rule for a default that decides what ships (see wine.yaml's apt
-  # keys, kept explicit for the same reason). This one decides which 81.7 MiB leaves the
-  # image: if a later pin changed remove-bundle's default, a bare name would silently
-  # change what our ISO deletes, and no gate here could see it. It is upstream's own
-  # convention too -- all four of their profiles spell it out, and profiles/minimal.yaml
+  # keys, kept explicit for the same reason). This one decides which bundle leaves the
+  # image (docs/measurements.md#l32-chromium): if a later pin changed remove-bundle's
+  # default, a bare name would silently change what our ISO deletes, and no gate here
+  # could see it. It is upstream's own convention too -- all four of their profiles spell
+  # it out, and profiles/minimal.yaml
   # gives the reason: "a profile line that deletes something should say what."
   - name: remove-bundle
     vars: {drop: "^05-chromium\\.sb$"}
@@ -77,7 +78,7 @@ recipes:
 
   # testkit prints facts about the ASSEMBLED union to the serial console just before
   # change_root, from a rootcopy.preinit hook. It builds no bundle, so this image still
-  # has the same nine modules as the shipped slax32-wine images.
+  # has the same modules as the shipped slax32-wine images.
   #
   # Two jobs:
   #
@@ -134,11 +135,13 @@ recipes:
   # that profiles/boot-matrix.yaml uses, so the GRUB configuration we actually SHIP is the
   # one tested. Under KVM the harness's own keystrokes select the serial entry. Under TCG
   # they miss it: a fixed 2 s lead (_serial_keys, lib/build.sh), and when GRUB's menu
-  # appears depends on the host -- 3.2 s on the build host, 6.9 s with its vCPU starved.
+  # appears depends on the host -- idle or with its vCPU starved
+  # (docs/measurements.md#grub-menu-tcg).
   # So pass --keys: `home` once a second for 24 presses, which holds the menu whenever it
   # comes, then down,down,ret. The command is in docs/50-cookbook/slax-wine-iso.md, and
-  # the measurements in docs/UPSTREAM.md. On a KVM host none of this is needed: the menu
-  # is up in about a second and the harness's own keys select the serial entry.
+  # the measurements in docs/measurements.md#key-lead-tcg. On a KVM host none of this is
+  # needed: the menu is up well before the lead (docs/measurements.md#grub-menu-kvm) and
+  # the harness's own keys select the serial entry.
   - uefi-bootable
 output:
   name: "slax32-wine-test-{{version}}.iso"

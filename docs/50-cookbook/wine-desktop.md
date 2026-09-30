@@ -7,7 +7,8 @@ was observed: the **Wine tile appears** in xlunch, clicking it opens Wine **with
 `su --login`).
 
 On 64-bit, on `slax64-wine-uefi` (2026-09-19, in QEMU): the click opened Wine's file manager once the
-first-run prefix was made, 258 s later under emulation, and that prefix was 64-bit, as this step's
+first-run prefix was made, minutes later under emulation
+([`prefix-time-tcg`](../measurements.md#prefix-time-tcg)), and that prefix was 64-bit, as this step's
 `wine.sh` leaves it. On 32-bit the click was observed before the 64-bit step was added, and adding it
 changed nothing there: the 32-bit build's `21-wine-desktop.sb` is identical, entry by entry, to the
 one in the images this change started from, and its launcher again showed the Wine tile and no
@@ -21,7 +22,8 @@ bundle, and it is the one thing no gate can check.
 ./build.sh
 ```
 
-A 4 KiB bundle that does the entire difference between "Wine is installed" and "Wine is on the
+A bundle of one squashfs block ([`l32-wine-desktop`](../measurements.md#l32-wine-desktop)) that does
+the entire difference between "Wine is installed" and "Wine is on the
 desktop".
 
 ## Why a bundle and not rootcopy
@@ -30,7 +32,7 @@ desktop".
 much RAM each time, and cannot be switched off. A bundle is mounted read-only from the medium, and
 `noload=21-wine-desktop.sb` at the boot prompt gives back plain Wine with no desktop changes.
 
-At 4 KiB the RAM argument is negligible. The `noload=` argument is the real one: this bundle is the
+At [its size](../measurements.md#l32-wine-desktop) the RAM argument is negligible. The `noload=` argument is the real one: this bundle is the
 only thing that makes the image *look* different from stock, so it is the one you want to be able to
 turn off.
 
@@ -99,8 +101,9 @@ whose `BASE_ISO` and `BASE_SHA256` name the base it was built on.
 64-bit and runs 32-bit programs too, and a user's own `WINEARCH=win32` — for a 32-bit prefix —
 survives the wrapper, which re-sources this file. `WINEDLLOVERRIDES` is what suppresses Wine's
 first-run "download Mono and Gecko" dialog — Debian packages neither, in main, contrib or non-free,
-so that dialog could only ever be satisfied by fetching ~136 MiB from winehq at runtime on an image
-that is usually offline. The cost is that .NET and embedded-HTML applications do not run;
+so that dialog could only ever be satisfied by fetching the runtimes from winehq
+([`mono-gecko-download`](../measurements.md#mono-gecko-download)) on an image that is usually
+offline. The cost is that .NET and embedded-HTML applications do not run;
 [using-wine.md](../using-wine.md) says so.
 
 `profile.d` is read by login shells, and the Slax session **is** one — `02-xorg`'s `xorg.service`

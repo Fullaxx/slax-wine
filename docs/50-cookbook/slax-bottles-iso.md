@@ -28,20 +28,21 @@ The recipe's header comment says the same thing.
 
 Upstream's generic recipes were considered and do not fit. `iso-identity` has no `appid`, and its
 fixed `preparer: slax-kitchen` drops the Slax credit this project carries. `boot-cmdline` also
-appends `toram`, which on a 1.2 GiB image means copying all of it to RAM before booting.
+appends `toram`, which on an image [this size](../measurements.md#iso-slax-bottles) means copying all
+of it to RAM before booting.
 
 ## How the `automount` removal was proven
 
 Measured 2026-09-21 against `slax-bottles-test` (this image plus `serial-console` and `testkit`),
 on the KVM host. The observable is the kernel's own `Kernel command line:` line in the serial log,
-as for slax-wine:
+as for slax-wine. Every boot took [the usual time under KVM](../measurements.md#boot-kvm):
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
 |---|---|---|---|
-| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes, 4 s |
-| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes, 6 s |
-| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes, 6 s |
-| `kitchen test --persistence` | the harness, two boots on one disk | **present** | yes, 4 s each |
+| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes |
+| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes |
+| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes |
+| `kitchen test --persistence` | the harness, two boots on one disk | **present** | yes, both boots |
 
 All of them also printed testkit's report: every file `bottles` ships reached the assembled union.
 **No `--keys`**: under KVM the harness's own keystrokes select the serial entry, which every
@@ -56,7 +57,8 @@ The run that passed then used `--keys '3s,(home,1s)x22,down,down,ret'`, and this
 `home` once a second for 22 seconds. **It was not.** The harness had no `(…)xN` syntax, and QEMU
 refused both of those tokens without a word, because the harness discarded QEMU's reply — filed as
 [slax-kitchen#28](https://github.com/Fullaxx/slax-kitchen/issues/28) and fixed in `a613b3b`. What
-ran was a 3-second lead, inside that host's menu window: GRUB was up by 3.2 s and gone by 8.3 s.
+ran was a 3-second lead, inside that host's menu window
+([`grub-menu-tcg`](../measurements.md#grub-menu-tcg)).
 That run still selected the serial entry, so the row it produced stood, and the KVM re-run above
 has now replaced it.
 

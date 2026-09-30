@@ -12,26 +12,26 @@ Both work — the tile has been confirmed on a full desktop boot.
 The first `wine` call creates the prefix at `/root/.wine`, and until that is done the program you
 asked for does not appear: a busy cursor, and at most a small *"The Wine configuration … is being
 updated"* window. It is not stuck. Wine copies its Windows-side libraries into the prefix —
-**1,265 MiB for a 64-bit prefix, 589 MiB for a 32-bit one** — and it takes a while. Measured
-2026-09-21 **under KVM**, on an idle host: **65 seconds** for a 64-bit prefix on slax64, **32
-seconds** for a 32-bit one there, and **23 seconds** on slax32. Real hardware has not been timed.
-It happens once per prefix.
+[a 64-bit prefix](measurements.md#prefix-win64) is more than twice [a 32-bit one](measurements.md#prefix-win32-slax32) — and
+it takes a while: under KVM, on an idle host, [tens of seconds](measurements.md#prefix-time-kvm) for each kind.
+Real hardware has not been timed. It happens once per prefix.
 
-Under **emulation** (QEMU without KVM) the same steps took about 4 minutes, 90 seconds and — on a
-host that was also building — 7 to 9 minutes. Those numbers still describe a machine without an
-accelerator, which is what CI and a container are.
+Under **emulation** (QEMU without KVM) the same steps took minutes
+([`prefix-time-tcg`](measurements.md#prefix-time-tcg), [`prefix-time-tcg-slax32`](measurements.md#prefix-time-tcg-slax32)),
+and on a host that was also building, longer than Wine waits. Those numbers still describe a
+machine without an accelerator, which is what CI and a container are.
 
 **If it takes more than 5 minutes, the first launch fails.** Wine waits at most that long for the
 prefix, then gives up (`boot event wait timed out` in the journal). Under KVM that limit is a long
 way off; under emulation on a busy host it was reached once, and the Notepad++ tile said so in a
 window, with the second launch working.
 
-**Without persistence the prefix lives in RAM**, so a 64-bit one costs 1.2 GiB of memory, and every
+**Without persistence the prefix lives in RAM**, so a 64-bit one costs [its whole size](measurements.md#prefix-win64) in memory, and every
 extra prefix as much again ([software.md](software.md#requirements)). `rm -rf` one you no longer need.
 
 There is **no Mono/Gecko download prompt**, because `/etc/profile.d/wine.sh` sets
 `WINEDLLOVERRIDES="mscoree,mshtml="`. Debian packages neither Wine Mono nor Wine Gecko — not in main,
-contrib or non-free — so that dialog could only ever be satisfied by fetching about 136 MiB from
+contrib or non-free — so that dialog could only ever be satisfied by fetching [Mono and Gecko](measurements.md#mono-gecko-download) from
 winehq at runtime, on an image that is usually offline.
 
 **The cost is real and worth knowing: .NET applications and anything relying on Wine's embedded HTML
@@ -66,8 +66,8 @@ prefix.
 
 | you run | prefix | what happens |
 |---|---|---|
-| `notepadpp32`, tile or command — **the default** | `/root/.wine`, **win32** | made on first run: **23 s**, **587 MiB**. Installs to `C:\Program Files\Notepad++`, runs as a 32-bit process |
-| `WINEPREFIX=/root/.npp32 notepadpp32` | yours, **win32** | a second win32 prefix, another ~587 MiB, same layout |
+| `notepadpp32`, tile or command — **the default** | `/root/.wine`, **win32** | made on first run ([time](measurements.md#prefix-time-kvm), [size](measurements.md#prefix-win32-slax32)). Installs to `C:\Program Files\Notepad++`, runs as a 32-bit process |
+| `WINEPREFIX=/root/.npp32 notepadpp32` | yours, **win32** | a second win32 prefix, [as large again](measurements.md#prefix-win32-slax32), same layout |
 | `WINEARCH=win64 …` | — | refused, measured: *"wine: WINEARCH set to win64 but '/root/.wine' is a 32-bit installation."* There is no `/usr/lib/wine/wine64` on this base to make one with |
 | the D-17 question | — | never asked: one build, and it owns `Program Files` |
 
@@ -75,9 +75,9 @@ prefix.
 
 | you run | prefix | what happens |
 |---|---|---|
-| either tile — **the default** | `/root/.wine`, **win64** | made on first run: **65 s**, **1,265 MiB**. x64 → `C:\Program Files\Notepad++`, x86 → `C:\Program Files (x86)\Notepad++`; both run. Whichever is installed **second removes the first**, so the second tile asks before doing it ([D-17](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)) |
-| `WINEPREFIX=/root/.wine-npp64 notepadpp64` | yours, **win64** | a second 64-bit prefix, another 1,265 MiB; the builds stop colliding |
-| `WINEARCH=win32 WINEPREFIX=/root/.wine-npp32 notepadpp32` | yours, **win32** | **589 MiB**, less than half. The x86 build installs to `C:\Program Files` there |
+| either tile — **the default** | `/root/.wine`, **win64** | made on first run ([time](measurements.md#prefix-time-kvm), [size](measurements.md#prefix-win64)). x64 → `C:\Program Files\Notepad++`, x86 → `C:\Program Files (x86)\Notepad++`; both run. Whichever is installed **second removes the first**, so the second tile asks before doing it ([D-17](DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)) |
+| `WINEPREFIX=/root/.wine-npp64 notepadpp64` | yours, **win64** | a second 64-bit prefix, [as large again](measurements.md#prefix-win64); the builds stop colliding |
+| `WINEARCH=win32 WINEPREFIX=/root/.wine-npp32 notepadpp32` | yours, **win32** | [less than half the size](measurements.md#prefix-win32-slax64). The x86 build installs to `C:\Program Files` there |
 | `WINEARCH=win32 notepadpp64` | — | refused by the launcher, before a prefix is made |
 | `notepadpp64` pointed at a win32 prefix | that one | refused by the launcher, with its message |
 | `WINEARCH=win32` against the existing win64 prefix | — | refused by **Wine**, with the message above |

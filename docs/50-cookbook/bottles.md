@@ -25,8 +25,8 @@ an x86_64 Flatpak, so it cannot go on slax-wine's 32-bit base
 
 | bundle | verb | what | size |
 |---|---|---|---|
-| `20-flatpak.sb` | `bundle.packages` | `flatpak` from bookworm main, and its closure (36 packages, bubblewrap among them) | 8.0 MiB |
-| `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles plus 12 runtime refs), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | 894.3 MiB |
+| `20-flatpak.sb` | `bundle.packages` | `flatpak` from bookworm main, and its closure ([`count-flatpak-closure`](../measurements.md#count-flatpak-closure), bubblewrap among them) | [`lbt-flatpak`](../measurements.md#lbt-flatpak) |
+| `30-bottles.sb` | `bundle.files` | `/var/lib/flatpak` (Bottles and its runtime refs, [`count-flatpak-refs`](../measurements.md#count-flatpak-refs)), DXVK and VKD3D, the launcher, the browser mask, `/etc/slax-bottles-release` | [`lbt-bottles`](../measurements.md#lbt-bottles) |
 
 `20-` is this image's platform and `30-` its application: the same split as slax-wine's
 `20-wine`/`30-notepadpp32` (D-5). `noload=30-bottles.sb` gives a Slax with flatpak and nothing in it,
@@ -53,11 +53,13 @@ empty `/proc` and no user namespace. Instead `build.sh`:
 
 `bundle.files` then copies the tree, keeping flatpak's `active`/`current` symlinks and, since
 slax-kitchen `f5e6673` (#64), the hardlinks between the ostree repo's objects and the deployed
-files. So the copy made while the bundle is built is the stage's own 3.3 GiB, where it used to be
-7.3 GiB, and mksquashfs stores each linked file once, which is why the bundle is 894.3 MiB.
+files. So the copy made while the bundle is built costs the stage's own size, not the size counted
+per name that it used to ([`disk-work-copy`](../measurements.md#disk-work-copy)), and mksquashfs
+stores each linked file once, which is why the bundle is so much smaller than the tree
+([`flatpak-tree`](../measurements.md#flatpak-tree), [`lbt-bottles`](../measurements.md#lbt-bottles)).
 [build.md](../build.md) has the disk budget.
 
-Measured in the guest, on the 2026-09-18 runtimes: `flatpak list` shows all eleven visible refs at
+Measured in the guest, on the 2026-09-18 runtimes: `flatpak list` shows every visible ref at
 the commits the stage recorded, and
 `xlunch_genquick 64 --desktop` (the generator behind the launcher) emits
 `Bottles;/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps/com.usebottles.bottles.svg;…`,
@@ -84,11 +86,13 @@ The runner was not the problem: the Flatpak carries `sys-wine-11.0`. Bottles'
 `manager.py:components_check` requires a runner, **a DXVK and a VKD3D**, and finds the last two with
 `os.listdir` on `data/bottles/{dxvk,vkd3d}`. With `dxvk-3.1` and `vkd3d-proton-3.0.1` unpacked there,
 the same command succeeded, and DXVK/VKD3D were linked into the new prefix. On the rebuilt image,
-which ships them, a clean boot with no network did the same: `bottles-cli new` succeeded in 19½
-minutes under TCG, and the fresh bottle is **386 MiB**. The final shipped build (after the
+which ships them, a clean boot with no network did the same: `bottles-cli new` succeeded under TCG
+([`bottle-create-tcg`](../measurements.md#bottle-create-tcg)), and the fresh bottle was measured
+([`bottle-fresh`](../measurements.md#bottle-fresh)). The final shipped build (after the
 self-review fixes) was checked the same way: the tile is generated, Bottles opens from the
 `slax-bottles` wrapper, `flatpak remotes` lists flathub, and a new bottle runs `cmd /c ver`. That
-bottle came to **491 MiB**; the two figures are recorded as measured, not reconciled.
+bottle was measured too; the two sizes are recorded as measured, not reconciled
+([`bottle-fresh`](../measurements.md#bottle-fresh)).
 
 Both come from the URLs Bottles' own components index names, at the index commit Bottles 67.3 pinned
 when they were chosen (`bottlesdevs/components` `f63f670`): the newest *stable* entry of each. That

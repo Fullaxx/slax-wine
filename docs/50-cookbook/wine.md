@@ -68,8 +68,10 @@ silently disables a feature. Measured against `01-core`…`04-apps`:
 
 Eight free, three that cost. **`libgnutls30` is the one that looks free and is not**: the base
 carries `3.7.9-2`, naming it *upgrades* it to `3.7.9-2+deb12u7`, so it lands in this bundle's dpkg
-fragment and ships ~3.6 MB of `libgnutls.so.30.34.3` plus locale files. It is also why the merged
-database comes to 635 rather than 576 + 60 = 636 — the fragment adds 59 new packages and upgrades one.
+fragment and ships `libgnutls.so.30.34.3` plus locale files
+([`deb-libgnutls`](../measurements.md#deb-libgnutls)). It is also why the merged database is one
+entry short of `04-apps`' plus the fragment's: the fragment adds one fewer new package than it
+declares, and upgrades one ([`count-wine32-closure`](../measurements.md#count-wine32-closure)).
 
 The two genuine absentees earn their place: without `fonts-liberation` Windows apps fall back to
 bitmap fonts, and without `libasound2-plugins` Wine's ALSA output cannot reach PulseAudio.
@@ -104,9 +106,9 @@ built slax/modules/20-wine.sb (170592 KiB, 3309 files)
 
 | | |
 |---|---|
-| `20-wine.sb` | 174,686,208 B — **166.6 MiB** |
+| `20-wine.sb` | [`l32-wine`](../measurements.md#l32-wine) |
 | Wine version | `8.0~repack-4`, Debian bookworm main |
-| merged database | **635 packages**, from `04-apps`' 576 plus the fragment |
+| merged database | `04-apps`' packages plus the fragment ([`count-wine32-closure`](../measurements.md#count-wine32-closure)) |
 | binaries present | `/usr/bin/wine`, `/usr/bin/winecfg`, `/usr/bin/winefile`, `/usr/lib/wine/wine-preloader` |
 
 Booted under TCG (no `/dev/kvm` on the build host), all three livekit markers and every bundle in
@@ -130,10 +132,11 @@ Live Kit done, starting slax
 
 `05-chromium.sb` appears nowhere in the log, which is the removal half of the size claim.
 
-**The bundle is larger than a `.deb`-size estimate predicts.** `libwine`'s `.deb` is 91 MiB and its
-installed size 563 MiB, but squashfs at 1 MiB blocks compresses it to 166.6 MiB — noticeably worse
-than the solid `.tar.xz` inside the `.deb`. The planning estimate of 105–120 MiB was wrong by about
-50 MiB, and [sizing.md](../sizing.md) carries the corrected ledger.
+**The bundle is larger than a `.deb`-size estimate predicts.** Squashfs at 1 MiB blocks compresses
+`libwine` ([`deb-libwine`](../measurements.md#deb-libwine)) noticeably worse than the solid
+`.tar.xz` inside the `.deb` ([`l32-wine`](../measurements.md#l32-wine)). The planning estimate was
+wrong ([`est-wine-bundle`](../measurements.md#est-wine-bundle)), and
+[measurements.md](../measurements.md#why-the-estimate-was-wrong) says why.
 
 ## 64-bit base: both halves, thirty-five names
 
@@ -162,11 +165,13 @@ found as `:i386`, so the step would fail after a successful install.
 
 **Lockstep.** A `Multi-Arch: same` library must be the same version on both architectures. The base
 dates from October 2023 and apt installs today's i386 copies, so it lifts each amd64 twin to match,
-and every package pinned to one of those follows: 79 packages on this build, among them glibc,
+and every package pinned to one of those follows
+([`count-wine64-lifted`](../measurements.md#count-wine64-lifted)), among them glibc,
 systemd and udev, util-linux, e2fsprogs and OpenSSL ([DECISIONS.md](../DECISIONS.md) D-16 lists
 more, and `packages.tsv` every version). The 32-bit step upgrades one package, `libgnutls30`.
 
-Against `slax-64bit-debian-12.2.0.iso`:
+Against `slax-64bit-debian-12.2.0.iso`, on a build before `firmware-refresh`, so its sizes and
+counts are that build's; the current ones are linked in the table below:
 
 ```
 removed 05-chromium.sb (-79 MiB)
@@ -182,9 +187,9 @@ built slax/modules/20-wine.sb (477060 KiB, 10120 files)
 
 | | |
 |---|---|
-| `20-wine.sb` | 488,513,536 B — **465.9 MiB**, against 166.6 MiB on the 32-bit base |
-| apt's closure | **60 new amd64 packages, 190 i386 ones, 79 base packages upgraded** — the fragment's 329 |
-| merged database | **825 entries**, from `04-apps`' 575 plus the fragment's 250 new ones; **816 installed** |
+| `20-wine.sb` | [`l64-wine`](../measurements.md#l64-wine), against [`l32-wine`](../measurements.md#l32-wine) on the 32-bit base |
+| apt's closure | new amd64 packages, i386 ones, and base packages upgraded ([`count-wine64-closure`](../measurements.md#count-wine64-closure)) |
+| merged database | `04-apps`' entries plus the fragment's new ones ([`packages-slax64-wine`](../measurements.md#packages-slax64-wine)) |
 | binaries present | `/usr/bin/wine`, `/usr/lib/wine/wine64`, `/usr/lib/wine/wine64-preloader`, `/usr/lib/wine/wine` and `/usr/lib/wine/wine-preloader` (i386) |
 | `/var/lib/dpkg/arch` | ships in this bundle, listing `amd64` and `i386` |
 
@@ -200,4 +205,4 @@ the ladder in the [cookbook index](README.md).
 | the launcher, and Wine's environment defaults | [`wine-desktop`](wine-desktop.md) |
 | a Windows program to test it with | [`notepadpp32`](notepadpp32.md), and [`notepadpp64`](notepadpp64.md) on 64-bit |
 | ISO identity and a checksum | [`slax-wine-iso`](slax-wine-iso.md) |
-| to know where the image's size goes | [sizing.md](../sizing.md) |
+| to know where the image's size goes | [measurements.md](../measurements.md#where-the-size-goes) |

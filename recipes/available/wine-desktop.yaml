@@ -64,7 +64,7 @@ steps:
       # /usr/share/icons/hicolor/scalable/apps/wine.svg -- "scalable" is not a size and
       # ".svg" is never tried -- so a bare `Icon=wine` matches NONE of the 36 candidate
       # paths, $Icon stays the literal string "wine", and :52's `if [ -e "$Icon" ]`
-      # DROPS THE ENTRY ENTIRELY. Measured against all 34,004 paths in the built stack.
+      # DROPS THE ENTRY ENTIRELY. Measured against every path in the built stack.
       #
       # An absolute path survives because every constructed candidate is nonsense
       # (/usr/share/icons/hicolor/64x64/apps//usr/share/...), so $Icon is never
@@ -156,8 +156,9 @@ steps:
       # WINEDLLOVERRIDES="mscoree,mshtml=" disables Wine Mono and Wine Gecko, which is
       # what suppresses the first-run "download and install" dialog. Debian packages
       # NEITHER -- there is no wine-mono or wine-gecko in bookworm main, contrib or
-      # non-free -- so that dialog could only ever be satisfied by fetching ~136 MiB from
-      # winehq at runtime, on an image that is usually offline.
+      # non-free -- so that dialog could only ever be satisfied by fetching the runtimes from
+      # winehq at runtime (docs/measurements.md#mono-gecko-download), on an image that is
+      # usually offline.
       #
       # The documented consequence: .NET and embedded-HTML applications do not run.
       # docs/using-wine.md says so and says what to do instead.

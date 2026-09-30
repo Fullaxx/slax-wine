@@ -13,8 +13,8 @@ compat:
   #
   # NO `requires:`, and in particular not wine.yaml. Bottles runs inside the Flatpak
   # sandbox and brings its own runners; it cannot see the host's /usr/bin/wine, so a
-  # 20-wine bundle here -- 466 MiB on this base, measured in slax64-wine -- would be
-  # something nothing uses.
+  # 20-wine bundle here -- the largest bundle slax64-wine carries
+  # (docs/measurements.md#l64-wine) -- would be something nothing uses.
   flavours: [debian]
   arch: [64bit]
   slax: ">=12.2.0 <13.0.0"
@@ -68,7 +68,8 @@ steps:
   # Symlinks survive, and flatpak's deploy tree is held together by `active` and `current`
   # links. So do hardlinks, since slax-kitchen f5e6673 (#64): the ostree repo's objects are
   # hardlinks to the deployed files, and the copy under work/ while the bundle is built is
-  # the stage's own 3.3 GiB, where it was 7.3 GiB before. mksquashfs stores a linked file
+  # the stage's own size by `du`, where before it was the size counted per name
+  # (docs/measurements.md#disk-work-copy). mksquashfs stores a linked file
   # once, which is why shipping both the repo and the deploy costs almost nothing in the
   # .sb. The repo stays because
   # `flatpak info`, `list`, `update` and `uninstall` all read it.

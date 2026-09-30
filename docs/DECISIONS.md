@@ -10,14 +10,15 @@ The complete reference is [ARCHITECTURE.md](ARCHITECTURE.md); this is why it loo
 
 ## D-1 · Wine 8.0 from Debian bookworm main
 
-Four sources were priced by i386 `.deb` size, because compressed payload is what costs ISO space:
+Four sources were priced by i386 `.deb` size, because compressed payload is what costs ISO space
+([the prices](measurements.md#deb-wine-sources)):
 
 | source | version | `.deb` | extra apt config |
 |---|---|---|---|
-| **Debian bookworm main** | 8.0 | ~91 MiB | **none** |
-| Debian bullseye | 5.0.3 | ~24 MiB | archive.debian.org source + one foreign package |
-| WineHQ bookworm | 6.0.4 | ~72 MiB | third-party repo + GPG key, installs to `/opt` |
-| WineHQ bookworm | 10.0 / 11.0 | ~99–103 MiB | same |
+| **Debian bookworm main** | 8.0 | the second largest | **none** |
+| Debian bullseye | 5.0.3 | by far the smallest | archive.debian.org source + one foreign package |
+| WineHQ bookworm | 6.0.4 | smaller than bookworm's | third-party repo + GPG key, installs to `/opt` |
+| WineHQ bookworm | 10.0 / 11.0 | the largest | same |
 
 Bullseye is dramatically smaller because Debian 11 built Wine ELF-only, before the PE-builtin
 transition. It is also **EOL and frozen**, so builds would depend on an archived suite.
@@ -31,16 +32,19 @@ applications. WineHQ 6.0.4 is the fallback with the best size/recency trade.
 
 ## D-2 · Drop Chromium
 
-`05-chromium.sb` is 81.7 MiB. That is **about half** what Wine costs, not "almost exactly" it —
-Wine is 166.6 MiB — so removing the browser keeps the image at 507 MiB rather than 589 MiB, and the
-net is still **+91.4 MiB over stock**. (An earlier draft of this entry claimed ~35 MiB over stock,
-from a planning estimate `docs/sizing.md` retracts as wrong by about 50 MiB.) The browser in stock Slax is chromium 117 from September 2023 in any case — the
+`05-chromium.sb` ([its size](measurements.md#l32-chromium)) is **about half** what Wine costs
+([`20-wine.sb`](measurements.md#l32-wine)), not "almost exactly" it — so removing the browser takes back about
+half of Wine's cost, and the image still ends up well over stock. At the time, before the firmware
+(D-18), that net was the Wine bundles alone; it is now [`net-slax32-wine`](measurements.md#net-slax32-wine).
+(An earlier draft of this entry claimed an image barely over stock, from a planning estimate that
+turned out wrong: [`est-wine-bundle`](measurements.md#est-wine-bundle).) The browser in stock Slax is chromium 117 from September 2023 in any case — the
 largest attack surface in the image, with the shortest security half-life.
 
-**What would change this:** wanting a browser more than 82 MiB. slax-kitchen's `chromium-current`
-recipe installs a current one — its cookbook page measures the bundle at 114 MiB **on
-debian-64bit**, where the net is +35 MiB because it replaces the stock browser. Here there is
-nothing to replace, so budget the full +114 MiB and expect the 32-bit figure to differ.
+**What would change this:** wanting a browser more than the space it costs. slax-kitchen's
+`chromium-current` recipe installs a current one — its cookbook page measures the bundle
+**on debian-64bit** ([`est-chromium-current`](measurements.md#est-chromium-current)), where the net is small
+because it replaces the stock browser. Here there is nothing to replace, so budget the whole
+bundle and expect the 32-bit figure to differ.
 
 ## D-3 · Remove first, in a recipe of its own
 
@@ -62,7 +66,7 @@ We followed the reasoning rather than working around it. Every profile lists ups
 **`remove-bundle` before anything that builds**, each spelling out `drop: "^05-chromium\.sb$"` —
 three profiles when this was written, eight today. The five shipped ones list it first; the three
 test profiles put `serial-console`, which builds no bundle, ahead of it. That restates the recipe's
-own default deliberately: the pattern decides which 81.7 MiB leaves the image, and a default that
+own default deliberately: the pattern decides which bundle leaves the image, and a default that
 decides what ships should not be inherited silently across a pin bump — the same rule this project
 already applies to `wine.yaml`'s apt keys. Upstream spells it out in all four of its own profiles
 for the same reason. The removal is now performed by upstream's recipe rather than by a copy of its
@@ -106,7 +110,7 @@ stack left `05-chromium` out exactly as the named one did.
 ## D-4 · No Wine Mono, no Wine Gecko
 
 Debian packages neither — not in main, contrib or non-free. Satisfying Wine's first-run prompt would
-mean fetching ~136 MiB from winehq at runtime, on an image usually offline. `WINEDLLOVERRIDES`
+mean fetching [Mono and Gecko](measurements.md#mono-gecko-download) from winehq at runtime, on an image usually offline. `WINEDLLOVERRIDES`
 suppresses the prompt instead.
 
 **Cost, stated in [using-wine.md](using-wine.md):** .NET applications and Wine's embedded HTML
@@ -207,14 +211,14 @@ changes nothing about sticks. Measured 2026-09-18: GRUB under x86-64 OVMF boots 
 
 That is less than the previous paragraph claimed, and anyone planning a USB install should read it as
 "no difference". Each base ships a bios image and a uefi one (D-16); the uefi one is a superset,
-6.2 MiB larger.
+larger by [the ESP](measurements.md#esp).
 
 **This entry has now been wrong twice, both times about what the loader actually reaches**, and both
 times the error survived review and was caught by measurement. Its original "what would change this"
 predicted a read-only demo stick, which never happened. Treat predictions here as weaker evidence
 than the tables in `docs/50-cookbook/`.
 
-It adds a 6.2 MiB ESP, and the one component this project builds rather than redistributes: a
+It adds [an ESP](measurements.md#esp), and the one component this project builds rather than redistributes: a
 GRUB loader, **GPLv3+**, whose source package each sidecar names (see [NOTICE.md](../NOTICE.md)).
 
 **What would change this:** `bootinst` learning to install a GRUB ESP on a stick, or `syslinux.efi`
@@ -235,15 +239,16 @@ the `toram` entry — which unmounts the medium. It belongs at the boot prompt, 
 **Reversed on 2026-09-28:** every image now carries `firmware-refresh`, for its hardware and for
 its licence files ([D-18](#d-18--refresh-the-firmware-and-ship-its-licences)). What follows is the
 original reasoning, kept because its numbers were wrong in an instructive way: the recipe costs
-54.2 MiB, not 90, and it is still not tested on hardware that needs it.
+well under the estimate ([`est-firmware`](measurements.md#est-firmware)), and it is still not tested on hardware
+that needs it.
 
 Stock Slax ships **no GPU firmware at all** — no `amdgpu`, `i915`, `radeon` or `nouveau`. A modern
 AMD card does not initialise without `amdgpu`; Intel loses GuC/HuC. Under Wine that means software
 rendering.
 
-Not applied for v1.0.0: it costs +90 MiB, it is not boot-tested on affected hardware upstream, and
-Notepad++ needs no GPU. It is called out in [using-wine.md](using-wine.md) and
-[sizing.md](sizing.md) because someone benchmarking a game and silently getting llvmpipe would waste
+Not applied for v1.0.0: it was estimated to cost [this much](measurements.md#est-firmware), it is not
+boot-tested on affected hardware upstream, and Notepad++ needs no GPU. It is called out in
+[using-wine.md](using-wine.md) and [measurements.md](measurements.md#what-could-shrink-it) because someone benchmarking a game and silently getting llvmpipe would waste
 days.
 
 **What would change this:** any 3D application — which means a games variant should apply it first,
@@ -281,7 +286,7 @@ identifiable, citing GPLv2 §3's "from the same place", with a written offer for
 binaries and an upstream issue for their provenance. That issue was never filed: the finding was
 dropped because upstream already documented the gap
 ([Two findings were dropped](UPSTREAM.md#two-findings-were-dropped-before-filing-in-round-one)).
-Measured on 2026-09-26, attaching would have meant 826 MiB of Debian source for Wine alone, a
+Attaching would have meant [Debian's whole source for Wine](measurements.md#src-wine) alone, a
 kernel patch revision nobody had then identified, and the Flathub runtimes' source for slax-bottles.
 
 The GRUB EFI loader in the uefi images and slax-bottles is the one thing built here, from the build
@@ -332,7 +337,7 @@ packages it in no suite at all, so it cannot go on the 32-bit base. slax-kitchen
 
 **And it carries no Debian Wine.** The obvious plan was slax-wine's recipes plus Bottles. It does
 not work: Bottles runs inside the Flatpak sandbox and uses its own runners, so it cannot see
-`/usr/bin/wine`, and a `20-wine` bundle would be Wine that nothing uses — 465.9 MiB of it on this
+`/usr/bin/wine`, and a `20-wine` bundle would be Wine that nothing uses — [all of it](measurements.md#l64-wine) on this
 base (D-16). Our other recipes do not transfer either. `notepadpp32` requires `wine-desktop`, which
 requires `wine`, so naming either one pulls in Debian's Wine. What does transfer is upstream's:
 `remove-bundle`, `uefi-bootable`, `serial-console` and `testkit`, all unchanged. From
@@ -374,7 +379,8 @@ not name. Flathub does not keep old commits forever, so a pin can go stale. When
 fails with a message saying so. It never quietly takes whatever is current.
 
 **What it costs.** The GNOME 50 runtime, 64- and 32-bit Mesa, the i386 compat runtime, codecs, and
-Wine Gecko and Mono take 3.2 GB unpacked. See [sizing.md](sizing.md) for the measured bundle. That
+Wine Gecko and Mono: [the whole tree, unpacked](measurements.md#flatpak-tree). See
+[measurements.md](measurements.md#inside-30-bottlessb) for the measured bundle. That
 last pair is a bonus over slax-wine: Flathub **does** package Gecko and Mono (D-4 says Debian does
 not), so .NET and embedded-HTML programs have a chance in a bottle that they do not have under
 slax-wine.
@@ -447,7 +453,7 @@ which re-sources `/etc/profile.d/wine.sh`, passes it through. slax32 keeps `WINE
 **Lockstep, measured.** A `Multi-Arch: same` library must be the same version on both architectures.
 The base's amd64 packages date from October 2023 and apt installs today's i386 ones, so apt lifts
 each amd64 twin to match, and every package pinned to one of those follows. Measured on this build:
-**79 base packages**, every one an upgrade within bookworm, shipped in `20-wine.sb` — glibc
+**[base packages](measurements.md#count-wine64-lifted)**, every one an upgrade within bookworm, shipped in `20-wine.sb` — glibc
 (`libc6`, `libc-bin`, `locales`: `2.36-9+deb12u3` → `+deb12u14`), systemd and udev (252.17 → 252.39,
 with `libsystemd0`, `libudev1` and `libpam-systemd`), util-linux with `mount` and its libraries,
 e2fsprogs, OpenSSL (3.0.11 → 3.0.20), Mesa, krb5, GnuTLS, GLib, libxml2, libcurl, FreeType, libpng
@@ -456,9 +462,10 @@ differs from `04-apps`'. slax32 has one such upgrade, `libgnutls30`. So slax64-w
 systemd and glibc than stock Slax — its boot tests are what show that still boots — and with
 `noload=20-wine.sb` its package database claims versions whose files are not loaded.
 
-**Measured sizes:** `20-wine.sb` 465.9 MiB, against 166.6 MiB on the 32-bit base; `31-notepadpp64.sb`
-6.5 MiB; slax64-wine-bios 869.7 MiB and slax64-wine-uefi 875.9 MiB, 54.2 MiB of each the firmware (D-18). See
-[sizing.md](sizing.md).
+**Measured sizes:** [`20-wine.sb`](measurements.md#l64-wine), against [the 32-bit base's](measurements.md#l32-wine);
+[`31-notepadpp64.sb`](measurements.md#l64-notepadpp64); [slax64-wine-bios](measurements.md#iso-slax64-wine-bios) and
+[slax64-wine-uefi](measurements.md#iso-slax64-wine-uefi), [the firmware](measurements.md#firmware-total) in each (D-18). See
+[measurements.md](measurements.md#slax64-wine).
 
 **What would change this:** Debian shipping a Wine built for the new WoW64, which runs 32-bit Windows
 code inside a 64-bit process — it would need no i386 libraries, and the lockstep would go away. A
@@ -474,7 +481,7 @@ its installer again.
 
 **The prefix stays single.** One Windows running both widths is what a 64-bit image demonstrates,
 and [testing-on-both.md](testing-on-both.md) uses that one prefix to show a 32-bit program and a
-64-bit one in the same place. A second prefix would end the flip and cost **1,265 MiB of RAM** on a
+64-bit one in the same place. A second prefix would end the flip and cost **[a whole 64-bit prefix](measurements.md#prefix-win64) of RAM** on a
 non-persistent boot, plus another first-run creation — a steep price for a test application.
 
 **So the flip is made a choice.** When a launcher's own build is missing *and* the other one is
@@ -489,7 +496,8 @@ every GUI program in the image. The first version treated that like a decline an
 silence — measured, with nothing installed and nothing said, which is the failure this file's own
 `fail()` exists to prevent. The condition now runs `xset q` first, and when it cannot ask it says so
 and exits 1. What it suggests instead is the *cheap* prefix where there is one: a second 64-bit
-prefix costs 1,265 MiB, a 32-bit one for the 32-bit build 589 MiB.
+prefix costs [its size](measurements.md#prefix-win64), a 32-bit one for the 32-bit build
+[less than half that](measurements.md#prefix-win32-slax64).
 
 **The trap, and the reason this is a decision rather than a patch:** the check must be conditioned on
 the prefix being 64-bit — `drive_c/windows/syswow64` — because in a **win32** prefix the x86 build
@@ -506,13 +514,14 @@ names it.
 **Decided 2026-09-26, built 2026-09-28.** Every profile lists upstream's `firmware-refresh`
 directly after `remove-bundle`. It builds two bundles:
 
-- **`09-firmware-debian.sb`, 48.8 MiB:** Debian's current firmware packages. That is 16 the stock
+- **`09-firmware-debian.sb`** ([size](measurements.md#l32-firmware-debian)): Debian's current firmware packages
+  ([how many](measurements.md#count-firmware)). Among them are those the stock
   image lacks — among them `firmware-amd-graphics`, `firmware-misc-nonfree` (Intel `i915`, NVIDIA),
   `firmware-intel-sound` and `firmware-sof-signed` — and nine of the ten stock ones, reinstalled at
-  the versions Slax already had. Each brings back the `copyright` file Slax's build removed: 26 in
-  all. `firmware-ipw2x00` is left alone, because its licence prompt would stop the install, and
+  the versions Slax already had. Each brings back the `copyright` file Slax's build removed. `firmware-ipw2x00` is left alone, because its licence prompt would stop the install, and
   its `ipw2x00.LICENSE` is already in the stock image.
-- **`09-firmware-linux.sb`, 5.4 MiB:** 65 files from linux-firmware at a pinned tag, each checked
+- **`09-firmware-linux.sb`** ([size](measurements.md#l32-firmware-linux)): [files](measurements.md#count-firmware) from
+  linux-firmware at a pinned tag, each checked
   against its sha256, with the licence files linux-firmware's `WHENCE` names for them (eleven,
   under `usr/lib/firmware/LICENSES/`) and `WHENCE` itself.
 
@@ -527,11 +536,11 @@ directly after `remove-bundle`. It builds two bundles:
   as Slax ships it, and its Broadcom b43 files never had a licence text.
 
 **What it costs.**
-- **Size:** +54.2 MiB on every image, measured. The ceilings in `build.env` moved with it:
-  589, 919 and 1359 MiB (1364 since D-20's rebuild).
-- **Build:** a chroot step, apt, and 65 downloads from GitLab or git.kernel.org, which fail the
+- **Size:** [the firmware](measurements.md#firmware-total) on every image, measured. The ceilings in `build.env`
+  moved with it ([Size caps](measurements.md#size-caps)).
+- **Build:** a chroot step, apt, and [a download per linux-firmware file](measurements.md#count-firmware) from GitLab or git.kernel.org, which fail the
   build rather than ship a partial set.
-- **Package database:** 16 more packages. `/usr`, `/usr/lib` and `/usr/share` become 0755 in the
+- **Package database:** [more packages](measurements.md#count-firmware). `/usr`, `/usr/lib` and `/usr/share` become 0755 in the
   running system where stock had 0775, because `20-wine.sb` and `20-flatpak.sb` now build on top of
   the firmware bundles and record those directories as they find them.
 
@@ -556,7 +565,7 @@ runners:
 A person reads the draft and publishes it. The procedure is [Cutting a release](build.md#cutting-a-release).
 
 **Why.** A release by hand was a checklist of nine steps, any of which could be skipped without
-anything failing, and the images went up through one person's connection, about 3.4 GB. The
+anything failing, and the images went up through one person's connection ([all of a release](measurements.md#release-assets)). The
 workflow does the same steps in the same order every time, from a fresh checkout of the tag, and a
 runner uploads the images. Every step is a script in `ci/`, so a release can still be staged by hand, and the scripts
 are tested without Actions (`tests/unit/test_release.py`).
@@ -576,15 +585,16 @@ are tested without Actions (`tests/unit/test_release.py`).
   it. The 32-bit job does not: under the runner's KVM its guest stopped after `Live Kit init` on all
   four routes, while the same image boots under KVM on the boot host, and the cause is not
   established. So it boots under TCG by choice, as every 32-bit boot here did before the boot host.
-  Under TCG a boot took 21–31 s on this project's own machines, against 4–6 s, with the UEFI menu
+  Under TCG a boot is [several times slower](measurements.md#boot-tcg) than [under KVM](measurements.md#boot-kvm), with the UEFI menu
   keys spelled out
   ([UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)).
   Booting under KVM on the boot host before tagging stays in the procedure, as an optional step.
-- **Disk.** A hosted runner promises about 14 GB. slax-bottles stages a 3.2 GiB Flatpak and packs two
-  1.3 GB ISOs, so each build job first removes the runner's preinstalled SDKs; the first rehearsal
-  then had 108 GB free.
+- **Disk.** A hosted runner promises less than a slax-bottles build needs
+  ([`disk-bottles-build`](measurements.md#disk-bottles-build)): it stages [the Flatpak](measurements.md#disk-stage) and packs
+  two [ISOs](measurements.md#iso-slax-bottles). So each build job first removes the runner's preinstalled SDKs,
+  which leaves [plenty](measurements.md#runner-disk).
 - **A runner's build is not a local build's twin.** The PVD timestamps and squashfs mtimes are not
-  pinned ([sizing.md](sizing.md)), so every build has its own sha256. What is pinned is the same
+  pinned ([measurements.md](measurements.md#why-a-rebuild-moves-bytes)), so every build has its own sha256. What is pinned is the same
   everywhere: the bases, the engine, the Notepad++ and DXVK/VKD3D payloads by sha256, and the
   Bottles version. The Debian packages are not, and nor are the Flatpak runtimes under Bottles
   (D-20): apt installs bookworm, and Flathub serves its runtimes, as they stand on the day of the
@@ -595,7 +605,7 @@ are tested without Actions (`tests/unit/test_release.py`).
   trigger.
 
 **What would change this:** runners that guarantee KVM, which would make the optional KVM step
-redundant; an image over 2 GiB, the asset limit, which `BOTTLES_MAX_ISO_MIB` would hit first; or
+redundant; an image over [the asset limit](measurements.md#cap-github), which `BOTTLES_MAX_ISO_MIB` would hit first; or
 a Bottles update that breaks something only a person running it would notice (D-20).
 
 ## D-20 · Let Bottles and its runtimes float, record what shipped
@@ -607,7 +617,7 @@ Bottles version and every ref with its commit go into `/opt/bottles/VERSION` in 
 the release's `.flatpak.txt`, and the release notes name the Bottles version from there. This
 replaces D-15's pin.
 
-**What happened.** D-15 pinned all 13 refs by ostree commit in `BOTTLES_LOCK`, on 2026-09-18. The
+**What happened.** D-15 pinned [every ref](measurements.md#count-flatpak-refs) by ostree commit in `BOTTLES_LOCK`, on 2026-09-18. The
 first rehearsal of the release workflow (D-19), on 2026-09-29, could not build slax-bottles.
 Flathub answered HTTP 404 for `org.gnome.Platform//50` at the locked commit. GNOME had published an
 update of the same runtime, and Flathub had pruned the files of the commit it replaced. The commit's
@@ -618,7 +628,7 @@ stage held the old commit. A runner starts from nothing.
 - **No versions.** Flatpak installs a channel (`stable`) or a commit, never a version, so "Bottles
   67.3" can only be asked for as the commit that happens to be 67.3.
 - **Commits get pruned.** Flathub keeps the current commit of each ref and prunes the old ones'
-  files on its own schedule; the GNOME one lasted at most eleven days.
+  files on its own schedule; [the GNOME one did not last long](measurements.md#flathub-commit-life).
 - **Every release starts from nothing.** It is built on a fresh runner, so any commit pin, Bottles'
   included, would break at random between releases. It could never rebuild an old release either,
   which is what a pin usually buys.
@@ -637,9 +647,9 @@ updated with what bit, and why.
 **What is still refused.**
 - **The wrong languages.** A locale subset other than `BOTTLES_LANGUAGES` fails the build.
 - **A stale stage.** A stage that Flathub has anything newer for, compared ref by ref, is installed
-  again from nothing, not updated in place. Measured on the same GNOME update: updated in place,
-  `30-bottles.sb` came out at 970,056 KiB and 73,418 files; installed fresh, at 915,792 KiB and
-  60,231 files. `flatpak update` keeps the replaced commit's objects, because the new commit names
+  again from nothing, not updated in place. Measured on the same GNOME update, `30-bottles.sb`
+  updated in place came out larger, and with more files, than installed fresh
+  ([`bottles-inplace`](measurements.md#bottles-inplace)). `flatpak update` keeps the replaced commit's objects, because the new commit names
   the old one as its parent, so not even `flatpak repair` prunes them, and they would have shipped.
   `flatpak remote-ls --updates` did not notice a ref moved back with `update --commit`, so the
   comparison is `flatpak remote-info` against each deployed commit.
@@ -672,3 +682,47 @@ image. Then the lock holds the last good set, and this entry records it. Beyond 
 keeping old commits, or a copy of our own: exporting the installation at each release and building
 from that copy would pin everything and rebuild any release. It was weighed on 2026-09-29, and not
 taken.
+
+## D-21 · One register for measurements, and links everywhere else
+
+Every number this project has measured lives in [measurements.md](measurements.md), one row per
+quantity with how and when it was measured. Every other page links to the row and does not repeat
+the number.
+
+**Why.** Before this, the numbers were copied wherever they were useful. An audit on 2026-09-30
+found most quantities stated in three to ten places, and about fifteen of those copies disagreeing
+with each other: rounded figures that no longer matched, a 32-bit prefix size in the wrong image's
+column, two TCG timings for one boot, and an upload size off by a gigabyte. Nothing compared any of
+them with a build. The only check, gate 96 §6, grepped every page for the `TBD-MEASURED`
+placeholder, and on the first tag it matched the page that defines the marker and refused the
+release. A number that has to be found across thirty files before it can be checked is not checked.
+
+**The rules**, spelled out at the top of the register:
+- **Links only.** A page that needs a number links its row and says what it is. When a number
+  moves, it changes once.
+- **The placeholder goes only in the register,** and gate 96 §6 reads only the register on a tag.
+- **Dated records are exempt:** [UPSTREAM.md](UPSTREAM.md), released CHANGELOG entries, the
+  cookbook's command transcripts, and `ci/` comments about the gates' own speed. Each is what was
+  true when it was written, not a claim about now.
+- **So is text an image shows its user.** A launcher's dialog cannot link a row, and there the
+  number is the point: the Notepad++ launchers say how much RAM a second prefix costs. Its row
+  names where it is quoted, so a change to one is a change to both.
+- **Config is not a measurement.** The caps and base sizes stay in `build.env`, and the register
+  says which measurement each cap came from.
+
+**How a row is checked.** A row whose "re-measure" cell names a build-summary line is compared
+with a build by `ci/measure-check.sh`, which the release procedure runs after the local builds. It
+is a **report, not a gate**: a rebuild moves bytes by a squashfs block, and slax-bottles takes
+whatever Flathub serves that day (D-20), so a difference is something to read and, if it is real,
+to write into the register. The rows it cannot compare (timings, memory, the Flatpak refs) are
+re-measured by hand, as each row says.
+
+**What it costs.**
+- **Pages read less directly.** "The image ([size](measurements.md#iso-slax-bottles))" is one
+  click further from the number than "the 1299.4 MiB image".
+- **Links-only is kept by review, not by a gate.** A gate that looked for numbers outside the
+  register would trip on versions, timeouts and stick sizes, and false positives train people to
+  ignore it. What is gated is that every link to a row resolves (gate 60).
+
+**What would change this:** the register growing past what one page can hold, or a check that can
+tell a measurement from any other number without false positives.

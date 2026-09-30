@@ -53,9 +53,16 @@ repository does not. `kitchen boot-host check` says whether it is usable, and
 A boot host that cannot be reached **fails the command**; it never quietly boots here. So when
 `kitchen test` says "boot host unavailable", read that before anything else.
 
-The boot routes have been re-run there already. What the TCG era left behind is its *timings*,
-and [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When KVM lands* is the record of what changed plus
-the list of pages still quoting a number emulation distorted. Read it before re-measuring one.
+The boot routes have been re-run there already. [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *When
+KVM lands* is the dated record of what that changed; the timings themselves, KVM and TCG, are rows
+in [`docs/measurements.md`](docs/measurements.md).
+
+## Before quoting or re-measuring a number
+
+Read [`docs/measurements.md`](docs/measurements.md) § *The rules*. Every measured number lives on
+that page and nowhere else: another page links to its row rather than repeating it, and a
+placeholder, `TBD-MEASURED`, is written only there. After a local build, `ci/measure-check.sh out/`
+says which rows moved.
 
 ## Before reviewing anything
 

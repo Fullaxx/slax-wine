@@ -88,7 +88,8 @@ steps:
           # installers do that -- ours do not, and cannot stop it -- so the choice is
           # between doing it silently and saying so first. slax-wine#1 chose to ask, and
           # to keep the single prefix: one Windows running both widths is the thing a
-          # 64-bit image demonstrates, and a second prefix costs 1,265 MiB of RAM.
+          # 64-bit image demonstrates, and a second prefix costs a whole 64-bit prefix of RAM
+          # (docs/measurements.md#prefix-win64).
           #
           # Cancel exits 0 and says nothing more. The "cancelled or failed" message below
           # is right after an installer that failed and wrong after someone declined

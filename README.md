@@ -31,10 +31,10 @@ trap that is not obvious.
 
 | | base | boots on | size | |
 |---|---|---|---|---|
-| `slax32-wine-bios-<ver>.iso` | 32-bit | BIOS | 561.5 MiB | stock Slax bootloader, no GRUB |
-| `slax32-wine-uefi-<ver>.iso` | 32-bit | **BIOS *and* UEFI** | 567.7 MiB | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
-| `slax64-wine-bios-<ver>.iso` | 64-bit | BIOS | 869.7 MiB | stock Slax bootloader, no GRUB |
-| `slax64-wine-uefi-<ver>.iso` | 64-bit | **BIOS *and* UEFI** | 875.9 MiB | adds a GRUB ESP, as above |
+| `slax32-wine-bios-<ver>.iso` | 32-bit | BIOS | [size](docs/measurements.md#iso-slax32-wine-bios) | stock Slax bootloader, no GRUB |
+| `slax32-wine-uefi-<ver>.iso` | 32-bit | **BIOS *and* UEFI** | [size](docs/measurements.md#iso-slax32-wine-uefi) | adds a GRUB ESP, so the **ISO** boots on UEFI — a DVD, or a virtual CD. Changes nothing about USB sticks |
+| `slax64-wine-bios-<ver>.iso` | 64-bit | BIOS | [size](docs/measurements.md#iso-slax64-wine-bios) | stock Slax bootloader, no GRUB |
+| `slax64-wine-uefi-<ver>.iso` | 64-bit | **BIOS *and* UEFI** | [size](docs/measurements.md#iso-slax64-wine-uefi) | adds a GRUB ESP, as above |
 
 **A uefi image is a superset, not an alternative** — it keeps the BIOS El Torito entry and adds an EFI
 one, so it boots anywhere its bios twin does. Verified on the artifacts: `xorriso -report_el_torito`
@@ -61,7 +61,7 @@ Flatpak, and it runs sandboxed with its own Wine, so it cannot use our Debian Wi
 | Bottles | Flathub's stable Bottles as served on the day of the build (67.3 when this was written), with the GNOME 50 runtime, GL, i386 compat, Wine Gecko and Mono. The release's `.flatpak.txt` names every ref and commit |
 | offline extras | DXVK 3.1 and VKD3D-Proton 3.0.1, without which Bottles will not create a bottle offline (measured) |
 | no browser | `05-chromium.sb` removed, as in slax-wine |
-| size | **1299.4 MiB**. It boots BIOS and UEFI, like the slax-wine uefi images |
+| size | [measured](docs/measurements.md#iso-slax-bottles). It boots BIOS and UEFI, like the slax-wine uefi images |
 
 Using it: **[docs/using-bottles.md](docs/using-bottles.md)**.
 
@@ -145,7 +145,7 @@ reached; the ladder is in the [cookbook index](docs/50-cookbook/README.md).
 | how it all works | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | why it looks like that | [docs/DECISIONS.md](docs/DECISIONS.md) |
 | how we raise engine problems upstream | [docs/UPSTREAM.md](docs/UPSTREAM.md) |
-| where each image's size goes | [docs/sizing.md](docs/sizing.md) |
+| every measured number, in one place: sizes, timings, memory | [docs/measurements.md](docs/measurements.md) |
 | to try one Windows program on both bases | [docs/testing-on-both.md](docs/testing-on-both.md) |
 | which Slax each release is built on | [docs/base-versions.md](docs/base-versions.md) |
 | what redistributing the ISO obliges | [NOTICE.md](NOTICE.md) |

@@ -116,7 +116,7 @@ built slax/modules/30-notepadpp32.sb (6556 KiB, 4 files)
   /usr/share/applications/7notepadpp32.desktop
 ```
 
-`30-notepadpp32.sb` is 6,713,344 B — **6.4 MiB**, on every image. The installer inside it is
+`30-notepadpp32.sb` is the same size on every image ([`l32-notepadpp32`](../measurements.md#l32-notepadpp32)). The installer inside it is
 byte-identical to the one the untagged `30-notepadpp.sb` carried. The payload barely compresses,
 because an NSIS installer is already a compressed archive.
 
@@ -129,19 +129,20 @@ Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card), 2026-09-19:
 | `notepad++.exe` | PE machine `0x14c`: i386 | the same |
 | the editor | ELF class 1, `wine-preloader.static` | ELF class 1, `wine-preloader.static` |
 | in a `WINEARCH=win32` prefix | — | installs to `C:\Program Files\Notepad++` and launches, ELF class 1 |
-| the same installer, silent (`/S`) | **1.3 s** under KVM, 29 s under emulation | **1.6 s** under KVM |
+| the same installer, silent (`/S`) | seconds under KVM, much longer under emulation ([`npp-install-x86`](../measurements.md#npp-install-x86)) | seconds under KVM ([`npp-install-x86`](../measurements.md#npp-install-x86)) |
 
 **Under KVM the first launch is quick**: measured 2026-09-21 on `slax32-wine-test`, the prefix
-takes **23 seconds** and the editor's window follows the install immediately. Wine's five-minute
+takes well under a minute ([`prefix-time-kvm`](../measurements.md#prefix-time-kvm)) and the editor's window follows the install immediately. Wine's five-minute
 limit is nowhere near.
 
-**Under emulation it once failed, and the failure path did its job.** Creating the prefix took about
-9 minutes on a host that was also building, past the 5 minutes Wine waits: the journal said
+**Under emulation it once failed, and the failure path did its job.** Creating the prefix on a host
+that was also building took longer than the 5 minutes Wine waits
+([`prefix-time-tcg-slax32`](../measurements.md#prefix-time-tcg-slax32)): the journal said
 `boot event wait timed out`. The installer never appeared, and the launcher showed its window —
 *"Notepad++ (32-bit) is not installed: the installer was cancelled or failed. Run it again to
 retry."* — rather than nothing. The second launch used the finished prefix, and installed and ran.
-On an idle emulated host the same step took about 4 minutes; on real hardware it has not been
-timed.
+On an idle emulated host it took less; the records of how long disagree, and the row says so. On
+real hardware it has not been timed.
 
 On slax64 the 64-bit build shares the prefix, and does not coexist with this one: each installer
 removes the other build ([`notepadpp64`](notepadpp64.md#the-two-builds-replace-each-other)).

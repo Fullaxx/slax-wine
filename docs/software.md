@@ -22,26 +22,28 @@ the first time bookworm ships a point release:
 ### Base
 
 Slax 12.2.0, Debian 12 bookworm, **32-bit (i386)**: `slax-32bit-debian-12.2.0.iso`. The stock
-system has 600 packages with every bundle loaded. slax-kitchen's inventory
+system's package count with every bundle loaded is [`count-stock`](measurements.md#count-stock). slax-kitchen's inventory
 ([debian-12.2.0](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/docs/30-inventory/debian-12.2.0.md))
 describes it bundle by bundle.
 
 ### Removed
 
-`05-chromium.sb`, 81.7 MiB: Chromium 117 and the browser runtime libraries it carries. With it gone,
-the package database the image starts from is `04-apps`': **567 installed packages**, in 576
-entries. The other 9 are packages upstream Slax removed but left configured.
+`05-chromium.sb` ([size](measurements.md#l32-chromium)): Chromium 117 and the browser runtime
+libraries it carries. With it gone, the package database the image starts from is `04-apps`'
+([`count-stock`](measurements.md#count-stock)). It has more entries than installed packages: the
+difference is packages upstream Slax removed but left configured.
 
 ### Added
 
 | bundle | what |
 |---|---|
-| `09-firmware-debian.sb`, `09-firmware-linux.sb` | upstream's `firmware-refresh`: Debian's current firmware, GPU and audio included, with its `copyright` files, and 65 files from linux-firmware with their licences ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)). 16 packages |
-| `20-wine.sb` | **Wine 8.0~repack-4** from bookworm main: `wine`, `wine32`, `libwine`, `wine32-preloader` and `fonts-wine`, plus eleven libwine Recommends named back by hand ([wine](50-cookbook/wine.md) has the ledger). apt's closure is **60 packages**: 59 new, and `libgnutls30` upgraded |
+| `09-firmware-debian.sb`, `09-firmware-linux.sb` | upstream's `firmware-refresh`: Debian's current firmware, GPU and audio included, with its `copyright` files, and files from linux-firmware with their licences ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences); [`count-firmware`](measurements.md#count-firmware)) |
+| `20-wine.sb` | **Wine 8.0~repack-4** from bookworm main: `wine`, `wine32`, `libwine`, `wine32-preloader` and `fonts-wine`, plus eleven libwine Recommends named back by hand ([wine](50-cookbook/wine.md) has the ledger). apt's closure is new packages plus `libgnutls30` upgraded ([`count-wine32-closure`](measurements.md#count-wine32-closure)) |
 | `21-wine-desktop.sb` | the Wine tile, the `slax-wine` wrapper, `WINEARCH=win32` and `WINEDLLOVERRIDES`, the browser-tile mask, `/etc/slax-wine-release` |
 | `30-notepadpp32.sb` | the **Notepad++ 8.9.8** 32-bit (x86) NSIS installer and its launcher, `notepadpp32`; it installs into the Wine prefix on first use |
 
-**Installed packages: 642** (567 + 16 + 59), in 651 database entries.
+**Installed packages:** the base's, the firmware's and Wine's new ones
+([`packages-slax32-wine`](measurements.md#packages-slax32-wine)).
 
 ### What it runs
 
@@ -65,23 +67,24 @@ slax-bottles.
 
 ### Removed
 
-`05-chromium.sb`, 79.1 MiB on this base. The package database starts from `04-apps`': **566
-installed packages**, in 575 entries.
+`05-chromium.sb` ([size on this base](measurements.md#l64-chromium)). The package database starts
+from `04-apps`' ([`count-stock`](measurements.md#count-stock)).
 
 ### Added
 
 | bundle | what |
 |---|---|
-| `09-firmware-debian.sb`, `09-firmware-linux.sb` | upstream's `firmware-refresh`: Debian's current firmware, GPU and audio included, with its `copyright` files, and 65 files from linux-firmware with their licences ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)). 16 packages |
-| `20-wine.sb` | the same **Wine 8.0~repack-4** in both halves: `wine64`, `wine64-preloader` and `libwine` for 64-bit programs, `wine32`, `wine32-preloader` and `libwine` from **i386** for 32-bit ones, `fonts-wine`, and the same Recommends as the 32-bit image, each for both architectures ([wine](50-cookbook/wine.md) has the ledger). apt's closure: **60 new amd64 packages, 190 i386 ones, and 79 base packages upgraded** to match their i386 twins |
+| `09-firmware-debian.sb`, `09-firmware-linux.sb` | upstream's `firmware-refresh`: Debian's current firmware, GPU and audio included, with its `copyright` files, and files from linux-firmware with their licences ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences); [`count-firmware`](measurements.md#count-firmware)) |
+| `20-wine.sb` | the same **Wine 8.0~repack-4** in both halves: `wine64`, `wine64-preloader` and `libwine` for 64-bit programs, `wine32`, `wine32-preloader` and `libwine` from **i386** for 32-bit ones, `fonts-wine`, and the same Recommends as the 32-bit image, each for both architectures ([wine](50-cookbook/wine.md) has the ledger). apt's closure: **new amd64 packages, i386 ones, and base packages upgraded** to match their i386 twins ([`count-wine64-closure`](measurements.md#count-wine64-closure)) |
 | `21-wine-desktop.sb` | the same tile, wrapper, mask and `WINEDLLOVERRIDES`; **no `WINEARCH`**, so new prefixes are 64-bit; `/etc/slax-wine-release` naming this base |
 | `30-notepadpp32.sb` | the same 32-bit Notepad++ installer and `notepadpp32` as on 32-bit |
 | `31-notepadpp64.sb` | the **Notepad++ 8.9.8** 64-bit (x64) installer and its launcher, `notepadpp64` |
 
-**Installed packages: 832** (566 + 16 + 60 + 190), in 841 database entries. `/var/lib/dpkg/arch` lists
+**Installed packages:** the base's, the firmware's, and Wine's amd64 and i386 ones
+([`packages-slax64-wine`](measurements.md#packages-slax64-wine)). `/var/lib/dpkg/arch` lists
 `i386`, so `apt install foo:i386` works on a persistent system.
 
-**The 79 upgrades are the base's own packages, lifted**, and they matter when comparing the two
+**The upgrades ([`count-wine64-lifted`](measurements.md#count-wine64-lifted)) are the base's own packages, lifted**, and they matter when comparing the two
 bases: a `Multi-Arch: same` library must be the same version on both architectures, so installing
 today's i386 copy lifts the amd64 one to match. Among them are glibc, systemd and udev, util-linux,
 e2fsprogs and OpenSSL — so slax64-wine runs newer versions of those than stock Slax, and than
@@ -113,18 +116,19 @@ release built for the other architecture.
 
 ### Removed
 
-`05-chromium.sb`, 79.1 MiB on this base. The package database starts from `04-apps`': **566
-installed packages**, in 575 entries, one fewer of each than on 32-bit.
+`05-chromium.sb` ([size on this base](measurements.md#l64-chromium)). The package database starts
+from `04-apps`' ([`count-stock`](measurements.md#count-stock)), one fewer of each than on 32-bit.
 
 ### Added
 
 | bundle | what |
 |---|---|
-| `09-firmware-debian.sb`, `09-firmware-linux.sb` | upstream's `firmware-refresh`: Debian's current firmware, GPU and audio included, with its `copyright` files, and 65 files from linux-firmware with their licences ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences)). 16 packages |
-| `20-flatpak.sb` | **flatpak 1.14.10** from bookworm, with **bubblewrap 0.8.0** (the sandbox), `xdg-dbus-proxy`, `libostree` and GnuPG for verifying Flathub. apt's closure is **36 packages**: 31 new, and 5 upgraded from the base (`gpgv`, `libcurl4` and three `libavahi` packages) |
+| `09-firmware-debian.sb`, `09-firmware-linux.sb` | upstream's `firmware-refresh`: Debian's current firmware, GPU and audio included, with its `copyright` files, and files from linux-firmware with their licences ([D-18](DECISIONS.md#d-18--refresh-the-firmware-and-ship-its-licences); [`count-firmware`](measurements.md#count-firmware)) |
+| `20-flatpak.sb` | **flatpak 1.14.10** from bookworm, with **bubblewrap 0.8.0** (the sandbox), `xdg-dbus-proxy`, `libostree` and GnuPG for verifying Flathub. apt's closure is new packages plus a few upgraded from the base: `gpgv`, `libcurl4` and three `libavahi` packages ([`count-flatpak-closure`](measurements.md#count-flatpak-closure)) |
 | `30-bottles.sb` | the whole Flatpak installation at `/var/lib/flatpak`, DXVK and VKD3D-Proton pre-seeded under `/root/.var/app/com.usebottles.bottles/`, the Bottles tile, the `slax-bottles` wrapper, the browser-tile mask, `/etc/slax-bottles-release` |
 
-**Installed packages: 613** (566 + 16 + 31), in 622 database entries.
+**Installed packages:** the base's, the firmware's and flatpak's new ones
+([`packages-slax-bottles`](measurements.md#packages-slax-bottles)).
 
 Inside the Flatpak installation: Bottles and the runtimes Flathub served on the day of the build.
 The image's `/opt/bottles/VERSION` and the release's `.flatpak.txt` name the Bottles version and
@@ -147,7 +151,7 @@ And from Bottles' own components index, because it will not create a bottle offl
 (measured, [bottles](50-cookbook/bottles.md)): **DXVK 3.1** (Direct3D 8/9/10/11 on Vulkan) and
 **VKD3D-Proton 3.0.1** (Direct3D 12 on Vulkan).
 
-[sizing.md](sizing.md) breaks the 894.3 MiB bundle down by ref.
+[measurements.md](measurements.md#inside-30-bottlessb) breaks [the bundle](measurements.md#lbt-bottles) down by ref.
 
 ### What it runs
 
@@ -168,11 +172,11 @@ everything else is stated as what it is.
 |---|---|---|---|
 | **CPU** | 32-bit x86 with **PAE**: the kernel is Slax's own `6.1.38-smp`, built with `X86_PAE=y` (read from its embedded config; the Debian `686-pae` entries in its package database are leftovers). Any 64-bit x86 CPU also qualifies | **x86-64.** Its kernel runs 32-bit programs too, which `wine32` needs: `IA32_EMULATION=y`, read from its embedded config. Everything here was measured under `-cpu Nehalem` (x86-64-v2); no older CPU model was tried | **x86-64, and x86-64-v1 is enough to start it.** Measured in QEMU: under `-cpu qemu64`, which has no SSSE3, SSE4, POPCNT or AVX, Bottles starts and draws its window with no faults. A bottle was created, and Windows programs run in it, under `-cpu Nehalem` (x86-64-v2) |
 | **Firmware** | BIOS: both images. UEFI: `slax32-wine-uefi` only, and only **64-bit** UEFI firmware, because no `bootia32.efi` exists upstream ([INSTALL.md](../INSTALL.md)) | BIOS: both images. UEFI: `slax64-wine-uefi` only | BIOS or 64-bit UEFI. It is always built UEFI-bootable |
-| **Memory** | Measured booting in 2 GiB (the boot harness's default). In 3 GiB, after the first prefix and Notepad++: 1,273 MiB used, 645 MiB of it the RAM layer. No minimum established | Measured in 3 GiB: 452 MiB used at the idle desktop, 1.8 GiB after the Wine tile's first run. **Without persistence every Wine prefix lives in RAM**, and Wine copies its Windows-side libraries into each: a fresh 64-bit prefix is 1,265 MiB, a 32-bit one 589 MiB. A test that kept two prefixes and was making a third ran the 3 GiB machine out of memory; the kernel never invoked its OOM killer, and the desktop stayed unresponsive until the VM was reset. No minimum established | Measured booting in 3 GiB. In a 6 GiB VM: 550 MiB used at the idle desktop, 738 MiB with Bottles open, 1.75 GiB after creating a bottle. No minimum established. Without persistence everything written, bottles included, also lives in RAM |
+| **Memory** | Measured ([`ram-slax32`](measurements.md#ram-slax32)): it boots in the boot harness's default memory, and what the first prefix and Notepad++ use is recorded there. No minimum established | Measured ([`ram-slax64`](measurements.md#ram-slax64)): idle, and after the Wine tile's first run. **Without persistence every Wine prefix lives in RAM**, and Wine copies its Windows-side libraries into each: [a fresh 64-bit prefix](measurements.md#prefix-win64), [a 32-bit one](measurements.md#prefix-win32-slax64). A test that kept two prefixes and was making a third ran the machine out of memory; the kernel never invoked its OOM killer, and the desktop stayed unresponsive until the VM was reset. No minimum established | Measured ([`ram-slax-bottles`](measurements.md#ram-slax-bottles)): idle, with Bottles open, and after creating a bottle. No minimum established. Without persistence everything written, bottles included, also lives in RAM |
 | **GPU** | None required. Wine draws through Mesa's OpenGL: software-rendered in every test here, and whether a real card initialises with the GPU firmware the image now carries (D-18) is untested | The same; 32-bit programs use the i386 Mesa in `20-wine.sb` | None required to *run* Bottles: it ran with software rendering. **DXVK 3.x needs a Vulkan 1.4 driver** (per DXVK: RADV 25.0+, ANV 25.1+, NVIDIA 575.51.02+). The runtime's Mesa 26.2.2 meets that; whether a real GPU initialises under Slax's 6.1 kernel with the firmware the image now carries (D-18) is **untested**. Without Vulkan, Direct3D goes through Wine's OpenGL path, or fails |
-| **Storage** | The ISO: 561.5 or 567.7 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 869.7 or 875.9 MiB. Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: 1299.4 MiB. A fresh bottle measured **386 and 491 MiB** on two runs, before anything is installed into it |
+| **Storage** | The ISO: [bios](measurements.md#iso-slax32-wine-bios) or [uefi](measurements.md#iso-slax32-wine-uefi). Persistence as in [INSTALL.md](../INSTALL.md) | The ISO: [bios](measurements.md#iso-slax64-wine-bios) or [uefi](measurements.md#iso-slax64-wine-uefi). Persistence as in [INSTALL.md](../INSTALL.md) | [The ISO](measurements.md#iso-slax-bottles). A fresh bottle, before anything is installed into it: [`bottle-fresh`](measurements.md#bottle-fresh) |
 | **Network at runtime** | None | None | None. Bottles says "offline" and offers to retry; everything a bottle needs ships (measured) |
 | **Kernel features** | — | 32-bit program support (`IA32_EMULATION`), which the stock kernel has | Namespaces for `bubblewrap`, and a D-Bus session: the stock Slax kernel and session provide both (measured) |
 
 To **build** any image, see [build.md](build.md). slax-bottles needs `flatpak` on the build host,
-network access to Flathub, and about 14 GB of free disk.
+network access to Flathub, and [free disk](measurements.md#disk-bottles-build).

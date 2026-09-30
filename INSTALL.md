@@ -12,7 +12,7 @@
 The four are one system, on two bases, each with two boot routes ([DECISIONS.md](docs/DECISIONS.md)
 D-16); the 64-bit ones also run 64-bit Windows programs. A uefi image is a **superset** of its bios
 twin: it keeps the BIOS boot entry and adds an EFI one, so it boots everywhere the bios image does,
-for 6.2 MiB more. It lets the **ISO itself** boot on a UEFI machine — a DVD, or a virtual CD in a VM.
+for [an ESP's worth more](docs/measurements.md#esp). It lets the **ISO itself** boot on a UEFI machine — a DVD, or a virtual CD in a VM.
 
 > **It does not change anything about USB sticks.** Its GRUB loader lives in an El Torito ESP at
 > `/boot/efi.img` — an *ISO* structure. A stick has no El Torito catalog, `bootinst.sh` never copies
@@ -80,7 +80,7 @@ later. Everything else follows from it.
 >
 > **What has actually been booted, and by whom.** A slax-wine image has now been UEFI-booted:
 > measured 2026-09-18, GRUB under x86-64 OVMF loads `BOOTX64.EFI` and boots the 32-bit kernel to
-> `Live Kit done`, in 6 seconds under KVM. That is the `slax32-wine-uefi` image's own loader, on our
+> `Live Kit done`, in [seconds under KVM](docs/measurements.md#boot-kvm). That is the `slax32-wine-uefi` image's own loader, on our
 > own image — not an upstream result borrowed.
 >
 > It is **not** proof of the stick rows in the table above, and the distinction is the whole point of
@@ -262,7 +262,7 @@ differs:
 | **machine** | 32-bit x86 with PAE, or any 64-bit x86 | **64-bit x86 only** | **64-bit x86 only** ([software.md](docs/software.md)) |
 | **boot loaders** | `-bios`: BIOS. `-uefi`: BIOS and UEFI | the same | BIOS and UEFI. It is always built the way the slax-wine uefi images are, and on a stick it behaves the same: the stock FAT-only `syslinux.efi` |
 | **what persistence keeps** | the Wine prefix, `/root/.wine` | the same | every bottle, under `/root/.var/app/com.usebottles.bottles/`. On an ext4 stick that is `slax/changes/1/root/.var/app/com.usebottles.bottles` |
-| **space** | the image's `slax/` is ~561 MiB, and a fresh Wine prefix 589 MiB before anything is installed in it | the image's `slax/` is ~869 MiB, and a fresh Wine prefix 1,265 MiB — it is 64-bit, and carries both halves of Wine's libraries | the image's `slax/` is ~1.3 GiB, and a fresh bottle measured 386 and 491 MiB before anything was installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
+| **space** | the image's `slax/` is most of [the ISO](docs/measurements.md#iso-slax32-wine-bios), and a [fresh Wine prefix](docs/measurements.md#prefix-win32-slax32) comes on top before anything is installed in it | the image's `slax/` is most of [the ISO](docs/measurements.md#iso-slax64-wine-bios), and a [fresh Wine prefix](docs/measurements.md#prefix-win64) is larger than slax32's — it is 64-bit, and carries both halves of Wine's libraries | the image's `slax/` is most of [the ISO](docs/measurements.md#iso-slax-bottles), and a [fresh bottle](docs/measurements.md#bottle-fresh) comes on top before anything is installed in it. The FAT32 container's 16 GB floor fits several; a game can need many GB more, so raise `perchsize=` before the first persistent boot |
 
 **Persistence, measured on this image:** two boots of `slax-bottles-test` on one ext4 perch disk
 under `kitchen test --persistence`. Boot 1 found no marker and wrote one into the union, and boot 2

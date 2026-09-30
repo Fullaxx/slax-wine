@@ -371,8 +371,8 @@ else
 fi
 
 # ---- 6. a tagged HEAD must be honest ------------------------------------------------
-# Only on a tag: the tag has to be the version, and the docs must carry real measured
-# numbers rather than the placeholder. Everything claimed in a release is checkable, and
+# Only on a tag: the tag has to be the version, and the measurements must be real numbers
+# rather than the placeholder. Everything claimed in a release is checkable, and
 # TBD-MEASURED is the marker for "not measured yet".
 # `git describe --exact-match` exits 128 for BOTH "No names found" and "not a git
 # repository", so `if tag=$(...)` silently treated a git-less tree -- a `git archive`
@@ -387,21 +387,23 @@ else
             || fail "tagged HEAD is '$tag' but build.env says VERSION=$VERSION (want 'v$VERSION')"
         # TBD-MEASURED is this repo's placeholder for "a number we have not measured
         # yet". It is deliberately ugly so it cannot be mistaken for a value, and this is
-        # the only thing that enforces it -- so if you write a placeholder, write THIS
-        # one. docs/build.md says so too.
+        # the only thing that enforces it.
         #
-        # A placeholder is written bare. Quoted in backticks it is a MENTION of the marker,
-        # and those are stripped before looking: docs/build.md defines the marker and
-        # explains this section, and until 2026-09-30 this check matched both, so it could
-        # never pass on a tagged tree -- found by the first tag, v1.0.0, which it refused.
-        grep -rl 'TBD-MEASURED' "$REPO_ROOT/docs" "$REPO_ROOT/README.md" 2>/dev/null \
-            > "$TMP/tbd" || true
-        while IFS= read -r f; do
-            [ -n "$f" ] || continue
-            if sed 's/`TBD-MEASURED`//g' "$f" | grep -q 'TBD-MEASURED'; then
-                fail "tagged release still carries TBD-MEASURED: ${f#"$REPO_ROOT"/}"
-            fi
-        done < "$TMP/tbd"
+        # ONE PAGE, not every doc (D-21). Every measured number lives in
+        # docs/measurements.md and every other page links to its row, so a placeholder
+        # anywhere else is a page breaking that rule, not an unmeasured number. Until
+        # 2026-09-30 this grepped docs/ and README.md for the marker, and matched its own
+        # definition in docs/build.md, so it refused the first tag, v1.0.0.
+        #
+        # A placeholder is written bare. Quoted in backticks it is a MENTION of the marker --
+        # the register's own rules name it -- and those are stripped before looking.
+        MEAS="$REPO_ROOT/docs/measurements.md"
+        if [ ! -f "$MEAS" ]; then
+            fail "docs/measurements.md is missing, so a tagged release has no measurements to be honest about"
+        elif sed 's/`TBD-MEASURED`//g' "$MEAS" | grep -q 'TBD-MEASURED'; then
+            fail "tagged release still carries TBD-MEASURED: docs/measurements.md ($(
+                  sed 's/`TBD-MEASURED`//g' "$MEAS" | grep -c 'TBD-MEASURED') row(s))"
+        fi
     fi
 fi
 

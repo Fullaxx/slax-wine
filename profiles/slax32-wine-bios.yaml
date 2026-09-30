@@ -47,10 +47,11 @@ recipes:
   #
   # `drop:` IS SPELLED OUT even though it restates the recipe's own default, and that is
   # this repo's standing rule for a default that decides what ships (see wine.yaml's apt
-  # keys, kept explicit for the same reason). This one decides which 81.7 MiB leaves the
-  # image: if a later pin changed remove-bundle's default, a bare name would silently
-  # change what our ISO deletes, and no gate here could see it. It is upstream's own
-  # convention too -- all four of their profiles spell it out, and profiles/minimal.yaml
+  # keys, kept explicit for the same reason). This one decides which bundle leaves the
+  # image (docs/measurements.md#l32-chromium): if a later pin changed remove-bundle's
+  # default, a bare name would silently change what our ISO deletes, and no gate here
+  # could see it. It is upstream's own convention too -- all four of their profiles spell
+  # it out, and profiles/minimal.yaml
   # gives the reason: "a profile line that deletes something should say what."
   - name: remove-bundle
     vars: {drop: "^05-chromium\\.sb$"}

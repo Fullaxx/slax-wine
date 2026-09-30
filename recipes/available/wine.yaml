@@ -50,9 +50,9 @@ steps:
   # it had a cost of its own. A stack named by hand goes stale the moment a bundle is
   # added below 20, and apt then reinstalls libraries the image already has.
   #
-  # The size argument for dropping the browser lives in docs/DECISIONS.md D-2 and
-  # docs/sizing.md, which carry the measured ledger: 05-chromium.sb is 81.7 MiB against
-  # Wine's 166.6 MiB on the 32-bit base, so it buys half of Wine, not all of it.
+  # The size argument for dropping the browser lives in docs/DECISIONS.md D-2, and the
+  # measured ledger in docs/measurements.md: 05-chromium.sb (#l32-chromium) against Wine
+  # (#l32-wine) on the 32-bit base buys about half of Wine, not all of it.
 
   # -- 2. the Wine bundle, 32-bit base ----------------------------------------------
   #
@@ -79,7 +79,7 @@ steps:
     #
     #   wine              arch-all wrapper; Depends: wine64 | wine32, and i386 picks wine32
     #   wine32            the i386 loader
-    #   libwine           the payload: 91 MiB of .deb, 563 MiB installed
+    #   libwine           the payload (docs/measurements.md#deb-libwine)
     #   wine32-preloader  the prelinked low-address loader old 32-bit Windows programs
     #                     need. NOTHING Depends on it -- it Depends on wine32, not the
     #                     reverse -- so it arrives only if it is named here.
@@ -94,10 +94,11 @@ steps:
     #
     # "Mostly", because libgnutls30 is the exception and it is worth knowing why: the
     # base carries 3.7.9-2 and apt UPGRADES it to 3.7.9-2+deb12u7, so it lands in this
-    # bundle's dpkg fragment and ships ~3.6 MB of libgnutls.so.30.34.3 plus locale files.
-    # Eight are free, three add bytes. It is also why 04-apps' 576 packages plus this
-    # fragment's 60 come to 635 and not 636: libgnutls30 is in both, so the fragment adds
-    # 59 NEW entries and upgrades one.
+    # bundle's dpkg fragment and ships libgnutls.so.30.34.3 plus locale files
+    # (docs/measurements.md#deb-libgnutls). Eight are free, three add bytes. It is also why
+    # the merged database is one entry short of 04-apps' plus this fragment's: libgnutls30
+    # is in both, so the fragment adds one fewer NEW entry than it lists and upgrades one
+    # (docs/measurements.md#count-wine32-closure, #count-stock).
     #
     # libwine declares 24 Recommends. Twelve are named above. Of the twelve that are
     # not, these eight are the ones worth knowing about -- each is one `apt install` away

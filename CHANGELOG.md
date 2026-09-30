@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 A release is defined by **both** halves — the slax-wine version and the base ISO it was built on.
 See [docs/base-versions.md](docs/base-versions.md).
 
+## [Unreleased]
+
+### Changed
+- **Every measured number is in one place:** [docs/measurements.md](docs/measurements.md), one row
+  per quantity with how and when it was measured. Other pages link to the row rather than repeat
+  the number, and `docs/sizing.md` is merged into it
+  ([D-21](docs/DECISIONS.md#d-21--one-register-for-measurements-and-links-everywhere-else)).
+- **Gate 96 §6 reads only the register** for a `TBD-MEASURED` placeholder on a tag.
+
+### Added
+- **`ci/measure-check.sh`** compares the register with the build summaries in `out/` and reports
+  what differs. It is not a gate. The release procedure runs it after the local builds.
+
+### Fixed
+- **Copies that had drifted apart,** found while merging them:
+  - the release's upload size, which the docs gave as about 3.4 GB and is 4.38 GB;
+  - slax32's default prefix, listed with slax64's 32-bit figure;
+  - slax-bottles' size, rounded to 1.2 GiB in places;
+  - the module counts, which ARCHITECTURE still gave from before the firmware bundles.
+
 ## [1.0.0] — 2026-09-30
 
 Built on two bases, `slax-32bit-debian-12.2.0.iso`

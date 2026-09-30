@@ -31,10 +31,11 @@ recipes:
   #
   # `drop:` IS SPELLED OUT even though it restates the recipe's own default, and that is
   # this repo's standing rule for a default that decides what ships (see wine.yaml's apt
-  # keys, kept explicit for the same reason). This one decides which 81.7 MiB leaves the
-  # image: if a later pin changed remove-bundle's default, a bare name would silently
-  # change what our ISO deletes, and no gate here could see it. It is upstream's own
-  # convention too -- all four of their profiles spell it out, and profiles/minimal.yaml
+  # keys, kept explicit for the same reason). This one decides which bundle leaves the
+  # image (docs/measurements.md#l32-chromium): if a later pin changed remove-bundle's
+  # default, a bare name would silently change what our ISO deletes, and no gate here
+  # could see it. It is upstream's own convention too -- all four of their profiles spell
+  # it out, and profiles/minimal.yaml
   # gives the reason: "a profile line that deletes something should say what."
   - name: remove-bundle
     vars: {drop: "^05-chromium\\.sb$"}
@@ -62,15 +63,14 @@ recipes:
   # nothing to vendor, copy, or re-sync on a pin bump. Our own four are paths, which say
   # they are this repository's.
   #
-  # What it adds: ONE file, boot/efi.img -- a FAT12 ESP holding GRUB. MEASURED at
-  # 6,488,064 bytes (6.2 MiB), which is grub-mkstandalone embedding its modules; an
-  # earlier draft of this comment guessed "KiB-sized" and was wrong by three orders of
-  # magnitude. The ISO goes 531,935,232 -> 538,425,344 bytes, 507.3 -> 513.5 MiB, measured
-  # before firmware-refresh; with it, 588,742,656 -> 595,232,768, still inside
-  # WINE32_MAX_ISO_MIB.
+  # What it adds: ONE file, boot/efi.img -- a FAT12 ESP holding GRUB, MEASURED in MiB
+  # rather than KiB (docs/measurements.md#esp), which is grub-mkstandalone embedding its
+  # modules; an earlier draft of this comment guessed "KiB-sized" and was wrong by three
+  # orders of magnitude. The uefi image is the bios one plus that
+  # (docs/measurements.md#iso-slax32-wine-uefi), still inside WINE32_MAX_ISO_MIB.
   #
-  # It builds NO bundle, so both images carry exactly the same nine .sb modules and
-  # build.sh's WANT_MODULES assertion is shared between them unchanged.
+  # It builds NO bundle, so both images carry exactly the same .sb modules and build.sh's
+  # WANT_MODULES assertion is shared between them unchanged.
   #
   # How it reaches `kitchen pack`: v_boot_uefi writes the pack hint `uefi: true`, pack.sh
   # reads it and switches to the xorriso backend on its own. build.sh passes no extra

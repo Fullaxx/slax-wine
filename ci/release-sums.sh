@@ -5,7 +5,8 @@
 #   ci/release-sums.sh --list
 #
 # <dir> holds the assets. An ISO may be absent from it, which is how the release workflow's
-# last job runs: it downloads only the small files from the draft, not 3.4 GB of images.
+# last job runs: it downloads only the small files from the draft, not the images
+# (docs/measurements.md#release-assets).
 # An absent ISO's line is then taken from its .iso.sha256 -- which build.sh checked against
 # the ISO when it was packed, and ci/release-stage.sh again before the upload -- and the
 # ISO must be listed in FILE, one "name bytes" per line, as the draft reports it.

@@ -360,8 +360,8 @@ bottles_install_app() {
 # away and installed again, NOT updated in place: `flatpak update` keeps the replaced
 # commit's objects in the repo -- the new commit names the old one as its parent, so not
 # even `flatpak repair` prunes them -- and they would ship. Measured on the GNOME 50
-# update of 2026-09-29: updated in place, 30-bottles.sb came out at 970,056 KiB and 73,418
-# files; installed fresh, 915,792 KiB and 60,231. --no-fetch keeps the stage as it is.
+# update of 2026-09-29: updated in place, 30-bottles.sb came out markedly larger than
+# installed fresh (docs/measurements.md#bottles-inplace). --no-fetch keeps the stage as it is.
 stage_bottles_floating() {
     if [ -d "$FPDIR/repo" ] && [ "$NO_FETCH" = 1 ]; then
         echo "  note --no-fetch: the stage as it is, not what Flathub serves today"

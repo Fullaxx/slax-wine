@@ -1,8 +1,8 @@
 # `slax-wine-iso` — label the image, and stop `automount` grabbing every disk
 
 **Status: runtime-verified**, on both bases. The volume id, application id and checksum are
-confirmed in every built image, and the structure assertions pass with `--volid SLAX32-WINE` (21 of
-21) and `--volid SLAX64-WINE` (22 of 22; its extra one is `31-notepadpp64.sb`). This recipe's only
+confirmed in every built image, and every structure assertion passes with `--volid SLAX32-WINE` and
+with `--volid SLAX64-WINE`, which checks one module more, `31-notepadpp64.sb`. This recipe's only
 functional change is removing `automount` from the boot line. That has been **observed taking effect
 through both bootloaders**, on `slax32-wine-test` and on `slax64-wine-test`.
 
@@ -54,17 +54,20 @@ host configured these run there under KVM, where the harness's own keystrokes la
 **The `--keys` chore is over here, with one caveat worth keeping.** On an idle KVM host the
 harness's fixed 2-second lead lands inside the menu — measured by the lead working, three runs in a
 row, with 3 s, 4 s and 6 s landing too. How early the menu is drawn there has not been timed here,
-only that 2 s is late enough; upstream's own figure is about a second
+only that 2 s is late enough; upstream's own figure is
+[`grub-menu-kvm`](../measurements.md#grub-menu-kvm)
 ([UPSTREAM.md](../UPSTREAM.md#filed-at-the-86d27d5-pin-building-slax64-wine--27-and-28) cites where).
 
-Under TCG on this build host it was not: the menu is drawn by 3.2 s, so the keys came too *early*,
-and with the vCPU sharing a core it was 6.9 s. Leads of 3–6 s passed on the idle host and failed on
-the busy one, and the workaround was `home` once a second for 24 presses —
+Under TCG on this build host it was not: the menu is drawn after the lead, so the keys came too
+*early*, and later still with the vCPU sharing a core
+([`grub-menu-tcg`](../measurements.md#grub-menu-tcg)). The leads that passed on the idle host failed
+on the busy one ([`key-lead-tcg`](../measurements.md#key-lead-tcg)), and the workaround was `home` once a second for 24 presses —
 `KEYS=$(printf '1s,home,%.0s' $(seq 24))down,down,ret` — which still works if you are booting
 without an accelerator.
 
 **The caveat is load, not emulation.** Both UEFI routes missed on 2026-09-21 under KVM while this
-machine was building images at a load average of 12, and passed three times in a row on the same
+machine was building images under heavy load
+([`grub-menu-kvm`](../measurements.md#grub-menu-kvm)), and passed three times in a row on the same
 machine once it was idle. A missed menu boots the *default* entry, so the test fails with nothing on
 the serial log. Do not run boot tests against a build in progress, and do not read one UEFI failure
 as a regression without asking what else the machine was doing. The measurements are in
@@ -82,15 +85,16 @@ results in this page stand; only the explanation was wrong.
 `serial-console` and `testkit`. The boot configs are otherwise identical, and the removal is applied
 to *every* `APPEND` line in both files, so it transfers.
 
-**On the 64-bit base**, measured 2026-09-21 on the KVM host, against `slax64-wine-test`; the
-seconds in brackets are the same routes under TCG on this build host, 2026-09-19:
+**On the 64-bit base**, measured 2026-09-21 on the KVM host, against `slax64-wine-test`. Each boot
+took [the usual time under KVM](../measurements.md#boot-kvm); the same routes under TCG on this build
+host, 2026-09-19, are [`boot-tcg-slax64`](../measurements.md#boot-tcg-slax64):
 
 | boot route | cmdline comes from | `automount` | reached `Live Kit done` |
 |---|---|---|---|
-| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes, 4 s (28 s) |
-| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes, 6 s (31 s) |
-| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes, 6 s (29 s) |
-| `kitchen test --persistence` | the harness, two boots on one disk | **present** | yes, 4 s each |
+| `kitchen test --kernel` | the **harness**, which adds it | **present** | yes |
+| `kitchen test --bios` | `isolinux.cfg`, serial entry | **absent** | yes |
+| `kitchen test --uefi` | GRUB, generated from `isolinux.cfg` | **absent** | yes |
+| `kitchen test --persistence` | the harness, two boots on one disk | **present** | yes, both boots |
 
 The UEFI row ran against the **shipped** 5-second menu, with the 3-second lead described above.
 Every run also printed testkit's report: every file this image's recipes ship reached the union,
@@ -98,11 +102,12 @@ both Wine loaders and `/var/lib/dpkg/arch` included.
 
 **Re-run under KVM at the `7f9c4f8` bump**, 2026-09-21: every route of both test images and of
 `slax-bottles-test` — `--kernel`, `--bios`, `--uefi` and `--persistence`, twelve in all — reached
-`Live Kit done` in 4–6 s, with **no `--keys`**. `automount` was on the three `--kernel` lines and on
+`Live Kit done` in [the usual time](../measurements.md#boot-kvm), with **no `--keys`**. `automount` was on the three `--kernel` lines and on
 none of the six bootloader lines, and every `--uefi` log carried `console=ttyS0`, which is what
 proves the keystrokes selected the serial entry rather than the default.
 
-The earlier TCG runs, 2026-09-19, reached it in 21–26 s and needed the 3-second lead described
+The earlier TCG runs, 2026-09-19, reached it more slowly
+([`boot-tcg`](../measurements.md#boot-tcg)) and needed the 3-second lead described
 below; both test images also passed there with `KEYS` and real `home` presses, `slax64-wine-test`
 both idle and with its vCPU sharing a core.
 
@@ -205,7 +210,8 @@ which is a bigger question than a YAML line. A signed release is a post-v1.0.0 w
 The checksum is written from the output directory, so the filename inside it is **relative** and
 `sha256sum -c` works wherever the pair is downloaded to. Note the hash is per *build*, not per
 version — `genisoimage` stamps PVD timestamps it cannot pin, so a rebuild of the same tree produces
-the same bytes everywhere except those fields. See [sizing.md](../sizing.md):
+the same bytes everywhere except those fields. See
+[measurements.md](../measurements.md#why-a-rebuild-moves-bytes):
 
 ```
 <this build's sha256>  slax32-wine-bios-1.0.0.iso
@@ -240,5 +246,5 @@ four and `31-notepadpp64.sb`.
 | you want | use |
 |---|---|
 | to install the result | [INSTALL.md](../../INSTALL.md) |
-| the size ledger | [sizing.md](../sizing.md) |
+| the size ledger | [measurements.md](../measurements.md#where-the-size-goes) |
 | what a release promises | [NOTICE.md](../../NOTICE.md) |

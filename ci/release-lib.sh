@@ -13,8 +13,9 @@ RELEASE_IMAGES="slax32-wine-bios slax32-wine-uefi slax64-wine-bios slax64-wine-u
 # (build.sh), and the sources report (`kitchen sources`, ci/release-stage.sh).
 RELEASE_SUFFIXES=".iso .iso.sha256 .iso.provenance.json .packages.tsv .SOURCES.md .sources.json"
 
-# GitHub refuses a release asset of 2 GiB or more. The largest image is about 1.3 GiB, and
-# BOTTLES_MAX_ISO_MIB in build.env stops it long before this does.
+# GitHub refuses a release asset of 2 GiB or more. The largest image
+# (docs/measurements.md#iso-slax-bottles) is well under it, and BOTTLES_MAX_ISO_MIB in
+# build.env stops it long before this does.
 RELEASE_MAX_BYTES=2147483647
 
 # Every asset for version $1 except SHA256SUMS, one per line.

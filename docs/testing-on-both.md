@@ -74,14 +74,15 @@ the ELF class of the running program's Wine loader.
 what each base does by default and what you can choose instead. Worth knowing before a run of your
 own:
 
-- **Creating a prefix is the slow part**, and happens once per prefix. Measured 2026-09-21 under
-  **KVM**: 65 s for a 64-bit prefix, 32 s for a 32-bit one on slax64, 23 s on slax32. Under
-  **emulation** the same three were about 4 minutes, 90 seconds and — on a host that was also
-  building — 9, which is past the 5 minutes Wine waits, so that first launch failed
-  (`boot event wait timed out`) and the second worked. Without an accelerator, give the host nothing
+- **Creating a prefix is the slow part**, and happens once per prefix. Under **KVM** it takes
+  [tens of seconds](measurements.md#prefix-time-kvm). Under **emulation** it takes minutes
+  ([`prefix-time-tcg`](measurements.md#prefix-time-tcg), [`prefix-time-tcg-slax32`](measurements.md#prefix-time-tcg-slax32)),
+  and on a host that was also building it once went past the 5 minutes Wine waits, so that first
+  launch failed (`boot event wait timed out`) and the second worked. Without an accelerator, give the host nothing
   else to do, or run twice.
-- **Each prefix lives in RAM** on a non-persistent boot: 1,265 MiB for a 64-bit one, 589 MiB for a
-  32-bit one. A run that kept two and was making a third stalled a 3 GiB VM until it was reset.
+- **Each prefix lives in RAM** on a non-persistent boot: [a 64-bit one](measurements.md#prefix-win64), or
+  [a 32-bit one](measurements.md#prefix-win32-slax64). A run that kept two and was making a third stalled the VM
+  until it was reset ([`ram-slax64`](measurements.md#ram-slax64)).
   Delete one before making the next, or boot persistent.
 - **`wine` on slax64 starts the 32-bit loader** (Debian's wrapper), and Wine hands 64-bit programs to
   `wine64` itself. So a program runs in its own width, but Wine's own tools default to 32-bit — as

@@ -40,9 +40,9 @@ slax-wine is bios and uefi images on each of two bases ([DECISIONS.md](DECISIONS
 `notepadpp32` and `slax-wine-iso`, in that order**; the 64-bit ones add `notepadpp64`. `wine`,
 `wine-desktop` and `slax-wine-iso` carry one step per base, guarded by `when: arch==32bit` or
 `arch==64bit`, so one recipe list builds both. The uefi profiles add upstream's `uefi-bootable`
-last, which builds no bundle and writes a single 6.2 MiB `boot/efi.img` — a FAT12 ESP holding GRUB.
-So a base's two images carry identical bundles, nine on 32-bit and ten on 64-bit, and share one
-module-list assertion in `build.sh`.
+last, which builds no bundle and writes a single `boot/efi.img` ([size](measurements.md#esp)) — a
+FAT12 ESP holding GRUB. So a base's two images carry identical bundles, eleven on 32-bit and twelve
+on 64-bit, and share one module-list assertion in `build.sh` (`WANT_MODULES32` and `WANT_MODULES64`).
 
 Two consequences worth holding onto:
 
@@ -147,11 +147,11 @@ writes `var/lib/slax-kitchen/dpkg-status.d/<bundle>`, holding only the stanzas i
 real `status` as the base**, applies every fragment above it, and generates `98-dpkg-db.sb` — below
 `99-changes-N` so a saved session still wins.
 
-For this image: `05-chromium` is removed, so the base is `04-apps` at 576 packages and the
-`20-wine` fragment declares 60. **Measured result: 635 packages** — not 636, because the fragment
-adds **59 new** entries and *upgrades* one. `libgnutls30` is in both: the base carries `3.7.9-2` and
-apt moves it to `3.7.9-2+deb12u7`. Worth spelling out, because "576 + 60" reads like a derivation
-and is not one.
+For this image: `05-chromium` is removed, so the base is `04-apps` ([its entries](measurements.md#count-stock))
+and the `20-wine` fragment declares [its closure](measurements.md#count-wine32-closure). **The measured result is
+one fewer than their sum**, because the fragment adds new entries and *upgrades* one. `libgnutls30`
+is in both: the base carries `3.7.9-2` and apt moves it to `3.7.9-2+deb12u7`. Worth spelling out,
+because "base + fragment" reads like a derivation and is not one.
 
 The old design had every bundle carry a cumulative status, and a high-numbered bundle shipping a
 short copy would shadow a longer one. That is gone, but its shadow remains in one place — see the
@@ -249,7 +249,7 @@ A register, because every one of these cost time to find.
 | **`bundle.fromTarball` is tar-only** | `tarfile.open`, so no `.zip` and no `.7z` |
 | **Recipes are not idempotent** | `apply` consults its journal and refuses a second application. `build.sh` unpacks fresh every run |
 | **A bundle name can be produced once** | two steps that both *run* and target the same bundle are refused — at run time, when the `.sb` already exists. Combine them into one `bundle.files`; or, per base, guard each with `when: arch==…` so exactly one runs, as `wine` and `wine-desktop` do |
-| **Estimate bundle size from squashfs, not from `.deb`** | `-b 1024K` restarts xz every mebibyte, so a bundle is ~**1.4×** the `.deb`s it came from. Compare against ALL the packages installed (121.1 MiB for Wine's 60), never one headline `.deb` |
+| **Estimate bundle size from squashfs, not from `.deb`** | `-b 1024K` restarts xz every mebibyte, so a bundle is larger than the `.deb`s it came from, by [the measured ratio](measurements.md#ratio-squashfs-deb). Compare against ALL the packages installed ([Wine's](measurements.md#deb-wine32-closure)), never one headline `.deb` |
 | **`98-dpkg-db.sb` appears in the output** | generated at pack time. An expected-modules assertion that omits it fails on its own build |
 | **Piping into `tee` hides a failure** | the pipeline's status is `tee`'s. POSIX sh has no `PIPESTATUS`; record success out of band |
 | **`savechanges` first session is `99-changes-99.sb`** | its arithmetic runs on the last file in `slax/modules/`, now `98-dpkg-db`. Harmless; it increments correctly |
@@ -263,9 +263,9 @@ A register, because every one of these cost time to find.
 ## What is verified, and what is not
 
 `boot-verified`: the ISO boots to `slax login:` with all three livekit markers and all its bundles
-mounted in order — nine on 32-bit, ten on 64-bit. Measured under TCG until the `7f9c4f8` bump, and
-since then on the KVM host: twelve routes, `--kernel`, `--bios`, `--uefi` and `--persistence`
-on all three test images, each reaching `Live Kit done` in 4–6 s.
+mounted in order — eleven on 32-bit, twelve on 64-bit. Measured under TCG until the `7f9c4f8` bump,
+and since then on the KVM host: twelve routes, `--kernel`, `--bios`, `--uefi` and `--persistence`
+on all three test images, each reaching `Live Kit done` ([timings](measurements.md#boot-kvm)).
 
 `runtime-verified`, on a full desktop boot of each base: the **Wine tile opens from the launcher**
 with no xterm wrapper, the **Notepad++ installer runs under Wine** and the installed editor launches,
@@ -294,7 +294,8 @@ rung below "the tile appears" and is the half a machine can check.
 
 **Both bootloaders, and UEFI: observed.** Measured 2026-09-18 on a KVM host against
 `slax32-wine-test`: `kitchen test --bios` boots through isolinux and `--uefi` boots through GRUB under
-x86-64 OVMF, each reaching `Live Kit done` in 6 s, each selecting the serial entry. Their kernel
+x86-64 OVMF, each reaching `Live Kit done` ([timings under KVM](measurements.md#boot-kvm)), each
+selecting the serial entry. Their kernel
 command lines carry **no `automount`**, while the `--kernel` control — whose cmdline the harness
 builds and which *does* carry it — shows it present. That pairing is what makes the negative result
 mean something.

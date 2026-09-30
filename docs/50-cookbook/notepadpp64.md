@@ -62,7 +62,7 @@ built slax/modules/31-notepadpp64.sb (6700 KiB, 4 files)
   /usr/share/applications/7notepadpp64.desktop
 ```
 
-`31-notepadpp64.sb` is 6,860,800 B — **6.5 MiB**, on both 64-bit images.
+`31-notepadpp64.sb` is the same size on both 64-bit images ([`l64-notepadpp64`](../measurements.md#l64-notepadpp64)).
 
 Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card) on `slax64-wine-uefi`, 2026-09-19:
 
@@ -73,7 +73,7 @@ Measured in QEMU (TCG, `-cpu Nehalem`, 3 GiB, no network card) on `slax64-wine-u
 | installed to | `C:\Program Files\Notepad++`, in the 64-bit prefix the first click made |
 | `notepad++.exe` | PE machine `0x8664`: x86-64 |
 | the editor | a 64-bit process: ELF class 2, `/usr/lib/wine/wine64-preloader.static` |
-| the same installer, silent (`/S`), in a fresh 64-bit prefix | exit 0: **1.7 s** under KVM, 29–32 s under emulation |
+| the same installer, silent (`/S`), in a fresh 64-bit prefix | exit 0, in seconds under KVM and much longer under emulation ([`npp-install-x64`](../measurements.md#npp-install-x64)) |
 | `notepadpp64` in a `WINEARCH=win32` prefix | refused, with its message, exit 1 |
 | `WINEARCH=win32 notepadpp64` with **no prefix yet** | refused before one is created, exit 1 |
 | `notepadpp64` when only the 32-bit build is installed | asks first, Cancel by default ([D-17](../DECISIONS.md#d-17--one-prefix-and-the-flip-is-a-choice)) |
@@ -109,8 +109,8 @@ x86 build owns `Program Files` itself, and a warning would be about removing wha
 installed.
 
 To keep both, give one its own prefix: `WINEPREFIX=/root/.wine-npp64 notepadpp64`, which is what the
-dialog suggests. On a non-persistent boot that is another 1.2 GiB of RAM
-([software.md](../software.md#requirements)).
+dialog suggests. On a non-persistent boot that is another whole 64-bit prefix in RAM
+([`prefix-win64`](../measurements.md#prefix-win64), and [software.md](../software.md#requirements)).
 
 | you want | use |
 |---|---|

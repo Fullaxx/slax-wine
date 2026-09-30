@@ -313,28 +313,62 @@ def version():
     raise AssertionError("no VERSION= in build.env")
 
 
+def fill_placeholders(fx):
+    """The register as it will be at a tag: every placeholder measured. The working tree can
+    carry one legitimately between releases, and the control must not depend on that."""
+    path = os.path.join(fx, "docs", "measurements.md")
+    with open(path) as fh:
+        text = fh.read()
+    bare = text.replace("`TBD-MEASURED`", "\0")
+    with open(path, "w") as fh:
+        fh.write(bare.replace("TBD-MEASURED", "1").replace("\0", "`TBD-MEASURED`"))
+
+
 def test_a_tagged_copy_passes():
     """Section 6 runs only on a tagged HEAD, so nothing ran it until the first tag, v1.0.0,
     and it refused that: it matched docs/build.md's own definition of the marker and its
-    account of this section. An unedited copy, tagged as the version, must pass."""
-    rc, out = gate_in_fixture(tag="v" + version())
-    check("an unedited copy tagged v$VERSION passes gate 96", rc, 0)
+    account of this section. A copy with its register filled in, tagged as the version,
+    must pass."""
+    rc, out = gate_in_fixture(fill_placeholders, tag="v" + version())
+    check("a measured copy tagged v$VERSION passes gate 96", rc, 0)
     if rc != 0:
         FAILURES.append("  the gate said: " + " | ".join(
             l.strip() for l in out.splitlines() if "FAIL" in l)[:600])
 
 
-def test_a_tag_refuses_a_bare_placeholder_but_not_a_mention():
+def test_a_tag_refuses_a_placeholder_in_the_register_and_only_there():
+    """D-21: the register is the one page a placeholder may be in, so it is the one page
+    section 6 reads. A bare marker there refuses the tag; a mention does not; and a
+    marker on another page is that page's breach of the links-only rule, for review."""
     tag = "v" + version()
-    refuses("a bare TBD-MEASURED in a tagged tree",
-            lambda fx: replace_once(fx, "docs/sizing.md", "# Where the size goes\n",
-                                    "# Where the size goes\n\nsize: TBD-MEASURED\n"),
-            "tagged release still carries TBD-MEASURED: docs/sizing.md", tag=tag)
+    head = "# Measurements\n"
+
+    def plant(text):
+        def edit(fx):
+            fill_placeholders(fx)
+            replace_once(fx, "docs/measurements.md", head, head + "\n" + text + "\n")
+        return edit
+
+    refuses("a bare TBD-MEASURED in the register", plant("size: TBD-MEASURED"),
+            "tagged release still carries TBD-MEASURED: docs/measurements.md", tag=tag)
     refuses("a bare one on a line that also quotes the marker",
-            lambda fx: replace_once(fx, "docs/sizing.md", "# Where the size goes\n",
-                                    "# Where the size goes\n\n`TBD-MEASURED` TBD-MEASURED\n"),
-            "tagged release still carries TBD-MEASURED: docs/sizing.md", tag=tag)
-    refuses("a tag that is not the version", None, "tagged HEAD is 'v0.0.1'", tag="v0.0.1")
+            plant("`TBD-MEASURED` TBD-MEASURED"),
+            "tagged release still carries TBD-MEASURED: docs/measurements.md", tag=tag)
+    rc, out = gate_in_fixture(plant("the marker is `TBD-MEASURED`"), tag=tag)
+    check("a backticked mention in the register passes", rc, 0)
+
+    def elsewhere(fx):
+        fill_placeholders(fx)
+        replace_once(fx, "docs/variants.md", "## The matrix\n",
+                     "size: TBD-MEASURED\n\n## The matrix\n")
+    rc, out = gate_in_fixture(elsewhere, tag=tag)
+    check("a marker outside the register is not section 6's to refuse", rc, 0)
+
+    def gone(fx):
+        os.remove(os.path.join(fx, "docs", "measurements.md"))
+    refuses("a tag with no register", gone, "docs/measurements.md is missing", tag=tag)
+    refuses("a tag that is not the version", fill_placeholders, "tagged HEAD is 'v0.0.1'",
+            tag="v0.0.1")
 
 
 TESTS = [test_a_worktree_commit_cannot_move_the_pin,
@@ -348,7 +382,7 @@ TESTS = [test_a_worktree_commit_cannot_move_the_pin,
          test_a_register_row_for_no_profile_is_refused,
          test_a_backticked_name_outside_the_matrix_is_not_a_variant,
          test_a_tagged_copy_passes,
-         test_a_tag_refuses_a_bare_placeholder_but_not_a_mention,
+         test_a_tag_refuses_a_placeholder_in_the_register_and_only_there,
          test_every_test_here_is_registered]
 
 

@@ -27,9 +27,9 @@ image:
 could not be completed", with Skip Setup; `bottles-cli new --bottle-name offline1 --environment
 application --runner sys-wine-11.0` creates a bottle; in it, `cmd /c ver` prints `Microsoft Windows
 10.0.19045`. That held on every run, including on the shipped image with nothing added by hand;
-`notepad.exe` opening a window on the Slax desktop was checked on the first run. Creating a bottle
-took 19 minutes on one run and 24 on another, under software emulation (no KVM; the second shared
-the host with a build). It has not been timed on real hardware.
+`notepad.exe` opening a window on the Slax desktop was checked on the first run. Creating a bottle took
+[tens of minutes](measurements.md#bottle-create-tcg) under software emulation (no KVM; one run
+shared the host with a build). It has not been timed on real hardware.
 
 **Without DXVK and VKD3D on disk, the same `bottles-cli new` fails** ("Missing essential components
 … tried 3 times"), even though the runner is present. That measurement is why they ship.
@@ -46,7 +46,7 @@ that survives a reboot**, as slax-wine's `C:` drive is. That layer persisting is
 image (two boots on one ext4 perch disk, [INSTALL.md](../INSTALL.md#slax-bottles)); a bottle surviving
 a reboot, on a real stick, is not yet tested. [INSTALL.md](../INSTALL.md) covers setting up
 persistence. Budget the
-space: a fresh bottle measured **386 and 491 MiB** on two runs, before you install anything into it.
+space: [a fresh bottle](measurements.md#bottle-fresh), before you install anything into it, is recorded there from two runs.
 
 ## Files outside the sandbox
 
