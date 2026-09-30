@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 A release is defined by **both** halves — the slax-wine version and the base ISO it was built on.
 See [docs/base-versions.md](docs/base-versions.md).
 
-## [1.0.0] — 2026-09-28
+## [1.0.0] — 2026-09-30
 
 Built on two bases, `slax-32bit-debian-12.2.0.iso`
 (`03b85cd259883f6781b3a3f30ed409b0b6a542b8f510094594c7600bd94e546b`) and
