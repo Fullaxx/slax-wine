@@ -109,8 +109,8 @@ work tree, not in the image.
 
 - **The list is the profile, and the record is the sidecar.** `profiles/<image>.yaml` names the
   recipes in order, and each image's `<image>.iso.provenance.json` records what ran:
-  `jq -r '.recipes[].recipe'` on `slax64-wine-uefi` prints `remove-bundle`, `wine`,
-  `wine-desktop`, `notepadpp32`, `notepadpp64`, `slax-wine-iso` and `uefi-bootable`.
+  `jq -r '.recipes[].recipe'` on `slax64-wine-uefi` prints `remove-bundle`, `firmware-refresh`,
+  `wine`, `wine-desktop`, `notepadpp32`, `notepadpp64`, `slax-wine-iso` and `uefi-bootable`.
 - **`uefi-bootable` is the exception.** List it again, last, as above.
 - **`slax-wine-iso`'s boot-menu edit is the one that bites.** It removed `automount` from every
   boot entry our image has, and that carries over. `serial-console` copies `LABEL default` since
