@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/unit-run.py).
+# Copied verbatim from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (ci/unit-run.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """Run one unit test file, and report any test in it that did not run.
 
@@ -33,6 +33,13 @@ DELIBERATE SKIPS say so, with exit 77 (the autotools convention, and not a statu
 test here returns by accident). tests/unit/test_build_busybox.py skips its two tests when
 there is no tar. Before this, the gate could not tell that from a pass, because a skipped
 file exited 0 like everything else.
+
+WHERE THE NOTES GO. A skip, a disabled test and a stale DISABLED entry are notes about a
+file that passed. They went to stdout, and ci/checks/80-unit.sh sends stdout to /dev/null,
+so the gate never showed one (#72). When KITCHEN_UNIT_NOTES names a file they go there
+instead, for the gate to print, and the variable is removed before the test file runs, so
+a test that runs this runner itself is not writing into the gate's file. By hand, unset,
+they still go to stdout.
 """
 from __future__ import annotations
 
@@ -44,6 +51,15 @@ import sys
 import traceback
 
 SKIP_STATUS = 77
+
+
+def note(to: str, line: str) -> None:
+    """A note about a file that passed: into the gate's file when it named one, or stdout."""
+    if to:
+        with open(to, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    else:
+        print(line)
 
 
 def defined_tests(tree: ast.Module) -> list[str]:
@@ -117,6 +133,7 @@ def main(argv: list[str]) -> int:
                 # can no longer change.
                 sys.setprofile(None)
 
+    notes_to = os.environ.pop("KITCHEN_UNIT_NOTES", "")
     sys.argv = [path] + list(argv[2:])
     rc = 0
     sys.setprofile(hook)
@@ -138,7 +155,7 @@ def main(argv: list[str]) -> int:
         sys.setprofile(None)
 
     if rc == SKIP_STATUS:
-        print(f"{os.path.basename(path)}: skipped")
+        note(notes_to, f"{os.path.basename(path)}: skipped")
         return 0
     if rc != 0:
         # Only the "never registered" verdict is withheld over a failure: a file that
@@ -171,9 +188,9 @@ def main(argv: list[str]) -> int:
         else:
             # Said out loud on every run. A disabled test that nobody is reminded of is a
             # deleted test with extra steps.
-            print(f"{base}: {name} is disabled -- {why}")
+            note(notes_to, f"{base}: {name} is disabled -- {why}")
     for name in sorted(set(disabled) & entered):
-        print(f"{base}: {name} is listed in DISABLED but ran; drop the entry")
+        note(notes_to, f"{base}: {name} is listed in DISABLED but ran; drop the entry")
     return 1 if problems else 0
 
 

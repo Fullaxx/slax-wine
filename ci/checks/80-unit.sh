@@ -1,17 +1,18 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/checks/80-unit.sh). ONE difference,
+# Adapted from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (ci/checks/80-unit.sh). ONE difference,
 # the `# desc:` line; re-adapt on a submodule bump, see docs/UPSTREAM.md.
 #
 #   Upstream's reads "the recipe engine's pure logic", which this repo does not have: it owns
-#   no engine code (docs/ARCHITECTURE.md). tests/unit/ here holds the recipe-content check
-#   and three tests of the gates themselves, and the desc line is printed on every gate run,
-#   so it should say what it actually checks.
+#   no engine code (docs/ARCHITECTURE.md). tests/unit/ here holds the recipe-content check,
+#   three tests of the gates themselves, and tests of the release scripts and of
+#   ci/measure-check.sh. The desc line is printed on every gate run, so it should say what
+#   it actually checks.
 #
 #   There used to be a second difference: our workaround for slax-kitchen #23, which cleared
 #   git's repository-local variables around each test. Upstream fixed #23 the same way in
 #   3a44e8a, so ours is retired -- docs/UPSTREAM.md, "Local workarounds".
 # stages: pre-commit pre-push ci
-# desc: Unit tests over recipe content and the gates themselves -- no ISO, no engine.
+# desc: Unit tests over recipe content, the gates and the release scripts -- no ISO, no engine.
 . "$(dirname "$0")/../lib.sh"
 
 # GIT'S REPOSITORY VARIABLES DO NOT BELONG IN A TEST'S ENVIRONMENT.
@@ -115,10 +116,28 @@ export KITCHEN_BOOT_HOST
 # That is also why there is no globals() exemption any more. A file that discovers its
 # tests that way runs them, and the measurement sees it.
 
+# AND WHAT THE RUNNER SAYS ABOUT A PASS IS SHOWN, NOT THROWN AWAY.
+#
+# ci/unit-run.py has three things to say about a file that passed: a test switched off with
+# an issue to argue it back, a DISABLED entry for a test that ran anyway, and a file that
+# skipped (exit 77). It printed them on stdout, which this loop sends to /dev/null, so none
+# of them was ever shown here: all three arrived on 2026-09-20, a week after the redirect,
+# and CONTRIBUTING's "disabling is declared, never silent" was silent at the one place it
+# runs on every commit. Issue #72.
+#
+# A FILE OF THEIR OWN, NOT STDOUT. Every test file prints on stdout too, so keeping it would
+# mean picking the runner's lines out by their wording. KITCHEN_UNIT_NOTES names a file
+# outside the test's TMPDIR -- anything left in there fails the gate -- and the runner
+# removes the variable before the test runs, so a test that drives the runner itself, as
+# test_unit_gate.py does, writes nothing into this one.
+_notes=/tmp/.kitchen-unit-notes.$$
+
 for t in "$REPO_ROOT"/tests/unit/test_*.py; do
     [ -f "$t" ] || continue
     _tmp=$(mktemp -d) || { fail "$(basename "$t"): cannot create its TMPDIR"; continue; }
-    ( unset $_repo_env; TMPDIR=$_tmp; export TMPDIR; \
+    rm -f "$_notes"
+    ( unset $_repo_env; TMPDIR=$_tmp; KITCHEN_UNIT_NOTES=$_notes; \
+      export TMPDIR KITCHEN_UNIT_NOTES; \
       exec python3 "$REPO_ROOT/ci/unit-run.py" "$t" ) \
         >/dev/null 2>/tmp/.kitchen-unit.$$ || {
         fail "$(basename "$t")"
@@ -148,7 +167,10 @@ for t in "$REPO_ROOT"/tests/unit/test_*.py; do
             ls -A "$_tmp" | sed 's/^/      /' >&2
         fi
         rm -rf "$_tmp"
+        if [ -s "$_notes" ]; then
+            while IFS= read -r _n; do note "$_n"; done < "$_notes"
+        fi
     fi
-    rm -f /tmp/.kitchen-unit.$$
+    rm -f /tmp/.kitchen-unit.$$ "$_notes"
 done
 check_result

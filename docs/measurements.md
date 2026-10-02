@@ -9,7 +9,7 @@ once, and nothing elsewhere can go stale.
 ## The rules
 
 - **One row per quantity, with how it was measured.** "Measured on" gives the date, the build or
-  engine, and where it ran: **KVM** (the boot host), **TCG** (QEMU without an accelerator: CI, a
+  engine, and where it ran: **KVM** (the boot host), **TCG** (QEMU without an accelerator: a
   container, this build host), or a **runner** (GitHub's hosted machines, in the release workflow).
   Two conditions are never merged into one range: each value says which it was measured under.
 - **"Re-measure" says how, where a table has that column.** A cell of the form `summary <image> <key>` names a line in the build

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Adapted from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (tests/unit/test_desktop_entries.py).
+# Adapted from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (tests/unit/test_desktop_entries.py).
 # MIT, same author. THREE local changes, marked LOCAL below: the fenced-block reader is
 # imported from the VENDORED copy rather than a copy of our own, because this repo has
 # no ci/doc-yaml.py; the walk over recipes/ skips gitignored build stages; and that walk

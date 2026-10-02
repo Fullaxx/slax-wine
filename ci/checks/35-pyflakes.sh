@@ -1,8 +1,9 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/checks/35-pyflakes.sh).
+# Adapted from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (ci/checks/35-pyflakes.sh).
 # MIT, same author. The EXECUTABLE HALF is byte-identical, so a future bump can diff it;
 # ONE difference, in the prose: upstream's argument is about the size of its engine
-# ("lib/apply.py alone is 4000 lines -- the half that was unchecked was the larger half"),
+# ("lib/apply.py alone was 4,529 lines on 2026-10-01 -- so the half that was unchecked was
+# the larger half"),
 # and this repo owns no engine code at all. What is true here is written below instead.
 # Re-adapt on a submodule bump; see docs/UPSTREAM.md.
 #
@@ -16,13 +17,15 @@
 # Beside 30-shellcheck, and for the same reason: every shell script in this tree is linted
 # and no python file was.
 #
-# THE SMALLER HALF HERE, AND THAT IS THE ARGUMENT, NOT AGAINST IT. Six python files, four
-# of them verbatim copies upstream already lints under this same gate. The two that
-# NOTHING linted are the two that are ours: tests/unit/test_desktop_entries.py, which
-# carries three local changes, and tests/unit/test_release_consistency.py, which is the
-# test of gate 96 -- the gate that holds the profiles, the pin and the ledger in step. A
-# defect in a test is a gate that passes while checking nothing, which is the failure mode
-# this whole suite is built to avoid, and it is exactly what pyflakes catches.
+# THE SMALLER HALF HERE, AND THAT IS THE ARGUMENT, NOT AGAINST IT. Eight python files, four
+# of them verbatim copies upstream already lints under this same gate. The other four
+# nothing else lints: tests/unit/test_desktop_entries.py, which carries three local
+# changes, and three that are ours outright -- tests/unit/test_release_consistency.py,
+# the test of gate 96, the gate that holds the profiles, the pin and the ledger in step,
+# and the tests of the release scripts and of ci/measure-check.sh. When this gate arrived
+# there were six, and two of ours. A defect in a test is a gate that passes while checking
+# nothing, which is the failure mode this whole suite is built to avoid, and it is exactly
+# what pyflakes catches.
 #
 # WHAT PUT IT UPSTREAM. 18294f5 added `import traceback` to 23 test files so one crashing
 # test could not take the rest of the file with it, and in three of them the line landed

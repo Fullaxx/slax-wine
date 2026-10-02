@@ -210,7 +210,10 @@ jobs:
 
       # `kitchen test` uses KVM whenever /dev/kvm is writable, and TCG otherwise. The runners
       # have had one (measured 2026-09-29); a job whose matrix entry says kvm: false keeps it
-      # root-only, so its boots run under TCG. Either way, this says which it got.
+      # root-only, so its boots run under TCG. Either way, this says which it got, and a job
+      # that wants KVM fails here if the device is still not writable after the udev rule,
+      # rather than claiming KVM and booting under TCG. slax-kitchen a9008a5 added the same
+      # check to its own boot job, which uses this rule.
       - name: KVM, if the runner has it and the job wants it
         env:
           NAME: ${{ matrix.name }}
@@ -224,7 +227,13 @@ jobs:
               | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
             sudo udevadm control --reload-rules
             sudo udevadm trigger --name-match=kvm
-            echo "::notice::$NAME: /dev/kvm present, boots run under KVM"
+            sudo udevadm settle
+            ls -l /dev/kvm
+            if [ ! -w /dev/kvm ]; then
+              echo "::error::$NAME: /dev/kvm is there but still not writable by $(id -un)"
+              exit 1
+            fi
+            echo "::notice::$NAME: /dev/kvm is writable, boots run under KVM"
           else
             echo "::notice::$NAME: no /dev/kvm, boots run under TCG"
           fi

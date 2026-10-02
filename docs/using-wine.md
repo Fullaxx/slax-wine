@@ -19,7 +19,7 @@ Real hardware has not been timed. It happens once per prefix.
 Under **emulation** (QEMU without KVM) the same steps took minutes
 ([`prefix-time-tcg`](measurements.md#prefix-time-tcg), [`prefix-time-tcg-slax32`](measurements.md#prefix-time-tcg-slax32)),
 and on a host that was also building, longer than Wine waits. Those numbers still describe a
-machine without an accelerator, which is what CI and a container are.
+machine without an accelerator, such as a container.
 
 **If it takes more than 5 minutes, the first launch fails.** Wine waits at most that long for the
 prefix, then gives up (`boot event wait timed out` in the journal). Under KVM that limit is a long

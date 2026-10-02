@@ -580,11 +580,13 @@ are tested without Actions (`tests/unit/test_release.py`).
   is reachable, and uploads from there. It survives as *By hand*, in build.md.
 
 **What it costs.**
-- **KVM is not promised.** Upstream records hosted runners without `/dev/kvm`, and its own CI boots
-  under TCG. The runners of the first rehearsal (2026-09-29) had it, and the 64-bit jobs boot under
-  it. The 32-bit job does not: under the runner's KVM its guest stopped after `Live Kit init` on all
-  four routes, while the same image boots under KVM on the boot host, and the cause is not
-  established. So it boots under TCG by choice, as every 32-bit boot here did before the boot host.
+- **KVM is not promised.** A hosted runner's `/dev/kvm` is not writable by the job's account until
+  a udev rule opens it, and nothing guarantees the device is there at all. Upstream's CI booted
+  under TCG until slax-kitchen `a9008a5`, which opens it with the rule this workflow uses. The
+  runners of the first rehearsal (2026-09-29) had it, and the 64-bit jobs boot under it; the
+  workflow fails a job that wants KVM and still cannot write the device. The 32-bit job does not
+  use it: under the runner's KVM its guest stopped after `Live Kit init` on all four routes,
+  while the same image boots under KVM on the boot host, and the cause is not established. So it boots under TCG by choice, as every 32-bit boot here did before the boot host.
   Under TCG a boot is [several times slower](measurements.md#boot-tcg) than [under KVM](measurements.md#boot-kvm), with the UEFI menu
   keys spelled out
   ([UPSTREAM.md](UPSTREAM.md#measured-and-deliberately-not-filed-the-uefi-keystroke-lead-under-tcg)).

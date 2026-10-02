@@ -1,10 +1,10 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/checks/00-no-binaries.sh).
+# Copied verbatim from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (ci/checks/00-no-binaries.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Reject ISOs, squashfs bundles, disk images and oversized files.
 #
-# THE most important gate in this repo. isos/ holds ~1.7 GB of base ISOs; a single
+# THE most important gate in this repo. isos/ holds ~1.8 GB of base ISOs; a single
 # `git add -A` would commit them permanently into history. .gitignore alone is not
 # enough -- `git add -f` and explicit paths bypass it, and history cannot be un-fattened.
 . "$(dirname "$0")/../lib.sh"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/md-links.py).
+# Copied verbatim from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (ci/md-links.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """Resolve every internal markdown link, including the half after the `#`.
 

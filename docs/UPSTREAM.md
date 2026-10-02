@@ -224,7 +224,9 @@ superseded; [their section](#filed-from-slax-rpgss-planning--42-to-48-and-layeri
 #50 to #58, filed at the `0dd1b53` pin on 2026-09-26, were all closed by 2026-09-27, each by a
 commit of its own ([their section](#filed-at-the-0dd1b53-pin--50-to-58)), and #59 to #70, which
 upstream filed from what slax-wine and slax-rpgs needed, by 2026-09-28. All of them were taken at
-[the `4a10303` bump](#adopted-at-the-4a10303-bump), which says what each did here.
+[the `4a10303` bump](#adopted-at-the-4a10303-bump), which says what each did here. #71 to #82,
+which upstream filed itself on 2026-10-01 and 2026-10-02, were all closed by 2026-10-02 and taken
+at [the `1d7ef68` bump](#adopted-at-the-1d7ef68-bump).
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -412,7 +414,8 @@ the thing it would read still does not exist here.
 
 **`ci/checks/35-pyflakes.sh` was never in this section**, and that is the point of saying so: it
 arrived in `0ba51ff` and was **adopted at the same bump it arrived in**, because unlike the four
-above it has real inputs here. Six python files, two of them ours and linted by nothing. The
+above it has real inputs here: six python files when it arrived, two of them ours and linted by
+nothing. The
 [`b20e07e` bump](#adopted-at-the-b20e07e-bump) has the argument and the mutation tests.
 
 **`ci/checks/80-unit.sh` was in this section and has left it**, which is the part worth recording.
@@ -1644,7 +1647,7 @@ repository copies verbatim. slax-wine's own part went in as
 
 Upstream settled the frame with a decision rather than three engine changes: **a project builds on
 another project's released image, not its source**, and every project vendors the engine directly.
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/4a10303/LAYERING.md) records it, and
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md) records it, and
 what it asks of slax-wine as the first *base project* is slax-wine#2's work, which
 [building-on-slax-wine.md](building-on-slax-wine.md) answers.
 
@@ -2087,6 +2090,91 @@ Every image passed its structure test through `kitchen test --structure`, 20 to 
 depending on the image, and `build.sh`'s own assertions. **No boot route was re-run.** The only menu change is
 in `syslinux.cfg`, and every route reads another menu, `--bios` `isolinux.cfg` and `--uefi`
 `grub.cfg` (`_serial_keys` in `lib/build.sh`), both unchanged. The release runs all twelve anyway.
+
+## Adopted at the `1d7ef68` bump
+
+Seventeen commits, `4a10303..1d7ef68`, 71 files, +1,034/−369, from 2026-10-01 to 2026-10-02. CI
+on `1d7ef68` is green in every job (the `ci` push run 37052996446). The range closes #71 to #82,
+all filed by upstream itself. None was ours, and no row in [Local workarounds](#local-workarounds)
+was active. Each commit was read as message and diff, and each `Closes` line was taken from the
+commit itself. Upstream added no files, so there is no new gate or test to adopt or decline.
+
+**The headline: nothing here changes how slax-wine builds, tests or releases.** No recipe our
+profiles use changed, and neither did `schema/` or `compat/`. The one change inside an image is
+`4253110` (#78), and it changes how files are stored, not what they hold.
+
+| commit | issue | what changed | here |
+|---|---|---|---|
+| `c103714` | #71 | the structure test's size ceiling compares bytes, and says by how much an image is over | same verdicts. The pass line our cookbook quotes is unchanged |
+| `93d077e`, `d23ceca` | #72 | the unit gate prints what `ci/unit-run.py` says about a passing file | `unit-run.py` and `test_unit_gate.py` re-copied, `80-unit.sh` re-adapted. Our tests produce no note |
+| `5c6321e` | #73 | upstream's own audit of its measured numbers, each given one home | comments and docs. Nothing we cite moved, and every anchor resolves. The rule matches [D-21](DECISIONS.md#d-21--one-register-for-measurements-and-links-everywhere-else) in substance; its "MiB is 2^20, MB is 10^6" and "label an estimate" are not restated here |
+| `a9008a5`, `9388098` | — | upstream's boot job opens `/dev/kvm` with the udev rule our release workflow uses, and checks it worked; every PR gets a boot | three of our sentences said upstream's CI boots under TCG (below). The writable check is adopted |
+| `1697dde` | #74 | `kitchen validate` reports a missing or binary file instead of a traceback | nothing; gate 40 validates files that exist |
+| `3277821` | #75 | a local `bundle.fromTarball` archive is recorded as a local input | not used here |
+| `a86863d` | #76 | `kitchen build` printed a var's build-machine note twice | `build.sh` runs `kitchen apply --profile`, not `kitchen build` |
+| `fd8a121`, `367d3a7`, `c58cc28` | #77 #82 | `rootcopy.files` and `iso.files` place directories, links and modes as `bundle.files` does | not used here. `bundle.files` shares `_place_files`; our modes are 0644 and 0755, so the setuid refusal never applies |
+| `4253110` | #78 | `bundle.packages` and `bundle.script` keep a file's hardlinks | the 64-bit `20-wine.sb`: below |
+| `8584bd3`, `2074336` | #79 #81 | `sudo kitchen fetch` gives back what it wrote; an apply ended by TERM under sudo gives back and removes its chroot | `build.sh` fetches without sudo. The second makes `build.sh`'s "however it ends" true of a cancelled job too |
+| `288fa1d`, `1d7ef68` | #80 | `tor-browser` pins 15.0.24 | not used here |
+
+**Retired:** nothing. No workaround was active, and no *Adapted* header's difference is one this
+range makes unnecessary.
+
+**Corrected, because the new pin made them false:** D-19's "its own CI boots under TCG", and the
+same claim in [using-wine.md](using-wine.md) and in the register's definition of **TCG**. The
+2026-09-21 sentence in [When KVM lands](#when-kvm-lands-it-did-on-2026-09-21-and-this-is-what-it-changed)
+is a dated record and stays.
+
+**Adopted beyond the copies:** `release.yml`'s KVM step now runs `udevadm settle` and fails a job
+that wants KVM if `/dev/kvm` is still not writable, as upstream's boot job does. Before, it claimed
+KVM without checking. The next release run is its proof.
+
+**Copied files.** Five of the twenty-one changed upstream. `unit-run.py`, `test_unit_gate.py` and
+`00-no-binaries.sh` (one comment) are re-copied verbatim. They move together, because the new test
+copies our `unit-run.py` and `80-unit.sh` into its fixture. `80-unit.sh` takes upstream's block
+byte for byte and keeps its one difference, the `# desc:` line. `35-pyflakes.sh`'s change is in
+prose we replace, so only its header's quote of upstream moved. The other sixteen are re-cited.
+With only the pin staged, gate 96 named the twenty-one headers (§7), the seventeen permalinks (§8),
+and the CHANGELOG's statement of the pin. That statement is in the dated `[1.0.0]` entry and stays
+true of 1.0.0, so the bump's own `[Unreleased]` line, which §8 reads first, states the new pin.
+
+**What the tests say.** The five test files upstream changed (`test_apply`, `test_listing`,
+`test_release`, `test_validate`, `test_unit_gate`) pass inside the pinned submodule, through
+`ci/unit-run.py` with `python3 -B`, a private `TMPDIR` left empty, and `KITCHEN_BOOT_HOST=local`.
+The submodule stays pristine. Our gates pass as root and as uid 65534.
+
+**The build, at `1d7ef68`.** All eight images, `./build.sh --all`, `--test` and `--bottles-test`,
+were built on 2026-10-02 at both pins, the old one first as the baseline, so that Flathub's float
+and `useradd`'s date could not pass for the engine. `kitchen diff --bundles`, the package lists, the
+boot menus, and an inode count per bundle that `bundle.packages` or `bundle.script` builds say:
+
+- **every image is the same size to the byte,** every bundle has *identical content*, the package
+  lists are identical, and `isolinux.cfg`, `syslinux.cfg` and `grub.cfg` are byte-identical;
+- **the 64-bit `20-wine.sb`** (slax64-wine bios, uefi and test) goes from 10,998 inodes to 10,975.
+  Mesa's identical DRI drivers, 13 names under `usr/lib/x86_64-linux-gnu/dri/` and 12 under
+  `usr/lib/i386-linux-gnu/dri/`, are now two hardlink groups where they were 25 separate files. The
+  bundle's byte count does not move, because mksquashfs already stored the data once.
+  `kitchen diff --bundles` cannot see this, because it compares entries, not inodes. The count came
+  from `unsquashfs -stat`, and the groups from `find -links +1` over each bundle unpacked;
+- **every other bundle keeps its inode count,** the 32-bit `20-wine.sb`, both firmware bundles,
+  `20-flatpak.sb` and `30-bottles.sb` included. The firmware one was the open question. It
+  has many identical blobs, and since `4253110` would keep any links its packages ship, so an
+  unchanged count says they ship none;
+- **`/boot/efi.img`:** 36 bytes differ on every image that carries one, and `BOOTX64.EFI` keeps its
+  sha256, `384be94fbfe800cb…`;
+- **the sidecars** differ only in what a pin move and a rebuild explain: the engine commit, and each
+  output's and the ISO's sha256.
+
+Every image passed its structure test, 22 to 24 checks, and `build.sh`'s own assertions.
+`ci/measure-check.sh` finds six rows 4,096 bytes off the register. The baseline at the old pin gives
+the same six, so that is the rebuild noise
+[the register describes](measurements.md#why-a-rebuild-moves-bytes), and no row changes.
+
+**One boot image re-run.** The menus are unchanged, but the 64-bit `20-wine.sb`'s inode layout is
+not, so `ci/release-boot.sh` ran `slax64-wine-test` on the boot host under KVM. All four routes
+reached `Live Kit done`, with the `automount` assertions and the persistence marker across two
+boots. No other image's bundles changed in any way, so no other route was re-run. The release runs
+all twelve anyway.
 
 ## Two findings were dropped before filing, in round one
 

@@ -13,6 +13,14 @@ See [docs/base-versions.md](docs/base-versions.md).
   the number, and `docs/sizing.md` is merged into it
   ([D-21](docs/DECISIONS.md#d-21--one-register-for-measurements-and-links-everywhere-else)).
 - **Gate 96 §6 reads only the register** for a `TBD-MEASURED` placeholder on a tag.
+- **slax-kitchen pinned at `1d7ef68`**, up from `4a10303`: seventeen commits, closing
+  slax-kitchen #71 to #82. The images' file contents are unchanged. The 64-bit `20-wine.sb` now
+  stores its identical Mesa drivers as hardlinks (#78)
+  ([UPSTREAM.md](docs/UPSTREAM.md#adopted-at-the-1d7ef68-bump)).
+- **The unit gate shows what its runner says about a passing file:** a skipped file, a disabled
+  test and a stale `DISABLED` entry, which it used to discard (slax-kitchen #72).
+- **The release workflow fails a job that wants KVM** if `/dev/kvm` is still not writable after
+  the udev rule, instead of claiming KVM and booting under TCG.
 
 ### Added
 - **`ci/measure-check.sh`** compares the register with the build summaries in `out/` and reports

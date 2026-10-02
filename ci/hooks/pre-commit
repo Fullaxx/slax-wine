@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 4a103032af0045b740325628a26b586fac4b8022 (ci/hooks/pre-commit): names this repo and how it is installed here.
+# Adapted from slax-kitchen @ 1d7ef68b8b21f90e845c7ab20f6b7797a841f087 (ci/hooks/pre-commit): names this repo and how it is installed here.
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # slax-wine pre-commit hook -- installed by the two `ln -sf` lines in docs/build.md.
 # Thin wrapper: all logic lives in ci/checks/*.sh so hooks can never drift from CI.
