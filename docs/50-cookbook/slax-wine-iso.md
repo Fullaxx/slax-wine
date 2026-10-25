@@ -53,10 +53,10 @@ host configured these run there under KVM, where the harness's own keystrokes la
 
 **The `--keys` chore is over here, with one caveat worth keeping.** On an idle KVM host the
 harness's fixed 2-second lead lands inside the menu — measured by the lead working, three runs in a
-row, with 3 s, 4 s and 6 s landing too. How early the menu is drawn there has not been timed here,
-only that 2 s is late enough; upstream's own figure is
-[`grub-menu-kvm`](../measurements.md#grub-menu-kvm)
-([UPSTREAM.md](../UPSTREAM.md#filed-at-the-86d27d5-pin-building-slax64-wine--27-and-28) cites where).
+row, with 3 s, 4 s and 6 s landing too. When the menu first appears there is timed as well, since
+slax-kitchen's `first seen` line (#87) made it measurable:
+[`grub-menu-kvm`](../measurements.md#grub-menu-kvm). That is counted from qemu's start, and the lead
+from the moment the harness reaches qemu's monitor, a little later.
 
 Under TCG on this build host it was not: the menu is drawn after the lead, so the keys came too
 *early*, and later still with the vCPU sharing a core
@@ -209,8 +209,8 @@ which is a bigger question than a YAML line. A signed release is a post-v1.0.0 w
 
 The checksum is written from the output directory, so the filename inside it is **relative** and
 `sha256sum -c` works wherever the pair is downloaded to. Note the hash is per *build*, not per
-version — `genisoimage` stamps PVD timestamps it cannot pin, so a rebuild of the same tree produces
-the same bytes everywhere except those fields. See
+version: a rebuild of the same tree differs in bytes even where every file matches, because each
+bundle records when it was made and the ISO records each file's times. See
 [measurements.md](../measurements.md#why-a-rebuild-moves-bytes):
 
 ```

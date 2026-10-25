@@ -62,8 +62,8 @@ steps:
   # (the generated package database) and 99 (savechanges). Within the fork band this
   # project uses 20-29 for its platform and 30-89 for applications, and starts at 20
   # rather than 10 because slax-kitchen's example app recipes occupy the bottom of the
-  # band and that set GROWS -- it was 10-12 when this was written and is 10-16 today
-  # (chromium, firefox, libreoffice, browsers x2, tor x3). Leaving the low end to them
+  # band and that set GROWS -- it was 10-12 when this was written and is 10-17 today
+  # (chromium, firefox, libreoffice, browsers x2, tor x3, jq). Leaving the low end to them
   # costs nothing and means an upstream example can never collide with ours.
   # See vendor/slax-kitchen/docs/10-anatomy/bundles-squashfs.md.
   #

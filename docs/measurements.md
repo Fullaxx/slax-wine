@@ -215,7 +215,7 @@ except `--persistence`, which is two.
 | <a id="boot-runner-32-kvm"></a>`boot-runner-32-kvm` | no boot within the 600 s ceiling | `slax32-wine-test` under a runner's KVM: the guest stopped after `Live Kit init` on all four routes. Cause not established | runner, run `36560764961`, 2026-09-29 |
 | <a id="grub-menu-tcg"></a>`grub-menu-tcg` | drawn at 3.2 s idle, 6.9 s with the vCPU sharing a core; countdown over at 8.3 s and 22.8 s | GRUB's 5-second UEFI menu | TCG, 2026-09-19 |
 | <a id="key-lead-tcg"></a>`key-lead-tcg` | 1–2 s fail, 3–6 s pass, 8–16 s fail; on a starved core 4 s fails too | a keystroke lead sweep through the harness, idle host | TCG, 2026-09-19 |
-| <a id="grub-menu-kvm"></a>`grub-menu-kvm` | about 1 s | GRUB's UEFI menu first drawn (upstream's figure, `docs/50-cookbook/uefi-bootable.md`). At a load average of 12 the harness's 2 s lead missed it twice | KVM, 2026-09-21 |
+| <a id="grub-menu-kvm"></a>`grub-menu-kvm` | 2.2 s in five runs of six, 7.4 s in one | GRUB's UEFI menu first seen in the serial log, counted from qemu's start: `kitchen test <image> --uefi --no-keys --expect "GNU GRUB"`, three runs each of `slax32-wine-test` and `slax64-wine-test` (the 7.4 s was slax64's first). The harness polls every half second, so the menu was drawn up to 0.5 s before. At a load average of 12 the harness's 2 s lead missed it twice (2026-09-21) | KVM, 2026-10-25, at `0d20605` |
 
 ## Running it
 
@@ -257,7 +257,7 @@ except `--persistence`, which is two.
 |---|---|---|---|
 | <a id="est-wine-bundle"></a>`est-wine-bundle` | 105–120 MiB | [`l32-wine`](#l32-wine) | the 32-bit Wine bundle, reasoned from `.deb` sizes. Wrong by about 50 MiB; [why](#why-the-estimate-was-wrong) |
 | <a id="est-firmware"></a>`est-firmware` | 90 MiB (D-10) | [`firmware-total`](#firmware-total) | `firmware-refresh` |
-| <a id="est-chromium-current"></a>`est-chromium-current` | 114 MiB, net +35 MiB on debian-64bit | | upstream's `chromium-current`, the alternative D-2 declined |
+| <a id="est-chromium-current"></a>`est-chromium-current` | 116 MiB, net +37 MiB on debian-64bit | | upstream's `chromium-current`, the alternative D-2 declined: its page's figure for chromium 154.0.8037.92, built on 2026-10-04 |
 
 | id | value | what |
 |---|---|---|
@@ -324,10 +324,13 @@ refs under Bottles are not pinned either, so a Flathub update between two builds
 too. `mksquashfs -mkfs-time 0 -all-time 0` would make the squashfs half reproducible, and is not
 used.
 
-**No sha256 is recorded here, deliberately.** A hash would identify one build, not the version.
-slax-wine packs with `genisoimage`, which stamps PVD timestamps it cannot pin. Upstream measures
-the difference as 19 of 212,819 sectors, all of them timestamp fields, with the payload
-byte-identical. So two builds of the same tree have the same size, the same bundles and the same
-package count, but different hashes. `xorriso --modification-date` would pin them, at the cost of
-uppercasing the application id, which carries our version string. For a download, the authority is
-the `.sha256` published beside that particular ISO.
+**No sha256 is recorded here, deliberately.** A hash identifies one build, not the version. Two
+builds of the same tree differ in bytes even where every file in them matches: each bundle the build
+makes records when it was made, every ESP gets a new volume serial, and the ISO records each file's
+times from the tree, whichever backend packs it (`genisoimage` the `-bios` images, `xorriso` the rest,
+as `uefi-bootable` asks). Pinning the volume's dates with `kitchen pack --date`, which only `xorriso`
+honours, would change none of that, and since slax-kitchen `0465689` its
+[reproducibility page](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/docs/40-workflow/reproducibility.md)
+promises no bit-identical rebuild. Where two builds' contents do match, `kitchen diff --bundles`
+says so: `identical content`. For a download, the authority is the `.sha256` published beside that
+particular ISO.

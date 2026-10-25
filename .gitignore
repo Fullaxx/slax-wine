@@ -24,9 +24,10 @@ __pycache__/
 *~
 
 # Engine scratch dirs. bundle.packages and friends mkdtemp(dir=dirname(work)), i.e. as a
-# SIBLING of work/, and remove them in a finally -- so these only survive a SIGKILL or a
-# failed rmtree. When they do they are root-owned and full of unsquashed rootfs, which is
-# the last thing that should reach `git add -A`.
+# SIBLING of work/, and remove them in a finally that INT, TERM and HUP wait for since
+# slax-kitchen 003a72e -- so these only survive KILL, QUIT, a power cut or a failed rmtree.
+# When they do they are root-owned and full of unsquashed rootfs, which is the last thing
+# that should reach `git add -A`.
 kitchen-pkg-*/
 kitchen-irfs-*/
 kitchen-bb-*/

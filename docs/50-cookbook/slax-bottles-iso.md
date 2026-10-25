@@ -26,10 +26,12 @@ would save two short steps, at the cost of editing a recipe four shipped images 
 that differs anyway. **If either copied step changes in `slax-wine-iso.yaml`, change it here too.**
 The recipe's header comment says the same thing.
 
-Upstream's generic recipes were considered and do not fit. `iso-identity` has no `appid`, and its
-fixed `preparer: slax-kitchen` drops the Slax credit this project carries. `boot-cmdline` also
-appends `toram`, which on an image [this size](../measurements.md#iso-slax-bottles) means copying all
-of it to RAM before booting.
+Upstream's generic recipes were considered when this was written, and did not fit then.
+`iso-identity` had no `appid`, and its fixed `preparer: slax-kitchen` dropped the Slax credit this
+project carries. `boot-cmdline` always appended `toram`, which on an image
+[this size](../measurements.md#iso-slax-bottles) means copying all of it to RAM before booting.
+slax-kitchen #68 (`9f3eb09`, taken at the `4a10303` bump) made each of those a var. This recipe has
+not moved to them.
 
 ## How the `automount` removal was proven
 

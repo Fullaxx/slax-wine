@@ -129,10 +129,12 @@ release_files() {
 # Only the apply step is elevated; set this once rather than per variant.
 #
 # What apply writes as root into the work tree goes back to whoever ran sudo as the command
-# ends, however it ends: the engine does that since slax-kitchen 51c5699 (#70). This file
-# used to chown the tree itself after every apply, success or not, because a root-owned tree
-# wedged the next unprivileged run at its first `rm -rf`. docs/UPSTREAM.md records the
-# retirement.
+# ends, on every ending but QUIT, KILL and a power cut: the engine does that since
+# slax-kitchen 51c5699 (#70), and vendor/slax-kitchen/docs/90-reference/handback.md says
+# what each ending leaves. After one of those three, the tree and the build chroot beside it
+# stay root's. This file used to chown the tree itself after every apply, success or not,
+# because a root-owned tree wedged the next unprivileged run at its first `rm -rf`.
+# docs/UPSTREAM.md records the retirement.
 SUDO=""
 [ "$(id -u)" -eq 0 ] || SUDO="sudo -E"
 
@@ -617,10 +619,15 @@ print("%s-%s-%s" % (b["flavour"], b["arch"], b["version"]))' "$profile")
     # --require is derived from V_OWN: the bundles this project builds for the variant.
     # Through `kitchen test`, which has passed a size ceiling and --require to the structure
     # test since slax-kitchen ce5d51a (#67); this ran iso_assert.py itself until then (D-13).
+    # --artifacts holds the image to its recipes' own record, which pack wrote beside it and
+    # release_files checked above: every path they journalled must be on the disc, and every
+    # path they removed must be gone. `kitchen build` does that for a profile, and LAYERING.md
+    # asks a project's own driver to do the same, since slax-kitchen d9ad93f (#96).
     req=""
     for b in $V_OWN; do req="$req --require /slax/modules/$b.sb"; done
     # shellcheck disable=SC2086
-    "$K" test "$out_iso" --structure --volid "$volid" --max-size-mib "$V_MAX" $uefi_flag $req
+    "$K" test "$out_iso" --structure --volid "$volid" --max-size-mib "$V_MAX" $uefi_flag $req \
+        --artifacts "$out_iso.provenance.json"
 
     # An architecture's bios, uefi and test images share one list deliberately:
     # uefi-bootable builds NO bundle, it writes one boot/efi.img. If that ever differs

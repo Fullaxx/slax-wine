@@ -20,13 +20,17 @@ before it is committed.
 That means four steps, not one, and only the last moves anything:
 
 1. review every new slax-kitchen commit
-2. work out how each one affects this repo
+2. work out how each one affects this repo, and lay out what a release built now would change,
+   and from where, so the user can decide the version
 3. retire any local workaround that an upstream fix has made redundant
 4. then update the pin, stopping where the commit would go
 
 Each is spelled out in [`docs/UPSTREAM.md`](docs/UPSTREAM.md) § *Moving the pin*. Read it before
 starting, every time, including when the request is worded differently ("bump", "move the pin", "take
 upstream").
+
+Step 2 ends in a recommendation, not a decision. The version is the user's: `VERSION` and the
+CHANGELOG heading move only when the user asks for a release.
 
 ## Before cutting a release
 

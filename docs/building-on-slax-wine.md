@@ -2,16 +2,16 @@
 
 For a project that takes a slax-wine image as its base and builds its own on top —
 [slax-rpgs](https://github.com/Fullaxx/slax-rpgs) is the first. slax-kitchen's
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md) is the model: a
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md) is the model: a
 project builds on another project's released **image**, not its source, and vendors the engine
 itself. This page is slax-wine's side of that: LAYERING.md's list of
-[what helps the projects built on it](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md#what-helps-the-projects-built-on-it),
+[what helps the projects built on it](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md#what-helps-the-projects-built-on-it),
 answered for these images, with where each answer was measured.
 
 ## Which image to build on
 
 **Any of them, with `uefi-bootable` listed last** if your image should boot on UEFI, as
-[LAYERING.md's step 6](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md#what-a-consumer-does)
+[LAYERING.md's step 6](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md#what-a-consumer-does)
 says.
 
 | you build on | `uefi-bootable` |
@@ -54,7 +54,7 @@ pointing at it. `kitchen pack` warns, and `kitchen test --structure` fails it.
   engine reads first. List it in your `.gitignore`; the engine's gate 10 refuses it if staged.
 - **Until a release is published, pin a local build.** Only the machine that built it has those
   bytes: images are
-  [not byte-reproducible](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/docs/40-workflow/reproducibility.md).
+  [not byte-reproducible](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/docs/40-workflow/reproducibility.md).
 
 ## The release file, and the browser mask
 
@@ -83,7 +83,7 @@ launcher entry in a bundle numbered above `21`, because the higher bundle wins.
 | range | whose | on our images |
 |---|---|---|
 | `00`–`09` | upstream Slax and slax-kitchen | `01-core`, `01-firmware`, `02-xorg`, `03-desktop`, `04-apps`; `05-chromium` removed; `09-firmware-debian` and `09-firmware-linux`, from slax-kitchen's `firmware-refresh` |
-| `10`–`19` | the bottom of the band slax-kitchen gives projects, left to its example recipes (`10`–`16` today) | none |
+| `10`–`19` | the bottom of the band slax-kitchen gives projects, left to its example recipes (`10`–`17` today) | none |
 | `20`–`29` | **slax-wine's platform**: keep these | `20-wine`, `21-wine-desktop` |
 | `30`–`89` | **applications**: yours to replace | `30-notepadpp32`, and `31-notepadpp64` on 64-bit |
 | `90`–`97` | slax-kitchen headroom | none |
@@ -144,7 +144,7 @@ engine's.
 ## Publishing your image
 
 An image built on one of ours is published like any other, with the engine's commands
-([LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md#provenance-and-publishing)),
+([LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md#provenance-and-publishing)),
 and nothing in them refuses one since slax-kitchen `bd899fd` (#61). `kitchen sources` lists every
 file your image inherited from ours as `base`, pointing at our image by name and sha256 (#62). Our
 `SOURCES.md` for that image, published with each release, is where those files' own sources are

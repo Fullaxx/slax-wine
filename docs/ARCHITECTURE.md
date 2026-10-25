@@ -116,7 +116,7 @@ slax-kitchen's canonical table — `vendor/slax-kitchen/docs/10-anatomy/bundles-
 Inside the fork band this project uses **`20`–`29` for its platform and `30`–`89` for
 applications**, starting at `20` rather than `10`. The bottom of the fork band is left
 to slax-kitchen's example recipes, which **grow**: `10`–`12` when this project started,
-`10`–`16` today. Ceding the low end costs nothing and makes a collision impossible.
+`10`–`17` today. Ceding the low end costs nothing and makes a collision impossible.
 
 The split is also what a project built on these images relies on: it keeps `20`–`29` and replaces
 `30`–`89` ([building-on-slax-wine.md](building-on-slax-wine.md#bundle-numbers)).
@@ -246,7 +246,7 @@ A register, because every one of these cost time to find.
 | **`perch` is a substring match** | `perchsize=` on the `toram` entry would enable persistence on the one entry that unmounts the medium |
 | **FAT32 perch floor is 16 GB and cannot be lowered** | a smaller `perchsize=` is silently raised; the size is fixed at creation |
 | **An engine limit recorded here can outlive the engine** | this row said `kitchen build` fails on a custom volume id, its structure test defaulting `--volid` to `slax`. slax-kitchen `6419fa4` made it pass the recipes' volume id, every pin from `8adfca6` carries that, and the row stood until the `b4eb25b` bump — long enough for slax-kitchen #42 to repeat it. Re-read a limit against the current pin before building on it. `build.sh` stays for the checks the engine cannot know about; [D-13](DECISIONS.md#d-13--buildsh-not-kitchen-build) lists them |
-| **`bundle.fromTarball` is tar-only** | `tarfile.open`, so no `.zip` and no `.7z` |
+| **`bundle.fromTarball` takes a tar or a zip** | a zip since `ca0049a` ([slax-kitchen#69](https://github.com/Fullaxx/slax-kitchen/issues/69)), member by member through the same checks as a tar; still no `.7z` |
 | **Recipes are not idempotent** | `apply` consults its journal and refuses a second application. `build.sh` unpacks fresh every run |
 | **A bundle name can be produced once** | two steps that both *run* and target the same bundle are refused — at run time, when the `.sb` already exists. Combine them into one `bundle.files`; or, per base, guard each with `when: arch==…` so exactly one runs, as `wine` and `wine-desktop` do |
 | **Estimate bundle size from squashfs, not from `.deb`** | `-b 1024K` restarts xz every mebibyte, so a bundle is larger than the `.deb`s it came from, by [the measured ratio](measurements.md#ratio-squashfs-deb). Compare against ALL the packages installed ([Wine's](measurements.md#deb-wine32-closure)), never one headline `.deb` |
@@ -257,7 +257,7 @@ A register, because every one of these cost time to find.
 | **`flavour` can be `unknown`, and that refuses the build** | the same measurement, on `etc/debian_version`. It used to default to `debian`; since `012e720` an unreadable `01-core` answers `unknown`, and `bundle.packages` then refuses with "there is no package manager to use" instead of silently running apt. `flavour:` on the step, or `--facts flavour=debian`, overrides it |
 | **`boot.menu` refuses an entry nothing provides** | since `a9e75a9` a `LINUX`/`KERNEL`/`COM32`/`INITRD` path must already be in the tree or be promised by a step that will run, or `apply` exits 1. `initrd=` inside `APPEND` is not parsed, which is why the Slax bases' four entries pass: each names `/slax/boot/vmlinuz`, which the ISO ships |
 | **`apply --profile` holds the tree to the profile's `base:`** | since `949074b` it compares `flavour` and `arch` (never `version`, deliberately) and exits 2 before the banner: "the profile is for arch 64bit, but this work tree is 32bit". `--facts` still wins, and `--preflight-only` is exempt. It read only the recipe list until [slax-kitchen#29](https://github.com/Fullaxx/slax-kitchen/issues/29) |
-| **`kitchen diff --bundles` compares content** | since `a941ca2` it extracts each differing bundle and compares type, mode, owner, size, link target and sha256 per entry, naming the field that moved, with mtimes excluded — so a rebuild reads "identical content" where it used to read DIFFERENT. Exit 2 means a bundle could not be read, which is not an answer. It compared file lists until [slax-kitchen#30](https://github.com/Fullaxx/slax-kitchen/issues/30) |
+| **`kitchen diff --bundles` compares content** | since `a941ca2` it extracts each differing bundle and compares type, mode, owner, size, link target and sha256 per entry, naming the field that moved, with mtimes excluded. Since `aaee1b9` ([slax-kitchen#99](https://github.com/Fullaxx/slax-kitchen/issues/99)) it compares the ESP by its files too, a rebuild whose contents match ends `identical content`, exit 0, where it used to end DIFFERENT, and two bundles can be compared on their own. It never compares link counts or extended attributes. Exit 2 means a container could not be read, which is not an answer. It compared file lists until [slax-kitchen#30](https://github.com/Fullaxx/slax-kitchen/issues/30) |
 | **A reader command checks its tools first** | `lib/need.py`, since `7f8ded8`: `kitchen pack` wants `unsquashfs` and `mksquashfs` up front and exits 2 naming the package, rather than dying mid-pack over a half-written tree |
 
 ## What is verified, and what is not

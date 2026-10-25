@@ -27,13 +27,13 @@ and codecs extensions, and WineHQ's Gecko and Mono). **DXVK** is Philip Rebohle'
 donate link; it asks for one on first launch.
 
 The build engine is [slax-kitchen](https://github.com/Fullaxx/slax-kitchen), pinned as a submodule.
-Twenty-one files here come from it. Twelve are copied verbatim (MIT → MIT): `ci/lib.sh`, six
+Twenty-one files here come from it. Eleven are copied verbatim (MIT → MIT): `ci/lib.sh`, six
 `ci/checks/*.sh`, the two helpers those gates call (`ci/md-links.py`, `ci/unit-run.py`),
-`ci/yamllint.yaml`, and `tests/unit/test_ci_lib.py` and `test_unit_gate.py`. Nine are adapted:
-`ci/run-checks.sh`, the two hooks in `ci/hooks/`, five more gates, and
-`tests/unit/test_desktop_entries.py`. Each carries a header naming the upstream commit it came from,
-and `ci/checks/96-release-consistency.sh` fails if that commit is not the current submodule pin — or
-if a file claiming *copied verbatim* differs from the vendored original.
+`ci/yamllint.yaml`, and `tests/unit/test_unit_gate.py`. Ten are adapted: `ci/run-checks.sh`, the two
+hooks in `ci/hooks/`, five more gates, and two tests, `tests/unit/test_desktop_entries.py` and
+`test_ci_lib.py`. Each carries a header naming the upstream commit it came from, and
+`ci/checks/96-release-consistency.sh` fails if that commit is not the current submodule pin — or if
+a file claiming *copied verbatim* differs from the vendored original.
 
 ## Licence boundary
 
@@ -58,7 +58,7 @@ if a file claiming *copied verbatim* differs from the vendored original.
 `slax64-wine-uefi`, which are one system on two bases, and **slax-bottles**, a second system on the
 64-bit base: flatpak from Debian bookworm, and the Bottles Flatpak with its runtimes, DXVK and
 VKD3D-Proton. Each is an aggregate, and we publish it the way slax-kitchen's
-[NOTICE.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/NOTICE.md#publishing-an-image-built-with-slax-kitchen)
+[NOTICE.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/NOTICE.md#publishing-an-image-built-with-slax-kitchen)
 describes, under the policy set here on 2026-09-26
 ([D-12](docs/DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source)):
 
@@ -76,7 +76,7 @@ Where each part's source is published:
 
 | part | source published at |
 |---|---|
-| Slax 12.2.0 as Tomáš built it: Linux Live Kit, the kernel (Debian's `linux-source-6.1` plus aufs `6.1-20230724`, its configuration embedded in `vmlinuz`), the initramfs userland, and the desktop tools | slax-kitchen's [What a built image contains](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/NOTICE.md#what-a-built-image-contains), which points at `Tomas-M/linux-live` and the repositories it names, and records the initramfs binaries one by one |
+| Slax 12.2.0 as Tomáš built it: Linux Live Kit, the kernel (Debian's `linux-source-6.1` plus aufs `6.1-20230724`, its configuration embedded in `vmlinuz`), the initramfs userland, and the desktop tools | slax-kitchen's [What a built image contains](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/NOTICE.md#what-a-built-image-contains), which points at `Tomas-M/linux-live` and the repositories it names, and records the initramfs binaries one by one |
 | Wine 8.0~repack-4 and every other Debian package, each named with its version in the image's `packages.tsv` | snapshot.debian.org. For what `20-wine.sb` and `20-flatpak.sb` add, `SOURCES.md` gives each source package's `https://snapshot.debian.org/package/<source>/<version>/`. For stock Slax's, `https://snapshot.debian.org/binary/<package>/` names the source of each version `packages.tsv` lists |
 | Notepad++ 8.9.8, 32- and 64-bit | the `v8.9.8` tag of <https://github.com/notepad-plus-plus/notepad-plus-plus> |
 | Bottles and its Flathub runtimes (slax-bottles) | the manifests that built each ref at the commit that shipped, which the image's `/opt/bottles/VERSION` and the release's `.flatpak.txt` record: <https://github.com/flathub/com.usebottles.bottles>, freedesktop-sdk, GNOME's `gnome-build-meta`, and Flathub's `org.winehq.Wine` for the Gecko and Mono extensions. Bottles and its runtimes are what Flathub served on the day of the build ([D-20](docs/DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)) |
@@ -95,7 +95,7 @@ with most of it:
 - stock Slax's `01-firmware.sb` ships as Slax ships it. `firmware-ipw2x00` is not reinstalled, and
   its `ipw2x00.LICENSE` is the one licence file Slax's build left. The Broadcom b43 files Slax's
   build extracted never had a licence text.
-  slax-kitchen's [Firmware](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/NOTICE.md#firmware)
+  slax-kitchen's [Firmware](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/NOTICE.md#firmware)
   section records exactly what the stock bundle holds.
 
 ### If you rebuild and redistribute

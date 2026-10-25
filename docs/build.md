@@ -24,7 +24,7 @@ touches is narrower:
 | `curl` | fetching the base ISO and the application payload |
 | `coreutils` | `sha256sum`, `stat`, `cut` — every verification step |
 | `git` | the submodule, and the provenance/tag checks in gate 96 |
-| `python3` ≥ 3.9 with `yaml` and `jsonschema` | the recipe engine itself |
+| `python3` ≥ 3.11 with `yaml` and `jsonschema` | the recipe engine itself. 3.11 is the floor since slax-kitchen `09a1d4f` (#100), and `kitchen doctor` asserts it. The `python3` on sudo's path needs it too (below) |
 | `shellcheck`, `yamllint` | the commit gates only — not the build |
 | a `python3` that can `import pyflakes` | the commit gates only — gate 35 lints every python file here. Stated as an **import**, not a package: apt's `python3-pyflakes` is invisible to a `python3` that resolves into a virtualenv, and on ubuntu:24.04 that package ships the module while the `pyflakes` *binary* comes from another one. The gate runs `python3 -m pyflakes`, which is true either way. Without it the gate warns and stands down, so a clone that skips this loses the check rather than failing |
 | `qemu-system-x86`, `ovmf` | the **boot tests** only (`kitchen test`), not the build — and not even those if they run on a boot host, which needs `ssh`, `rsync` and `git` here instead |
@@ -47,11 +47,11 @@ wraps that one step in `sudo -E`.
 > **The trap that is not obvious.** sudoers sets `secure_path`, and that overrides `PATH` **even
 > with `-E`**. So the `python3` the elevated step runs is the one on *sudo's* path — typically
 > `/usr/bin/python3` — not whichever one is first on yours. A virtualenv with `yaml` installed does
-> **not** help here. The real requirement is: *a `python3` on sudo's `secure_path` that can import
-> `yaml` and `jsonschema`.* Check it directly:
+> **not** help here. The real requirement is: *a `python3` 3.11 or newer on sudo's `secure_path`
+> that can import `yaml` and `jsonschema`.* Check it directly:
 >
 > ```sh
-> sudo python3 -c 'import yaml, jsonschema; print("ok")'
+> sudo python3 -c 'import sys, yaml, jsonschema; assert sys.version_info >= (3, 11); print("ok")'
 > ```
 
 ### Architecture
@@ -133,7 +133,7 @@ four full builds; narrow it while iterating: `./build.sh --32 --bios`.
 `build.sh` `cd`s to the repo root before doing anything, so it is safe to invoke by absolute path.
 That is not cosmetic: the profile names its recipes by relative path, and the engine resolves those
 against the **current working directory**, not the repo root — which slax-kitchen's
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md) makes the rule for
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md) makes the rule for
 every project: build from its root.
 
 ## Commit gates
@@ -199,6 +199,8 @@ Failing any of these fails the build:
   and each is under its ceiling (`WINE32_MAX_ISO_MIB`, `WINE64_MAX_ISO_MIB`, or `BOTTLES_MAX_ISO_MIB`)
 - each ISO's `.sha256` is there and matches, and `kitchen pack` wrote its `.provenance.json`: the two
   things a project built on the image pins and reads ([building-on-slax-wine.md](building-on-slax-wine.md))
+- the image holds every path its recipes journalled in that `.provenance.json`, and none they
+  removed (`kitchen test --artifacts`, as `kitchen build` does since slax-kitchen `d9ad93f`, #96)
 - `/slax/modules/` contains **exactly** the expected bundles — on 32-bit, eleven: five stock
   survivors, `firmware-refresh`'s two, our three, and the generated `98-dpkg-db.sb`; on 64-bit the
   same plus `31-notepadpp64.sb`. A base's bios, uefi and test images share their list, because
@@ -243,7 +245,7 @@ the assets to a **draft** release. Nothing publishes it but a person
 ([D-19](DECISIONS.md#d-19--release-from-a-tag-by-actions-into-a-draft)).
 
 **It follows slax-kitchen's own procedure,**
-[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/docs/40-workflow/publishing-images.md),
+[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/docs/40-workflow/publishing-images.md),
 under the pointer policy in [NOTICE.md](../NOTICE.md) and
 [D-12](DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source): no source is attached,
 and each image's `SOURCES.md` says where each part's source is published. Nothing in the procedure
@@ -357,5 +359,5 @@ Then `gh release create v$VERSION --draft --notes-file …` and upload, which pu
 
 ## Upstream
 
-The engine is pinned at [`1d7ef68`](https://github.com/Fullaxx/slax-kitchen/tree/1d7ef68). Bumping the
+The engine is pinned at [`0d20605`](https://github.com/Fullaxx/slax-kitchen/tree/0d20605). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

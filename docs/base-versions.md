@@ -29,10 +29,15 @@ build, like bookworm's packages, and the release's `.flatpak.txt` records the Bo
 each ref's commit. DXVK/VKD3D are pinned by sha256 in `BOTTLES_COMPONENTS`, and changing them is a
 version bump ([D-20](DECISIONS.md#d-20--let-bottles-and-its-runtimes-float-record-what-shipped)).
 
-## Upstream has not moved since 2023
+## No Slax release since 2023
 
 Slax 12.2.0 was released 2023-10-10 and there has been no release since, so this table is expected to
 stay short. slax-kitchen runs a weekly `upstream-watch` job that opens an issue if that changes.
+
+Upstream is not idle, though. On 2026-10-09 linux-live began committing toward Slax 13: Debian 13
+in place of 12, GRUB2 in place of isolinux and syslinux, and no Slackware. When slax-kitchen
+reviewed it on 2026-10-22 (`26cc85e`), none of it was released, and none of it reaches a build from
+the published ISOs.
 
 **Debian bookworm is still live** — `oldstable`, security-supported into 2028 — which is what makes
 the Wine packages reachable. When bookworm eventually moves to `archive.debian.org` a rebuild of

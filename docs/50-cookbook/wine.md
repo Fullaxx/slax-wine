@@ -91,7 +91,9 @@ Confirmed in the output: `20-wine.sb` contains the fragment and **no** `var/lib/
 
 ## Verified
 
-Against `slax-32bit-debian-12.2.0.iso`:
+Against `slax-32bit-debian-12.2.0.iso`, by an engine before slax-kitchen `3d8b7e3`, which rounds
+every whole-MiB line to the nearest: the first line reads `-82 MiB` now, for the same 85,659,648
+bytes.
 
 ```
 removed 05-chromium.sb (-81 MiB)

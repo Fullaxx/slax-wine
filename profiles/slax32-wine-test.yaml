@@ -140,8 +140,9 @@ recipes:
   # So pass --keys: `home` once a second for 24 presses, which holds the menu whenever it
   # comes, then down,down,ret. The command is in docs/50-cookbook/slax-wine-iso.md, and
   # the measurements in docs/measurements.md#key-lead-tcg. On a KVM host none of this is
-  # needed: the menu is up well before the lead (docs/measurements.md#grub-menu-kvm) and
-  # the harness's own keys select the serial entry.
+  # needed: the harness's own keys select the serial entry, measured on every route there
+  # (docs/50-cookbook/slax-wine-iso.md), and when GRUB's menu is first seen there is
+  # docs/measurements.md#grub-menu-kvm.
   - uefi-bootable
 output:
   name: "slax32-wine-test-{{version}}.iso"

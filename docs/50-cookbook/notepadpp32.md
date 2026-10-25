@@ -32,7 +32,7 @@ a stick and drop another `30-*.sb` in its place — no rebuild, no remaster — 
 slax-kitchen allocates `00`–`09` to the platform, **`10`–`89` to forks**, `90`–`97` to headroom, and
 refuses `98` and `99`. Inside the fork band this project uses `20`–`29` for its platform and
 `30`–`89` for applications; the low end is left to slax-kitchen's own example app recipes, which sit
-at `10`–`16` today. `31-notepadpp64.sb` sits beside this one on the 64-bit images.
+at `10`–`17` today. `31-notepadpp64.sb` sits beside this one on the 64-bit images.
 
 **This bundle depends on `21-wine-desktop.sb`**, whose `/etc/profile.d/wine.sh` its launcher sources,
 and on `20-wine.sb`'s Wine. That is correct rather than a flaw: `20`+`21` are the platform, `30` is an

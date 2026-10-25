@@ -98,8 +98,8 @@ neither of its reasons survived:
   and gate 20 holds `vendor/` byte-identical to the pin.
 - **A named stack has a failure of its own.** It goes stale the moment a bundle is added below 20,
   and then — upstream's `verbs.md` — apt reinstalls libraries the image already has, and those copies
-  shadow the originals. The default cannot drift that way, and it is what 34 of upstream's 35
-  recipes use.
+  shadow the originals. The default cannot drift that way, and it was what 34 of upstream's 35
+  recipes used then.
 
 Proved by building rather than argued: with the list gone, all three images came out with the same
 contents as the `337f7e7` builds. That covers every entry of `20-wine.sb`, `21-wine-desktop.sb`,
@@ -125,7 +125,7 @@ slax-kitchen's canonical table allocates `00`–`09` to the platform, **`10`–`
 to headroom, and refuses `98` (generated database) and `99` (`savechanges`). Inside the fork band this
 project uses `20`–`29` for its platform and `30`–`89` for applications, starting at `20` rather than
 `10` because the bottom of the fork band is where slax-kitchen's example recipes sit — and **that set
-grows**: `10`–`12` when this was written, `10`–`16` today. Ceding the low end costs nothing and makes
+grows**: `10`–`12` when this was written, `10`–`17` today. Ceding the low end costs nothing and makes
 a collision structurally impossible rather than merely unlikely.
 
 The application band holds `30-notepadpp32` on every slax-wine image and `31-notepadpp64` beside it on
@@ -321,7 +321,9 @@ It calls `kitchen` commands for what the engine does — `fetch`, `unpack`, `app
 `test --structure` — as LAYERING.md asks of a project's own driver. The structure test went through
 a `kitchen` command last: until the `4a10303` bump `build.sh` ran `iso_assert.py` itself, because
 `kitchen test --structure` took no size ceiling and no `--require`. slax-kitchen `ce5d51a` (#67)
-added both.
+added both. Since the `0d20605` bump it also passes `--artifacts`, the record `pack` wrote, so each
+image is held to every path its recipes journalled: LAYERING.md asks that of a project's own driver
+since slax-kitchen `d9ad93f` (#96), and `kitchen build` does it for a profile.
 
 **What would change this:** `kitchen build` running a project's own checks after `pack` — the exact
 module list, the release file read back, both halves of Wine — which would leave `build.sh` only the

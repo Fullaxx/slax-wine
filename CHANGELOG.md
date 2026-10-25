@@ -13,10 +13,22 @@ See [docs/base-versions.md](docs/base-versions.md).
   the number, and `docs/sizing.md` is merged into it
   ([D-21](docs/DECISIONS.md#d-21--one-register-for-measurements-and-links-everywhere-else)).
 - **Gate 96 §6 reads only the register** for a `TBD-MEASURED` placeholder on a tag.
-- **slax-kitchen pinned at `1d7ef68`**, up from `4a10303`: seventeen commits, closing
-  slax-kitchen #71 to #82. The images' file contents are unchanged. The 64-bit `20-wine.sb` now
-  stores its identical Mesa drivers as hardlinks (#78)
-  ([UPSTREAM.md](docs/UPSTREAM.md#adopted-at-the-1d7ef68-bump)).
+- **slax-kitchen pinned at `0d20605`**, up from `4a10303`, in two bumps
+  ([`1d7ef68`](docs/UPSTREAM.md#adopted-at-the-1d7ef68-bump),
+  [`0d20605`](docs/UPSTREAM.md#adopted-at-the-0d20605-bump)): forty-six commits, closing
+  slax-kitchen #71 to #90 and #93 to #101. No file an image holds changes. The 64-bit `20-wine.sb`
+  stores its identical Mesa drivers as hardlinks (#78), and a build chroot's home is its own
+  `/root` (#94), so a release built on GitHub's runners now carries the empty `/root` directory
+  entry in `09-firmware-linux.sb` that local builds always had.
+- **Gate 20 looks inside `vendor/slax-kitchen`:** an edited, staged or untracked file in the
+  engine now fails it, where only a moved pointer did (slax-kitchen #101).
+  `tests/unit/test_ci_lib.py` becomes an adapted copy, its new test pointed at our submodule.
+- **`build.sh` holds each image to its recipes' record:** the structure test takes `--artifacts`,
+  so every path the recipes journalled must be on the disc, and every path they removed must be
+  gone (slax-kitchen #96).
+- **A pin bump lays out what a release would change, and from where** (the engine, our own
+  commits, Debian, Flathub), with a recommended version for the maintainer to decide
+  ([UPSTREAM.md](docs/UPSTREAM.md#moving-the-pin)).
 - **The unit gate shows what its runner says about a passing file:** a skipped file, a disabled
   test and a stale `DISABLED` entry, which it used to discard (slax-kitchen #72).
 - **The release workflow fails a job that wants KVM** if `/dev/kvm` is still not writable after
@@ -32,6 +44,10 @@ See [docs/base-versions.md](docs/base-versions.md).
   - slax32's default prefix, listed with slax64's 32-bit figure;
   - slax-bottles' size, rounded to 1.2 GiB in places;
   - the module counts, which ARCHITECTURE still gave from before the firmware bundles.
+- **Docs the `0d20605` bump made false, or found false:** the Python floor, now 3.11; what a
+  rebuild's checksum can promise; what `kitchen diff --bundles` concludes; the endings the
+  hand-back survives; GRUB's menu time under KVM, now measured here; and the band upstream's
+  example recipes use, `10`–`17`.
 
 ## [1.0.0] — 2026-09-30
 

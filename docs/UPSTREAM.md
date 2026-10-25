@@ -23,7 +23,7 @@ upstream asks that it start here first — *"a fork maintainer who has already t
 useful to us than a raw report"*.
 
 **Check upstream Slax first.** `vendor/slax-kitchen/docs/30-inventory/known-upstream-bugs.md`
-documents fourteen defects in Slax itself. Several look exactly like toolkit bugs until you read
+documents fifteen defects in Slax itself. Several look exactly like toolkit bugs until you read
 them — the `noautomount` substring trap is entry 12, and it shaped `slax-wine-iso.yaml`. (The missing
 GPU firmware is *not* in that file, despite being the same kind of fact; it lives in
 `docs/50-cookbook/firmware-refresh.md`. Check both before concluding something is unreported.)
@@ -126,9 +126,14 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
     build stamps directory mtimes, and a squashfs is not byte-reproducible even from one run to the
     next. `kitchen diff <before> <after> --bundles` is the tool since
     [#30](https://github.com/Fullaxx/slax-kitchen/issues/30) was fixed: it compares type, mode,
-    owner, size, link target and sha256 per entry and names the field that moved. **Build the
-    baseline first, at the old pin**, because `out/` may hold nothing and the numbers in the docs
-    are one build's, not the release's. Re-run the boot routes only if the contents changed.
+    owner, size, link target and sha256 per entry and names the field that moved. Since
+    [#99](https://github.com/Fullaxx/slax-kitchen/issues/99) it compares the ESP by its files as
+    well, and a rebuild whose contents match ends `identical content`, exit 0. It never compares
+    link counts or extended attributes, so when a change could move hardlinks, count each bundle's
+    inodes too (`unsquashfs -stat`), as the `1d7ef68` bump did. **Build the baseline first, at the
+    old pin, the same day as the new build**, because `out/` may hold nothing, the numbers in the
+    docs are one build's, not the release's, and Debian and Flathub move between days. Re-run the
+    boot routes only if the contents changed.
   - If none changed, say so, and the previous evidence stands.
 - **Copied files.** Find which of our copies changed upstream, with
   `git rev-list --count <pin>..<target> -- <path>` on each source. Those are re-copied; the rest are
@@ -143,6 +148,25 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
 - **Anything we cite.** Check whether a permalinked page moved or changed, and whether a line number
   cited into the engine still points at what its comment says. Better, name the function, constant
   or key: line numbers drift at every bump, and the `0dd1b53` bump found eleven that had.
+- **What a release would change, and from where.** The version is the user's decision, and a bump
+  is where its evidence is gathered. What counts as a functional change is a judgment, and where a
+  change came from weighs on it, so lay it out by source rather than decide it:
+  - **this bump's engine change:** the build at the old pin against the build at the new pin, made
+    the same day, so that Debian and Flathub served both the same. Where an engine fix could have
+    reached what already shipped, read the published images too: the `0d20605` bump read v1.0.0's
+    chroot-built bundles for the release runner's home;
+  - **everything since the last release:** the published release against the old-pin build. That
+    holds earlier bumps, which their own records describe; our own commits, from the diff since
+    `v<last>` over `recipes/`, `profiles/`, `build.sh` and `build.env`, read whole, because a comment
+    inside a recipe's `content:` block ships in the file it writes; Debian's archive, from the
+    `packages.tsv`; and Flathub, from slax-bottles' `.flatpak.txt`. Bookworm moves on between any
+    two builds, so this part is never empty, and none of it is the engine's. `kitchen diff
+    --bundles` of each published image against its new build shows all of it at once: that is how
+    the `0d20605` bump found its own comment in a shipped launcher.
+
+  For each source, say what it changes that a user of the images, or a project built on them, could
+  meet, then recommend none, patch, minor or major, and why. The version moves only on the user's
+  word, when a release is cut ([build.md](build.md#cutting-a-release)).
 
 **3. Retire what upstream has made redundant.**
 
@@ -163,9 +187,11 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
   §10 any fixed workaround.
 - Re-copy and re-cite, and run every gate in tree scope.
 - Record the bump here as *Adopted at the `<pin>` bump*: the commits and their CI, what moved, what
-  was retired, the proofs, and why there was or was not a rebuild.
-- **Stop there, uncommitted,** and hand over what changed, what was verified and how, and the commit
-  message ([`CLAUDE.md`](../CLAUDE.md) § *Before committing or pushing anything*). When the user asks
+  was retired, the proofs, why there was or was not a rebuild, and what a release would change, by
+  source.
+- **Stop there, uncommitted,** and hand over what changed, what was verified and how, what a release
+  would change and the version you would recommend, and the commit message
+  ([`CLAUDE.md`](../CLAUDE.md) § *Before committing or pushing anything*). When the user asks
   for the commit it goes through the hook, then `master` is fast-forwarded and the branch deleted.
   **A push is its own request.**
 
@@ -226,7 +252,10 @@ commit of its own ([their section](#filed-at-the-0dd1b53-pin--50-to-58)), and #5
 upstream filed from what slax-wine and slax-rpgs needed, by 2026-09-28. All of them were taken at
 [the `4a10303` bump](#adopted-at-the-4a10303-bump), which says what each did here. #71 to #82,
 which upstream filed itself on 2026-10-01 and 2026-10-02, were all closed by 2026-10-02 and taken
-at [the `1d7ef68` bump](#adopted-at-the-1d7ef68-bump).
+at [the `1d7ef68` bump](#adopted-at-the-1d7ef68-bump). #83 to #90 and #93 to #101, also
+upstream's own, filed from 2026-10-04 to 2026-10-24, were all closed by 2026-10-24 and taken at
+[the `0d20605` bump](#adopted-at-the-0d20605-bump). #91 and #92 were still open then;
+[the next section](#open-upstream-and-what-each-means-here) says what each would mean here.
 
 | # | Issue | Closed by |
 |---|---|---|
@@ -250,13 +279,16 @@ Neither was ours. Both were assessed against this image at the `bcd4f00` bump ra
 trust, because "open upstream" is not the same as "affects us". **14 has since closed** — by
 `5e7825f` (its own `Closes` trailer; the merge commit `c455733` carries none), taken at the
 `337f7e7` bump. 15 is still open. 49 joined it on 2026-09-26, filed by upstream, and was closed the
-same day by `658e78b`, taken at the `0dd1b53` bump.
+same day by `658e78b`, taken at the `0dd1b53` bump. 91 and 92, filed by upstream on 2026-10-20, were
+open at the `0d20605` bump.
 
 | # | Issue | Impact on slax-wine |
 |---|---|---|
 | [14](https://github.com/Fullaxx/slax-kitchen/issues/14) | `bundle.packages` tracks additions and never looks at what left | **Closed by `5e7825f`** — apt now runs with `--no-remove`, so the engine *refuses* the case this row used to measure by hand. Historical measurement, still the evidence we held before the fix: **none on this build.** `20-wine.sb` is a `bundle.packages` bundle, so this is our exposure: a package apt removes to resolve a conflict is recorded as gone while its files stay visible from the lower bundle. Counted `install ok installed` in `04-apps.sb` (567) against `98-dpkg-db.sb` (626) — **nothing present before is missing after**. +59 is the `libgnutls30`-upgrade arithmetic. Re-measure after any recipe change; it is a property of the build, not of the recipe. |
 | [15](https://github.com/Fullaxx/slax-kitchen/issues/15) | persistence boot 2 wedges on both Slackware targets, passes on both Debian | **None — we are Debian.** Worth reading the other way round: it is the bug their new persistence harness found on its first four-target sweep, which is the reason to trust the harness on *our* target. |
 | [49](https://github.com/Fullaxx/slax-kitchen/issues/49) | `uefi-bootable` cannot run on an image that is already UEFI-bootable | **Closed by `658e78b`, taken at `0dd1b53`.** Nothing changed for our own builds, which start from stock images with no ESP: [the back-to-back build at that bump](#adopted-at-the-0dd1b53-bump) shows it. **For a project built on our images, either image now**, `uefi-bootable` listed last: it rebuilds the ESP a `-uefi` image or slax-bottles came with, which is exactly the shape the fix accepts — measured at `7664625`, and built on at `0dd1b53`. |
+| [91](https://github.com/Fullaxx/slax-kitchen/issues/91) | a followed release's libraries are not checked at build time, since `tor-browser` follows Tor's feed | **None.** We use no followed release, and no `tor-browser`. |
+| [92](https://github.com/Fullaxx/slax-kitchen/issues/92) | `ci/unit-run.py`'s profile hook costs the unit gate seconds; `sys.monitoring` would do the same check on Python 3.12 | **A copied file.** `ci/unit-run.py` is a verbatim copy, so the fix arrives here as a re-copy at the bump that takes it, and gate 96 §9 says so. It changes how the runner watches the tests, not what they check. |
 
 | Advisory | Status |
 |---|---|
@@ -337,11 +369,11 @@ commit cites as the before-fix tell. The cause is one word: `_under` uses `realp
 The bar in this document is only worth having if it is checked, so:
 
 1. **The first advisory's suggested one-liner was unusable.** `extractall(filter="data")` needs
-   Python 3.11.4+; the project declares `>= 3.9` and `debian:12` ships 3.11.2. They also measured
-   `filter="tar"` — it allows all three escapes. The explicit `linkname` check offered as
-   belt-and-braces was **the only portable half**. The published advisory carries a correction note
-   for downstream forks. Our closing caveat had anticipated it, which is the argument for always
-   writing one.
+   Python 3.11.4+; the project declared `>= 3.9` then (`>= 3.11` since slax-kitchen #100) and
+   `debian:12` ships 3.11.2. They also measured `filter="tar"` — it allows all three escapes. The
+   explicit `linkname` check offered as belt-and-braces was **the only portable half**. The
+   published advisory carries a correction note for downstream forks. Our closing caveat had
+   anticipated it, which is the argument for always writing one.
 2. **Issue #2's expected value was wrong.** We predicted the chromium-beneath row should declare
    **2**, matching the stock row. It is **3** — stock `05-chromium` carries `libevent-2.1-7`, a
    current chromium does not, so Firefox owes a different closure. The bug was real; the number was
@@ -406,11 +438,12 @@ only directory xlunch reads. Upstream stages no payloads under `recipes/`, so it
 there is nothing to report. A probe `.desktop` dropped into `recipes/available/` still fails the test.
 
 **`ci/checks/97-tier-c-ledger.sh`** (added in `e7f2bea`) — measured with `REPO_ROOT` pointed at this
-tree, it exits 0 with *"tests/boot/tier-c.json not present"*. There is no `tests/boot/`, no ledger
-and no `ci/release-notes.sh` here, so it would note-and-skip forever. Still not adopted, and nor is
-its unit test, `tests/unit/test_tier_c_ledger.py` (added in `5627f2d`), which tests nothing we carry.
-`edaeff3` grew it a closed set for `target` at the `b20e07e` bump; the premise is untouched, because
-the thing it would read still does not exist here.
+tree, it exits 0 with *"tests/boot/tier-c.json not present"*. There is no `tests/boot/` and no
+ledger here, and our own `ci/release-notes.sh` reads none, so it would note-and-skip forever. Still
+not adopted, and nor is its unit test, `tests/unit/test_tier_c_ledger.py` (added in `5627f2d`),
+which tests nothing we carry. `edaeff3` grew it a closed set for `target` at the `b20e07e` bump, and
+`c2b3113` a `seen_s` key at the `0d20605` bump; the premise is untouched, because the thing it would
+read still does not exist here.
 
 **`ci/checks/35-pyflakes.sh` was never in this section**, and that is the point of saying so: it
 arrived in `0ba51ff` and was **adopted at the same bump it arrived in**, because unlike the four
@@ -1647,7 +1680,7 @@ repository copies verbatim. slax-wine's own part went in as
 
 Upstream settled the frame with a decision rather than three engine changes: **a project builds on
 another project's released image, not its source**, and every project vendors the engine directly.
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/1d7ef68/LAYERING.md) records it, and
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md) records it, and
 what it asks of slax-wine as the first *base project* is slax-wine#2's work, which
 [building-on-slax-wine.md](building-on-slax-wine.md) answers.
 
@@ -2175,6 +2208,179 @@ not, so `ci/release-boot.sh` ran `slax64-wine-test` on the boot host under KVM. 
 reached `Live Kit done`, with the `automount` assertions and the persistence marker across two
 boots. No other image's bundles changed in any way, so no other route was re-run. The release runs
 all twelve anyway.
+
+## Adopted at the `0d20605` bump
+
+Twenty-nine commits, `1d7ef68..0d20605`, 119 files, +4,773/−857, from 2026-10-03 to 2026-10-24. CI
+on `0d20605` is green in every job (the `ci` push run 40127247814). The range closes #83 to #90 and
+#93 to #101, all filed by upstream; #87 and #96 to #101 say in their own text what each means for
+slax-wine. None was ours, and no row in [Local workarounds](#local-workarounds) was active. Each
+commit was read as message and diff, and each `Closes` line was taken from the commit itself.
+Upstream added one recipe, `disc-readme`, and no gate or test file.
+
+**The headline: nothing here changes a file an image holds.** The one engine change that reaches
+an image at all is `9ce9941` (#94), which gives a build chroot its own `HOME`. The published 1.0.0,
+whose chroots ran with the release runner's, was read for it and carries no trace, and a release
+built now gains one empty directory entry (below). What the range changes here is two checks: gate
+20 now looks inside the submodule, and `build.sh` holds each image to what its recipes journalled.
+
+| commit | issue | what changed | here |
+|---|---|---|---|
+| `9ce9941`, `b735862`, `6c574dc` | #94 #88 | a build chroot gets `HOME=/root` and its own `/tmp`, and none of the caller's `XDG_*` base directories, `TMP`, `TEMP` or `REPO_ROOT` | local builds run as root, whose home is `/root` already, with none of `TMPDIR`, `TMP`, `TEMP` or the XDG base directories set. The `REPO_ROOT` a chroot no longer gets matters only to a script that writes its environment into the image, and none here does; the build below moved nothing. The release workflow runs `build.sh` as `runner`, and `apply` under `sudo -E`, so 1.0.0's chroots had `HOME=/home/runner`: read below |
+| `d9ad93f`, `0e4dd62` | #96 #85 | `kitchen test --artifacts` holds an image to the journal in its provenance record, and `kitchen build` always passes it; `bundle.renumber` journals the old name; a new `disc-readme` recipe | **adopted**: `build.sh` passes `--artifacts` ([D-13](DECISIONS.md#d-13--buildsh-not-kitchen-build)). Neither `bundle.renumber` nor `disc-readme` is used here |
+| `0d20605` | #101 | gate 20 fails an edited or untracked file inside the submodule, skips one not checked out, and clears a hook's git variables | **re-adapted**, and `test_ci_lib.py` becomes *Adapted*: below |
+| `c2b3113`, `2c2a251` | #87 | the boot harness records when each expectation first appeared; `uefi-bootable.md`'s "about one second" becomes a measurement | the register's `grub-menu-kvm` quoted it, and is now our own measurement: below |
+| `a331979` | #86 | upstream's undated figures dated, its estimates labelled | `est-chromium-current` follows its page to 116 MiB |
+| `3d8b7e3` | #93 | every whole-MiB line rounds to the nearest, through `lib/units.py` | printed lines only; `measure-check` reads bytes. `wine.md`'s transcript says which rounding it shows |
+| `789e0af`, `86d49d2`, `057b682`, `886148f`, `003a72e` | #83 #97 #98 | the hand-back survives HUP and a closed pipe, gives back the parents `mkdir -p` makes and takes its paths in any order; no signal interrupts a chroot's removal; `docs/90-reference/handback.md` | the build machine only, never an image. `build.sh`'s "however it ends" now names the three endings it does not survive, and `.gitignore`'s scratch-dir note adds QUIT and a power cut |
+| `aaee1b9` | #99 | `kitchen diff --bundles` ends `identical content`, exit 0, when only the containers' bytes differ; the ESP is compared by its files; two bundles diff on their own | [Moving the pin](#moving-the-pin) and ARCHITECTURE say so. It still compares no link counts |
+| `0465689` | #95 | no bit-identical rebuild is promised; `--date` pins only the volume's dates | the register's "No sha256" paragraph and `slax-wine-iso.md` corrected |
+| `09a1d4f` | #100 | the Python floor moves from 3.9 to 3.11 | `build.md`'s prerequisite. This machine, the runners and the boot host run 3.12 |
+| `26cc85e`, `1bb805a` | #89 | upstream-watch reports a linux-live move without flagging it; livekitlib defines 50 functions | `base-versions.md`: no Slax release since 2023, though linux-live began committing toward Slax 13 on 2026-10-09 |
+| `7961ef9`, `b018e6c`, `26f1a50`, `b781e97` | #90 #84 | tor-browser follows Tor's signed release feed (the schema's `release_feed` and `signed_by`, and gpgv); six pinned Slackware mirrors; a dry run's path | not used. gpgv joins `containers/packages/build.txt`, which the release job installs; ubuntu-24.04 already has it |
+| `c51f740`, `73c67c0`, `643b2a9`, `0c14e7a`, `1ebcbf0` | — | docs, CONTRIBUTING and CLAUDE.md: among them, a closing word before an issue number closes that issue wherever it stands in a commit message | nothing to change; our commit messages keep to it |
+
+**Retired:** nothing. No workaround was active, and of the sources behind our *Adapted* files
+upstream changed only gate 20's, whose one difference, the path, stays.
+
+**Gate 20 had the hole #101 describes, here too.** Our copy read only `git submodule status`, while
+its desc said `vendor/slax-kitchen` stays byte-identical to the pin; and here, as #101 says of
+slax-wine by name, an edited engine file changes the images. The re-adapted gate takes upstream's
+rules 2 and 3, the skip and the clearing of a hook's variables, with our path. On a scratch clone
+with both submodules checked out it failed an edited `lib/apply.py`, a stray file in
+`vendor/slax-kitchen`, a stray file in the nested `vendor/linux-live` (git reports
+` M vendor/linux-live`) and a checkout at another commit, and passed the clean tree, under a hook's
+`GIT_DIR` and `GIT_INDEX_FILE` too. Upstream's new test copies the gate of whatever checkout it runs
+in into a fixture whose submodule is `vendor/linux-live`, so `test_ci_lib.py` is now *Adapted*, its
+one difference that path. Against the `1d7ef68` copy of our gate it fails three of its checks, the
+#101 hole among them; unchanged, it fails three against the new one too, because our gate skips a
+fixture with no `vendor/slax-kitchen`. Three statements claimed more than the gate checked: D-3's
+"byte-identical to the pin", the `doc-yaml.py` paragraph under
+[Deliberately not adopted](#deliberately-not-adopted-from-upstream) ("byte-pristine"), and
+`test_desktop_entries.py`'s note. They are true now, ignored files aside.
+
+**Adopted beyond the copies:** `build.sh` passes `--artifacts "$out_iso.provenance.json"` to the
+structure test, which LAYERING.md now asks of a project's own driver. Tried first on the eight
+baseline images and the five published ones, with the new engine: all thirteen pass, the record
+adding eight to twelve checks to each. The new builds ran 31 to 36 checks where the baseline ran 22
+to 24.
+
+**Corrected, because the new pin made them false or showed them to be:**
+- `build.sh`'s "however it ends": QUIT, KILL and a power cut skip the hand-back. `.gitignore`'s
+  note on the engine's scratch directories says the same;
+- `build.md`'s Python floor, now 3.11, and its check of sudo's `python3`;
+- this page's "the project declares `>= 3.9`", now in the past tense;
+- the register's `grub-menu-kvm`, `slax-wine-iso.md`'s "has not been timed here" and
+  `slax32-wine-test.yaml`'s "the menu is up well before the lead": our own measurement replaces
+  upstream's "about one second", below;
+- `est-chromium-current`, 116 MiB after upstream's re-measure;
+- the register's "No sha256" paragraph and `slax-wine-iso.md`'s checksum note, which promised bytes
+  a rebuild cannot keep, as upstream's reproducibility page did until #95;
+- [Moving the pin](#moving-the-pin) and ARCHITECTURE on what `kitchen diff --bundles` concludes;
+- `base-versions.md`'s "Upstream has not moved since 2023";
+- `wine.md`'s transcript, which now says it was printed before `3d8b7e3`.
+
+**Found on the way, wrong before this range:**
+- "`10`–`16` today" for the band upstream's example recipes use, in five places:
+  `bundle-from-url` has defaulted to `17-jq` since `877b07c`, which the `4a10303` bump took;
+- this page's "fourteen defects" in `known-upstream-bugs.md`, which has listed fifteen since
+  `6ecf019`;
+- the register's "No sha256" paragraph and `slax-wine-iso.md`'s checksum note also had every image
+  packed with `genisoimage`, which packs only the `-bios` ones. The rest are packed by `xorriso`, as
+  `uefi-bootable` asks;
+- this page's "no `ci/release-notes.sh` here", beside gate 97: ours has existed since the release,
+  and reads no ledger;
+- ARCHITECTURE's "`bundle.fromTarball` is tar-only": it takes zips since `ca0049a`;
+- `slax-bottles-iso.md` and its recipe gave as current the reasons `iso-identity` and
+  `boot-cmdline` did not fit, which #68 made vars at the `4a10303` bump. They now say so, and that
+  the recipe has not moved to them;
+- D-3's "34 of upstream's 35 recipes", true at the `3a44e8a` bump it records, now in the past tense.
+
+**Copied files.** Two of the twenty-one changed upstream, both in `0d20605`: gate 20, re-adapted,
+and `test_ci_lib.py`, now adapted. The other nineteen are re-cited. With only the pin staged, gate
+96 named twenty-one headers (§7), eighteen permalinks and two statements of the pin (§8), and
+`test_ci_lib.py` (§9); §10 was silent. Gate 40 validated our recipes and profiles against the new
+schema with nothing to change.
+
+**What the tests say.** The eleven test files upstream changed (`test_apply`, `test_boot_host`,
+`test_ci_lib`, `test_diff`, `test_kitchen_test`, `test_listing`, `test_need`, `test_qemu_boot`,
+`test_sources`, `test_tier_c_ledger`, `test_tier_c_run`) pass inside the pinned submodule, through
+`ci/unit-run.py` with `python3 -B`, a private `TMPDIR` left empty, and `KITCHEN_BOOT_HOST=local`.
+The submodule stays pristine, which the new gate 20 now checks for itself. Our gates pass as root
+and as uid 65534. The first run as uid 65534 did not: gate 20 failed the copy of the tree that user
+ran in, because the copy's exclude for our gitignored `bottles.files` had also left out upstream's
+tracked `recipes/available/bundle-from-dir.files/`. Rule 3 found a real gap on its first day, and
+the old gate would have passed it.
+
+**The build, at `0d20605`.** All eight images, `./build.sh --all`, `--test` and `--bottles-test`,
+were built on 2026-10-25 at both pins, the old one first as the baseline, so that Debian and
+Flathub served both the same; the Bottles stage did not move between them. `kitchen diff
+--bundles`, the package lists, the boot menus, and an inode count and a `home/` and `root/` listing
+for each bundle a chroot builds say:
+
+- **every image is the same size to the byte,** every changed container reads *identical content*
+  and every image's verdict is `identical content`, exit 0, the ESP's included, which the new diff
+  compares by its files. The package lists are identical, and `isolinux.cfg`, `syslinux.cfg` and
+  `grub.cfg` are byte-identical;
+- **every inode count holds,** and so does every `home/` and `root/` listing. Local builds run as
+  root, so a build chroot's home was already `/root` here;
+- **the sidecars** differ only in what a pin move, a dirty tree and a rebuild explain: the engine
+  commit, the project's description, each output's and the ISO's sha256, and two recipes' hashes:
+  `firmware-refresh`'s, whose comment upstream changed, and `wine`'s, whose comment this bump did.
+
+Every image passed its structure test, 31 to 36 checks with `--artifacts`, and `build.sh`'s own
+assertions. `ci/measure-check.sh` gives the same report for both builds, so the engine moved no
+measured value. The same seven rows differ from the register at both pins: the three slax64-wine
+ISOs and `l64-wine` by +274,432 bytes, and slax-bottles' two ISOs and `lbt-bottles` by −966,656 to
+−970,752 bytes. Those rows hold v1.0.0's figures, and for `lbt-bottles` a local build's of
+2026-09-29. The differences are Debian's and Flathub's, below, and no row changes until a release
+measures them again.
+
+**The published 1.0.0, read for the runner's home.** Its five ISOs, downloaded and checked against
+the release's `SHA256SUMS`. Their fifteen chroot-built bundles, `20-wine.sb`, the two firmware
+bundles and slax-bottles' `20-flatpak.sb`, hold no path under `home/` or `root/`, no `.cache`,
+`.config`, `.local` or `.gnupg` anywhere, and no file containing `/home/runner` or a `GITHUB_` or
+`RUNNER_` variable. As a control, the same unpack and grep finds `/usr/lib/x86_64-linux-gnu` in 253
+files of the 64-bit `20-wine.sb`. So the runner's home reached nothing that shipped.
+
+The fix still moves one entry. A local build's `09-firmware-linux.sb` has always held an empty
+`root/` directory, `drwxrwxr-x 0/0`, the mode and owner of `01-core`'s `/root`. It is there because
+firmware-refresh's `wget` writes its HSTS file under the chroot's home, and `BUNDLE_EXCLUDE` drops
+`root/.wget-hsts` but not the directory it changed. On the runner, at 1.0.0, that home was
+`/home/runner`, which no chroot has, so nothing was written and the published bundle holds 90
+entries to our 91. Built here at `0d20605` with a runner's `HOME` and `XDG_*` variables exported,
+`slax32-wine-bios` holds the entry. So a release built now carries one more directory than 1.0.0:
+empty, with the mode and owner of the one beneath it.
+
+**What a release would change, and from where.** The first bump to lay this out
+([Moving the pin](#moving-the-pin)), for v1.0.0 against the images built on 2026-10-25:
+
+| source | what changed since v1.0.0 | what a user, or a project built on the images, would meet |
+|---|---|---|
+| this bump's engine, `0d20605` | `identical content` against the same-day baseline. Against 1.0.0, one empty `/root` directory entry in `09-firmware-linux.sb` (above) | nothing: no file added, changed or removed |
+| the `1d7ef68` bump | the 64-bit `20-wine.sb` stores Mesa's 25 identical DRI drivers as two hardlink groups | nothing: the same files |
+| our own commits | `recipes/`, `profiles/`, `build.sh` and `build.env`: comments only, `git diff v1.0.0..`. One of them is inside the launcher `notepadpp64.yaml` embeds, so `/usr/local/bin/notepadpp64` in the slax64-wine images differs from 1.0.0's by that comment (`568f7df`, [D-21](DECISIONS.md#d-21--one-register-for-measurements-and-links-everywhere-else)). This bump adds two checks, gate 20's and `--artifacts`, and neither touches an image | nothing: a comment in a script |
+| Debian | from `bookworm-security`, by each sidecar's recorded origin. slax32-wine: `libgstreamer-plugins-base1.0-0`, `deb12u6` to `deb12u7`. slax64-wine: that one, `libbrotli1` (`+b6` to `+deb12u1`), `libexpat1` (`deb12u3` to `deb12u5`), `libpcre2-8-0` (`deb12u1` to `deb12u2`) and `libpng16-16` (`deb12u5` to `deb12u6`), each for amd64 and i386, ten in all. slax-bottles: `xdg-dbus-proxy`, `deb12u1` to `deb12u2` | those security updates |
+| Flathub | Bottles 67.3 to 67.4, and all thirteen refs at new commits. DXVK and VKD3D are pinned and unchanged | a newer Bottles and newer runtimes |
+
+`kitchen diff --bundles` of each published image against its new build shows nothing beyond these
+but one line: `20-flatpak.sb`'s `/etc/shadow`, whose `_flatpak` entry carries the day the build ran,
+as every rebuild on another day does. The package lists alone had missed the launcher's comment.
+
+**Recommended: no version change for slax-kitchen's sake.** Nothing the engine brings changes what a
+user or a project built on the images meets. What a release would carry now is Debian's security
+updates and Flathub's newer Bottles; whether those are worth a release is the user's call. If one
+is cut for them, it is a patch, 1.0.1: nothing a project built on the images relies on changes.
+
+**GRUB's menu under KVM, timed here.** Three runs each of
+`kitchen test <image> --uefi --no-keys --expect "GNU GRUB"` on `slax32-wine-test` and
+`slax64-wine-test`, on the boot host, at `0d20605`: GRUB's menu was first seen 2.2 s after qemu
+started in five runs and 7.4 s in one, slax64's first
+([`grub-menu-kvm`](measurements.md#grub-menu-kvm)). Each run reports FAIL by design: with no key
+sent, no livekit marker can follow. The boot host's agent passes the new 3.11 floor (3.12.3).
+
+**No boot route was re-run.** No image's contents changed, and the menus are byte-identical. The
+release runs all twelve anyway.
 
 ## Two findings were dropped before filing, in round one
 
