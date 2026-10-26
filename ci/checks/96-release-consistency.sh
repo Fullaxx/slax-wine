@@ -480,7 +480,7 @@ fi
 #
 # docs/UPSTREAM.md is exempt from the prose half and only from that half: it is the bump
 # history, so "at the bcd4f00 bump" is a fact about the past and must not be rewritten.
-# It carries no blob/tree links, so the permalink half needs no exemption.
+# Its one permalink, LAYERING.md's, follows the pin like any other: that half is not exempt.
 if [ -z "${PIN:-}" ]; then
     :                                       # section 7 already said why it could not run
 else

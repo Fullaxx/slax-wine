@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copied verbatim from slax-kitchen @ 0d20605922cb79dee0616163d112ea1053faee98 (ci/unit-run.py).
+# Copied verbatim from slax-kitchen @ fa73647675b7e465820350dae786cbdb46a43c1e (ci/unit-run.py).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 """Run one unit test file, and report any test in it that did not run.
 

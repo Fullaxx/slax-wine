@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 0d20605922cb79dee0616163d112ea1053faee98 (ci/checks/35-pyflakes.sh).
+# Adapted from slax-kitchen @ fa73647675b7e465820350dae786cbdb46a43c1e (ci/checks/35-pyflakes.sh).
 # MIT, same author. The EXECUTABLE HALF is byte-identical, so a future bump can diff it;
 # ONE difference, in the prose: upstream's argument is about the size of its engine
 # ("lib/apply.py alone was 4,529 lines on 2026-10-01 -- so the half that was unchecked was
@@ -18,10 +18,9 @@
 # and no python file was.
 #
 # THE SMALLER HALF HERE, AND THAT IS THE ARGUMENT, NOT AGAINST IT. Eight python files, four
-# of them copies upstream already lints under this same gate: three verbatim, and
-# tests/unit/test_ci_lib.py, whose one local change is a path in a string (the 0d20605
-# bump). The other four nothing else lints: tests/unit/test_desktop_entries.py, which
-# carries three local changes, and three that are ours outright --
+# of them verbatim copies upstream already lints under this same gate. The other four
+# nothing else lints: tests/unit/test_desktop_entries.py, which carries three local
+# changes, and three that are ours outright --
 # tests/unit/test_release_consistency.py, the test of gate 96, the gate that holds the
 # profiles, the pin and the ledger in step, and the tests of the release scripts and of
 # ci/measure-check.sh. When this gate arrived there were six, and two of ours. A defect in

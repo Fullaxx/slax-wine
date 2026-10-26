@@ -13,16 +13,21 @@ See [docs/base-versions.md](docs/base-versions.md).
   the number, and `docs/sizing.md` is merged into it
   ([D-21](docs/DECISIONS.md#d-21--one-register-for-measurements-and-links-everywhere-else)).
 - **Gate 96 §6 reads only the register** for a `TBD-MEASURED` placeholder on a tag.
-- **slax-kitchen pinned at `0d20605`**, up from `4a10303`, in two bumps
+- **slax-kitchen pinned at `fa73647`**, up from `4a10303`, in three bumps
   ([`1d7ef68`](docs/UPSTREAM.md#adopted-at-the-1d7ef68-bump),
-  [`0d20605`](docs/UPSTREAM.md#adopted-at-the-0d20605-bump)): forty-six commits, closing
-  slax-kitchen #71 to #90 and #93 to #101. No file an image holds changes. The 64-bit `20-wine.sb`
+  [`0d20605`](docs/UPSTREAM.md#adopted-at-the-0d20605-bump),
+  [`fa73647`](docs/UPSTREAM.md#adopted-at-the-fa73647-bump)): forty-nine commits, closing
+  slax-kitchen #71 to #90 and #93 to #103. No file an image holds changes. The 64-bit `20-wine.sb`
   stores its identical Mesa drivers as hardlinks (#78), and a build chroot's home is its own
   `/root` (#94), so a release built on GitHub's runners now carries the empty `/root` directory
   entry in `09-firmware-linux.sb` that local builds always had.
-- **Gate 20 looks inside `vendor/slax-kitchen`:** an edited, staged or untracked file in the
-  engine now fails it, where only a moved pointer did (slax-kitchen #101).
-  `tests/unit/test_ci_lib.py` becomes an adapted copy, its new test pointed at our submodule.
+- **Gate 20 holds each submodule to its pointer, and reads nothing else:** it takes the paths from
+  `.gitmodules` in the index, and fails a submodule committed as files or left without its
+  pointer. It no longer reads the engine's checkout, which no commit records; gate 96 still fails
+  a moved one (slax-kitchen #103). It and `tests/unit/test_ci_lib.py` are verbatim copies, the
+  same files in every project.
+- **The unit gate hands a test neither `REPO_ROOT` nor `KITCHEN_SCOPE`,** so a test that runs a gate
+  against a fixture checks the fixture, not this checkout (slax-kitchen #102).
 - **`build.sh` holds each image to its recipes' record:** the structure test takes `--artifacts`,
   so every path the recipes journalled must be on the disc, and every path they removed must be
   gone (slax-kitchen #96).

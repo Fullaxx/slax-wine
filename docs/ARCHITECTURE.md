@@ -19,12 +19,13 @@ profiles/          eight: slax32-wine-bios, -uefi, slax64-wine-bios, -uefi and s
                    the three -test ones do not
 recipes/available/ seven recipes: five for slax-wine, two for slax-bottles
 build.sh           fetch -> stage -> unpack -> apply -> pack -> assert -> measure
-ci/                twelve gates; six copied verbatim, five adapted, one ours
-tests/unit/        four tests: the .desktop trap that once cost both launchers (adapted), the
-                   gate library that let a .exe and then a submodule bump through (verbatim),
-                   gate 80 itself, which once let a test write into the commit running it
-                   (verbatim), and gate 96 (ours): its pin read, which once answered for this
-                   repo, and the sections that hold four images to one recipe list
+ci/                twelve gates; seven copied verbatim, four adapted, one ours
+tests/unit/        six tests. Three are copies: the .desktop trap that once cost both
+                   launchers (adapted); the gate library that let a .exe and then a submodule
+                   bump through, and the vendor gate (verbatim); gate 80 itself, which once let
+                   a test write into the commit running it (verbatim). Three are ours: gate 96,
+                   whose pin read once answered for this repo and whose sections hold four
+                   images to one recipe list; the release scripts; ci/measure-check.sh
 vendor/            the engine, pinned by commit
 ```
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adapted from slax-kitchen @ 0d20605922cb79dee0616163d112ea1053faee98 (ci/hooks/pre-push): names this repo and how it is installed here.
+# Adapted from slax-kitchen @ fa73647675b7e465820350dae786cbdb46a43c1e (ci/hooks/pre-push): names this repo and how it is installed here.
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # slax-wine pre-push hook -- installed by the two `ln -sf` lines in docs/build.md.
 exec "$(git rev-parse --show-toplevel)/ci/run-checks.sh" pre-push

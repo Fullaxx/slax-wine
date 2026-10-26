@@ -330,7 +330,7 @@ makes records when it was made, every ESP gets a new volume serial, and the ISO 
 times from the tree, whichever backend packs it (`genisoimage` the `-bios` images, `xorriso` the rest,
 as `uefi-bootable` asks). Pinning the volume's dates with `kitchen pack --date`, which only `xorriso`
 honours, would change none of that, and since slax-kitchen `0465689` its
-[reproducibility page](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/docs/40-workflow/reproducibility.md)
+[reproducibility page](https://github.com/Fullaxx/slax-kitchen/blob/fa73647/docs/40-workflow/reproducibility.md)
 promises no bit-identical rebuild. Where two builds' contents do match, `kitchen diff --bundles`
 says so: `identical content`. For a download, the authority is the `.sha256` published beside that
 particular ISO.

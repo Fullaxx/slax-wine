@@ -94,8 +94,8 @@ Two rules make our end of it work:
   adds it.
 - **A pin bump is never automatic.** Every design decision in [ARCHITECTURE.md](ARCHITECTURE.md)
   reasons about specific engine behaviour, so a bump gets read as a diff before it is committed —
-  [Moving the pin](#moving-the-pin) is how — and `ci/checks/20-vendor-pristine.sh` fails a pointer
-  that moved without one.
+  [Moving the pin](#moving-the-pin) is how — and gate 96 fails a submodule moved without the rest of
+  a bump: every copied file's header, every permalink and every verbatim copy has to follow it.
 
 The first rule used to read *"carries the issue URL in a comment, so it is findable with `grep`"*,
 and nothing checked it. The #23 workaround carried no URL, so the grep that was meant to find it
@@ -142,9 +142,10 @@ anything. `CLAUDE.md` points at this section; the steps live here and nowhere el
 - **What upstream added.** A new gate or test is adopted, or it goes under
   [Deliberately not adopted](#deliberately-not-adopted-from-upstream) with the reason.
 - **What the tests say.** Upstream's changed tests run inside the pinned submodule with
-  `python3 -B`, and the submodule must stay pristine. When a gate we copy changed, run it over our
-  own tests too, as root and as an unprivileged user; developing as root hides a whole class of
-  failure (`f3ff3a3`).
+  `python3 -B`, and the submodule must stay pristine, which no gate checks since the `fa73647`
+  bump: `git -C vendor/slax-kitchen status --porcelain --untracked-files=all` prints nothing.
+  When a gate we copy changed, run it over our own tests too, as root and as an unprivileged user;
+  developing as root hides a whole class of failure (`f3ff3a3`).
 - **Anything we cite.** Check whether a permalinked page moved or changed, and whether a line number
   cited into the engine still points at what its comment says. Better, name the function, constant
   or key: line numbers drift at every bump, and the `0dd1b53` bump found eleven that had.
@@ -254,7 +255,9 @@ upstream filed from what slax-wine and slax-rpgs needed, by 2026-09-28. All of t
 which upstream filed itself on 2026-10-01 and 2026-10-02, were all closed by 2026-10-02 and taken
 at [the `1d7ef68` bump](#adopted-at-the-1d7ef68-bump). #83 to #90 and #93 to #101, also
 upstream's own, filed from 2026-10-04 to 2026-10-24, were all closed by 2026-10-24 and taken at
-[the `0d20605` bump](#adopted-at-the-0d20605-bump). #91 and #92 were still open then;
+[the `0d20605` bump](#adopted-at-the-0d20605-bump). #102 and #103, upstream's too, filed on
+2026-10-25 and 2026-10-26, were each closed the day it was filed and taken at
+[the `fa73647` bump](#adopted-at-the-fa73647-bump). #91 and #92 were still open then;
 [the next section](#open-upstream-and-what-each-means-here) says what each would mean here.
 
 | # | Issue | Closed by |
@@ -280,7 +283,7 @@ trust, because "open upstream" is not the same as "affects us". **14 has since c
 `5e7825f` (its own `Closes` trailer; the merge commit `c455733` carries none), taken at the
 `337f7e7` bump. 15 is still open. 49 joined it on 2026-09-26, filed by upstream, and was closed the
 same day by `658e78b`, taken at the `0dd1b53` bump. 91 and 92, filed by upstream on 2026-10-20, were
-open at the `0d20605` bump.
+open at the `0d20605` and `fa73647` bumps.
 
 | # | Issue | Impact on slax-wine |
 |---|---|---|
@@ -427,8 +430,8 @@ Its helper `ci/doc-yaml.py` is a separate question, because `tests/unit/test_des
 imports that module's `fences()` to read documented blocks. We do **not** copy it: the test loads it
 straight out of `vendor/slax-kitchen/ci/`. Upstream's stated reason for sharing the extractor was
 *"ONE extractor, not two"*, and importing theirs satisfies that more exactly than copying would —
-gate 20 holds `vendor/` byte-pristine, so drift is impossible by construction rather than by
-discipline. That is one of the file's two local changes, marked `LOCAL CHANGE` at the import.
+with no second copy there is nothing to drift, by construction rather than by discipline. That is
+the first of the three local changes the file's header lists, marked `LOCAL CHANGE` at the import.
 
 The second came with slax-bottles: the walk over `recipes/` now skips **gitignored** paths, which is
 `ci/lib.sh`'s own definition of "in scope". `build.sh` stages a whole Flatpak installation under
@@ -1680,7 +1683,7 @@ repository copies verbatim. slax-wine's own part went in as
 
 Upstream settled the frame with a decision rather than three engine changes: **a project builds on
 another project's released image, not its source**, and every project vendors the engine directly.
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md) records it, and
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/fa73647/LAYERING.md) records it, and
 what it asks of slax-wine as the first *base project* is slax-wine#2's work, which
 [building-on-slax-wine.md](building-on-slax-wine.md) answers.
 
@@ -2381,6 +2384,111 @@ sent, no livekit marker can follow. The boot host's agent passes the new 3.11 fl
 
 **No boot route was re-run.** No image's contents changed, and the menus are byte-identical. The
 release runs all twelve anyway.
+
+## Adopted at the `fa73647` bump
+
+Three commits, `0d20605..fa73647`, 14 files, +237/−164, on 2026-10-25 and 2026-10-26. CI on
+`fa73647` is green in every job (the `ci` push run 40398152887). The range closes #102 and #103,
+both filed by upstream, and each says in its own text what it means for slax-wine. None was ours,
+and no row in [Local workarounds](#local-workarounds) was active. Each commit was read as message
+and diff, and each `Closes` line was taken from the commit itself. Upstream added no recipe, gate or
+test file.
+
+**The headline: gate 20 and its test are upstream's files, unchanged,** the gate for the first time
+and the test again. Gate 20 now reads the submodule paths from the project's own `.gitmodules`, so
+one file serves every project, and its test brings a `.gitmodules` of its own. No image changes,
+and nothing was rebuilt.
+
+| commit | issue | what changed | here |
+|---|---|---|---|
+| `5fc232c` | #102 | the unit gate clears `REPO_ROOT` and `KITCHEN_SCOPE` for each test, beside git's own variables, so a test that runs a gate against a fixture checks the fixture | `80-unit.sh` and `run-checks.sh` re-adapted, `test_unit_gate.py` re-copied; #102 names our copy as sharing the leak. Our tests that need `REPO_ROOT` set it themselves, and none reads `KITCHEN_SCOPE` |
+| `2b11352` | refs #66 #70 | `lib/handback.py`, `test_apply.py` and `test_provenance.py` describe slax-wine's `build.sh` and docs in the past tense; LAYERING.md says slax-wine compares only the copies it calls verbatim byte for byte | started from the `handback.py` docstring slax-wine reported after the `0d20605` bump; upstream found the other three. True of this tree |
+| `fa73647` | #103 | gate 20 becomes one rule: each submodule `.gitmodules` names is committed as a pointer, never as files. It reads the index, and not the submodule's checkout. Its test becomes `test_the_vendor_gate_holds_each_submodule_to_its_pointer`, and CI stops checking the submodule out | **gate 20 and `test_ci_lib.py` copied verbatim**: below. Our release workflow still checks the submodule out, because gate 96 and the toolchain lists read it |
+
+**Gate 20, simplified as upstream's was.** Ours had been upstream's #101 gate with our path: rule 1,
+no file under `vendor/slax-kitchen/` committed; rule 2, the submodule checked out at its pin; rule
+3, nothing inside it edited or untracked. #103 showed that rules 2 and 3 guard no commit: a
+pointer records a commit, never a working tree, so an edit inside the submodule cannot reach
+history, and in CI, where every checkout is fresh, neither could fail. Upstream's file is now ours
+byte for byte, apart from the two header lines, and so is its test. What each old rule became here
+was demonstrated on a scratch clone at the new pin:
+
+- **a clean tree passes,** in staged and tree scope and under a hook's `GIT_DIR` and
+  `GIT_INDEX_FILE`, and so do all twelve gates;
+- **rule 1 holds, and covers more:** engine files committed in the pointer's place fail, named, and
+  so does a pointer removed from the index while `.gitmodules` still names it, which the old gate
+  passed;
+- **rule 2 is gate 96's now:** with the engine checked out one commit back, gate 20 passes, staged
+  or not, and gate 96 fails all twenty-one headers (§7) and both new verbatim copies (§9). The old
+  gate failed only the unstaged case, the commit that would have moved nothing, as #103 measured
+  upstream;
+- **rule 3 goes:** an edited engine file and an untracked one each pass all twelve gates; the old
+  gate failed both. `git describe --dirty` inside the engine reads `fa73647-dirty` for the
+  edit and plain `fa73647` for the untracked file, and the parent's `git status --short` shows
+  ` m vendor/slax-kitchen` and ` ? vendor/slax-kitchen`;
+- **a clone without the submodule** runs gate 20 in both scopes, and it passes, with no skip.
+
+What rule 3 covered is now covered by no gate, and nothing replaces it. It never stood between an
+edited engine and a build, because `build.sh` runs no gate: it failed the next commit, which could
+not have recorded the edit. Each image's provenance sidecar records the engine's
+`git describe --dirty`, which counts edited tracked files and not untracked ones, and a release is
+built in CI from a fresh checkout.
+
+**Corrected, because gate 20 no longer reads the checkout.** The
+[`0d20605` record](#adopted-at-the-0d20605-bump) found three statements that claimed more than the
+gate checked, and called them true once rule 3 arrived. Without it they are false again, and none
+of them leans on gate 20 now:
+- D-3's "gate 20 holds `vendor/` byte-identical to the pin": gate 96 §7 fails a commit made while
+  the engine is checked out at any other commit than the copied files cite;
+- the `doc-yaml.py` paragraph under
+  [Deliberately not adopted](#deliberately-not-adopted-from-upstream) and
+  `test_desktop_entries.py`'s note: with no second copy there is nothing to drift.
+
+A fourth, under [The lifecycle](#the-lifecycle), had gate 20 failing "a pointer that moved without"
+a bump. Its rule 2 failed only a moved checkout left unstaged, and the new gate reads no checkout
+at all: gate 96 is what fails a submodule moved without the rest of a bump.
+
+**Found on the way, wrong before this range:**
+- gate 96 §8 said this page "carries no blob/tree links". It has carried one, to LAYERING.md, since
+  the `b4eb25b` bump (`7664625`), and §8 re-pins it with the rest;
+- the `doc-yaml.py` paragraph counted two local changes in `test_desktop_entries.py`, whose header
+  has listed three since the `7f9c4f8` bump;
+- ARCHITECTURE's map of the tree listed four unit tests. There have been six since `4f14f0f` added
+  `test_release.py` and `568f7df` added `test_measure_check.py`, on 2026-09-29 and 2026-09-30.
+
+**Copied files.** Five of the twenty-one changed upstream: gate 20 and `test_ci_lib.py`, now
+verbatim; `test_unit_gate.py`, re-copied; `80-unit.sh` and `run-checks.sh`, re-adapted, each still
+one difference from upstream's, the `desc` line and the banner. The other sixteen are re-cited.
+With only the pin staged, gate 96 named twenty-one headers (§7), nineteen permalinks and two
+statements of the pin (§8), and `test_unit_gate.py` (§9); §10 was silent. No heading moved in the
+pages we link, so every anchor still resolves. **Retired:** no workaround. Two *Adapted* headers
+became *Copied verbatim*, gate 20's for the first time and `test_ci_lib.py`'s again. That makes
+thirteen verbatim copies and eight adapted, among them seven verbatim gates and four adapted, and
+NOTICE, `build.md`, ARCHITECTURE and gate 90's quote of `build.md` now count them so.
+
+**What the tests say.** Upstream's four changed test files (`test_apply`, `test_ci_lib`,
+`test_provenance`, `test_unit_gate`) pass inside the pinned submodule, through `ci/unit-run.py` with
+`python3 -B`, a private `TMPDIR` left empty, and `KITCHEN_BOOT_HOST=local`. The submodule stays
+pristine, as `git status` shows: gate 20 no longer looks. All twelve of our gates pass as root and
+as uid 65534, the unit gate running our six test files in its new sandbox.
+
+**No rebuild.** [Moving the pin](#moving-the-pin) asks for one when a build input changes, and the
+only one this range changes is `lib/handback.py`, by one word of its module docstring, "chowns" to
+"chowned". That changes nothing that runs. Nothing reads the docstring at run time: the engine
+reads two docstrings, `lib/sources.py`'s and `tools/firmware-coverage.py`'s, each its own for its
+`--help`. No engine file reaches an image. The images and the boot evidence of
+[the `0d20605` bump](#adopted-at-the-0d20605-bump) stand.
+
+**What a release would change, and from where.** Nothing from this bump:
+
+| source | what changed since v1.0.0 | what a user, or a project built on the images, would meet |
+|---|---|---|
+| this bump's engine, `fa73647` | one word of a docstring | nothing |
+| this bump's checks | gate 20 and the unit gate's sandbox, neither of which touches an image | nothing |
+| everything else since v1.0.0 | as [the `0d20605` record](#adopted-at-the-0d20605-bump) lays it out, measured on 2026-10-25: Debian's security updates, Bottles 67.4 and new runtime commits, a comment in `notepadpp64`'s launcher, and one empty `/root` entry in a runner build's `09-firmware-linux.sb` | as recorded there. Debian and Flathub may have moved since, and a release measures them again |
+
+**Recommended: no version change for slax-kitchen's sake.** The `0d20605` bump's recommendation
+stands: if a release is cut for Debian's and Flathub's updates, it is a patch, 1.0.1.
 
 ## Two findings were dropped before filing, in round one
 

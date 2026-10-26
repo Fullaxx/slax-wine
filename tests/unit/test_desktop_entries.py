@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Adapted from slax-kitchen @ 0d20605922cb79dee0616163d112ea1053faee98 (tests/unit/test_desktop_entries.py).
+# Adapted from slax-kitchen @ fa73647675b7e465820350dae786cbdb46a43c1e (tests/unit/test_desktop_entries.py).
 # MIT, same author. THREE local changes, marked LOCAL below: the fenced-block reader is
 # imported from the VENDORED copy rather than a copy of our own, because this repo has
 # no ci/doc-yaml.py; the walk over recipes/ skips gitignored build stages; and that walk
@@ -53,9 +53,9 @@ import yaml  # noqa: E402
 # avoid. Copying the 228-line extractor WITHOUT its gate would leave a file nothing runs.
 #
 # So read it straight out of the submodule. Upstream's rationale was "ONE extractor, not
-# two", and importing theirs satisfies that more exactly than copying it would: gate 20
-# holds vendor/ byte-pristine, so drift is impossible by construction rather than by
-# discipline. Module-level execution is stdlib-only (json/os/re/subprocess/sys and four
+# two", and importing theirs satisfies that more exactly than copying it would: with no
+# second copy there is nothing to drift, by construction rather than by discipline.
+# Module-level execution is stdlib-only (json/os/re/subprocess/sys and four
 # constants), so nothing here pays for its jsonschema machinery.
 #
 # Loaded by path because the filename has a hyphen and is not importable as a module name.

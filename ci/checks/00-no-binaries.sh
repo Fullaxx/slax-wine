@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copied verbatim from slax-kitchen @ 0d20605922cb79dee0616163d112ea1053faee98 (ci/checks/00-no-binaries.sh).
+# Copied verbatim from slax-kitchen @ fa73647675b7e465820350dae786cbdb46a43c1e (ci/checks/00-no-binaries.sh).
 # MIT, same author. Do not edit here -- re-copy on a submodule bump; see docs/UPSTREAM.md.
 # stages: pre-commit pre-push ci
 # desc: Reject ISOs, squashfs bundles, disk images and oversized files.

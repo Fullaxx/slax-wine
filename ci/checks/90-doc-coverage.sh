@@ -2,7 +2,7 @@
 # stages: pre-commit pre-push ci
 # desc: Every recipe has a cookbook page and is linked from the index, and vice versa.
 #
-# Adapted from slax-kitchen @ 0d20605922cb79dee0616163d112ea1053faee98 (ci/checks/90-doc-coverage.sh).
+# Adapted from slax-kitchen @ fa73647675b7e465820350dae786cbdb46a43c1e (ci/checks/90-doc-coverage.sh).
 #
 # NOT taken: upstream's RECIPE-count check ("thirty recipes ship today"). With four
 # recipes here that lookup table is more machinery than the drift it prevents -- left
@@ -93,7 +93,7 @@ if [ -n "$want" ]; then
     words='one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty'
     # ANCHORED, and the anchor is load-bearing in both directions. "gates" is an ordinary
     # word, and this repo has lines that legitimately count a SUBSET -- docs/build.md's
-    # "Six gates are copied verbatim from slax-kitchen, five are adapted" is one, and
+    # "Seven gates are copied verbatim from slax-kitchen, four are adapted" is one, and
     # must not fail. A line claims the TOTAL only if it also names the thing that runs them.
     #
     # That example is quoted from the tree, and the tree was wrong: it read "Six" from the
@@ -101,9 +101,10 @@ if [ -n "$want" ]; then
     # Nothing checks a subset count -- this rule cannot, since it does not know which
     # subset -- so quoting one here is a comment, not a guarantee. It went stale a second
     # time at the b20e07e bump, when adopting 35-pyflakes took the adapted count from four
-    # to five, and again at the b4eb25b bump, when upstream deleted 50-secrets and seven
-    # verbatim gates became six: THREE quotes in this file track the tree by hand, and this
-    # is the third.
+    # to five; again at the b4eb25b bump, when upstream deleted 50-secrets and seven
+    # verbatim gates became six; and again at the fa73647 bump, when gate 20 became a
+    # verbatim copy: six and five became seven and four. THREE quotes in this file track
+    # the tree by hand, and this is the third.
     anchor='commit gates|selftest|ci/checks|ci/|run-checks|doctor --strict|checks live in|build script'
     check_files_nl | grep -E '\.md$' | grep -v '^vendor/' > "$TMPD/md" || true
     # SAY SO WHEN THERE IS NOTHING TO READ. An empty list is ordinary in staged scope --

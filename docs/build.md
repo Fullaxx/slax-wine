@@ -133,7 +133,7 @@ four full builds; narrow it while iterating: `./build.sh --32 --bios`.
 `build.sh` `cd`s to the repo root before doing anything, so it is safe to invoke by absolute path.
 That is not cosmetic: the profile names its recipes by relative path, and the engine resolves those
 against the **current working directory**, not the repo root — which slax-kitchen's
-[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/LAYERING.md) makes the rule for
+[LAYERING.md](https://github.com/Fullaxx/slax-kitchen/blob/fa73647/LAYERING.md) makes the rule for
 every project: build from its root.
 
 ## Commit gates
@@ -167,7 +167,7 @@ vendoring project's `ci/hooks/` into that project's repository since slax-kitche
 and refuses where `core.hooksPath` is set. Before that it looked only at the submodule, and failed
 with `not a git repo`.
 
-Six gates are copied verbatim from slax-kitchen, five are adapted, and
+Seven gates are copied verbatim from slax-kitchen, four are adapted, and
 `96-release-consistency.sh` is ours. Two helpers they call, `ci/md-links.py` and `ci/unit-run.py`,
 are copied verbatim as well, and so is `ci/yamllint.yaml`. The two hooks in `ci/hooks/` are adapted,
 because this repository installs them with the `ln -sf` lines above. Each copied file's header names
@@ -245,7 +245,7 @@ the assets to a **draft** release. Nothing publishes it but a person
 ([D-19](DECISIONS.md#d-19--release-from-a-tag-by-actions-into-a-draft)).
 
 **It follows slax-kitchen's own procedure,**
-[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/0d20605/docs/40-workflow/publishing-images.md),
+[publishing-images.md](https://github.com/Fullaxx/slax-kitchen/blob/fa73647/docs/40-workflow/publishing-images.md),
 under the pointer policy in [NOTICE.md](../NOTICE.md) and
 [D-12](DECISIONS.md#d-12--publish-the-isos-with-pointers-to-their-source): no source is attached,
 and each image's `SOURCES.md` says where each part's source is published. Nothing in the procedure
@@ -359,5 +359,5 @@ Then `gh release create v$VERSION --draft --notes-file …` and upload, which pu
 
 ## Upstream
 
-The engine is pinned at [`0d20605`](https://github.com/Fullaxx/slax-kitchen/tree/0d20605). Bumping the
+The engine is pinned at [`fa73647`](https://github.com/Fullaxx/slax-kitchen/tree/fa73647). Bumping the
 pin is never automatic — see [UPSTREAM.md](UPSTREAM.md).

@@ -95,7 +95,8 @@ neither of its reasons survived:
   the whole plan and across separate invocations, and gate 96 §5(a3) refuses a shipped profile that
   lists `remove-bundle` late. A third statement of the same rule added nothing either lacks.
 - **"An engine older than the pin" cannot build this repo.** `build.sh` runs the vendored engine,
-  and gate 20 holds `vendor/` byte-identical to the pin.
+  and gate 96 fails a commit made while it is checked out at any other commit than the one every
+  copied file cites (§7).
 - **A named stack has a failure of its own.** It goes stale the moment a bundle is added below 20,
   and then — upstream's `verbs.md` — apt reinstalls libraries the image already has, and those copies
   shadow the originals. The default cannot drift that way, and it was what 34 of upstream's 35
